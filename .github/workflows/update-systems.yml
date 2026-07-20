@@ -1,0 +1,75 @@
+name: Update library systems list
+
+# Refresh data/us-library-systems.json weekly from OpenStreetMap (via QLever)
+# so the onboarding picker reflects mappers' latest additions and cleanups.
+
+on:
+  schedule:
+    - cron: '17 9 * * 1'   # Mondays at 09:17 UTC
+  workflow_dispatch:         # allow manual runs from the Actions tab
+
+# Let the job commit back to the repo.
+permissions:
+  contents: write
+
+concurrency:
+  group: update-systems
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Record current system count
+        id: before
+        run: |
+          OLD=$(node -p "require('./data/us-library-systems.json').systems.length")
+          echo "count=$OLD" >> "$GITHUB_OUTPUT"
+          echo "Currently committed: $OLD systems."
+
+      - name: Regenerate systems list
+        run: |
+          node scripts/build-systems.mjs
+
+      - name: Sanity-check the result
+        env:
+          OLD: ${{ steps.before.outputs.count }}
+        run: |
+          NEW=$(node -p "require('./data/us-library-systems.json').systems.length")
+          echo "Generated $NEW systems (was $OLD)."
+
+          # Guard against a broken/empty upstream response gutting the list.
+          if [ "$NEW" -lt 1000 ]; then
+            echo "::error::Only $NEW systems generated (expected >= 1000). Refusing to commit."
+            exit 1
+          fi
+
+          # Refuse a >20% swing in either direction — almost always an upstream
+          # data glitch rather than a week of real mapping activity.
+          LOW=$(( OLD * 80 / 100 ))
+          HIGH=$(( OLD * 120 / 100 ))
+          if [ "$NEW" -lt "$LOW" ] || [ "$NEW" -gt "$HIGH" ]; then
+            echo "::error::System count changed from $OLD to $NEW (>20%). Refusing to commit; re-run manually if this is a real change."
+            exit 1
+          fi
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- data/us-library-systems.json; then
+            echo "No changes to the systems list."
+            exit 0
+          fi
+          COUNT=$(node -p "require('./data/us-library-systems.json').systems.length")
+          git add data/us-library-systems.json
+          git commit -m "chore: weekly refresh of US library systems list ($COUNT systems)"
+          git push

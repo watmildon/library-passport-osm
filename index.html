@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Library Passport 📚</title>
+  <meta name="description" content="Track every library you've visited on a clean interactive map." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Onboarding -->
+  <div id="onboard">
+    <div class="onboard-card">
+      <h1>📚 Library Passport</h1>
+      <p class="sub">Track every library you've visited. Start typing your library system's name to find it.</p>
+
+      <!-- Searchable picker over US library systems -->
+      <div class="field" id="field-picker">
+        <label>Find your library system</label>
+        <div class="combo">
+          <input id="in-search" type="text" placeholder="e.g. Seattle, King County, New York…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="suggest" />
+          <div id="suggest" class="suggest" role="listbox"></div>
+        </div>
+        <div class="hint" id="picker-hint">Searching US library systems from OpenStreetMap.</div>
+      </div>
+
+      <!-- Manual fallback for systems not in the list (or outside the US) -->
+      <details class="manual" id="manual">
+        <summary>Can't find it? Enter it manually</summary>
+        <div class="seg" id="mode-seg">
+          <button type="button" data-mode="operator" class="active">By operator name</button>
+          <button type="button" data-mode="wikidata">By Wikidata ID</button>
+        </div>
+        <div class="field" id="field-operator">
+          <input id="in-operator" type="text" placeholder="King County Library System" autocomplete="off" />
+          <div class="hint">The exact value of the <b>operator=</b> tag in OpenStreetMap.</div>
+        </div>
+        <div class="field" id="field-wikidata" style="display:none">
+          <input id="in-wikidata" type="text" placeholder="Q6411390" autocomplete="off" />
+          <div class="hint">The <b>operator:wikidata=</b> value (starts with Q).</div>
+        </div>
+      </details>
+
+      <!-- Optional: use a different Overpass API server -->
+      <details class="manual" id="advanced">
+        <summary>Advanced: use a different Overpass server</summary>
+        <div class="field" style="margin-bottom:0">
+          <input id="in-overpass" type="url" inputmode="url" placeholder="https://overpass-api.de/api/interpreter" autocomplete="off" />
+        </div>
+      </details>
+
+      <button class="btn-primary" id="btn-load">Load libraries →</button>
+      <div class="err" id="onboard-err"></div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading"><div class="spinner"></div><div class="msg" id="loading-msg">Fetching libraries…</div></div>
+
+  <!-- Sidebar -->
+  <div id="sidebar" style="display:none">
+    <div class="sb-head">
+      <div class="title">
+        <h2 id="system-name">Libraries</h2>
+        <button class="gear" id="btn-reset" title="Change library system">⚙️</button>
+      </div>
+      <div class="search-wrap">
+        <span class="mag">🔍</span>
+        <input id="search" type="text" placeholder="Search libraries by name…" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="toggles">
+      <div class="chip" id="chip-open" title="Grey out libraries closed right now">🕑 Open now</div>
+      <div class="chip" id="chip-missing" title="Grey out libraries whose OSM tags look complete, highlighting ones that need attention">🏷️ Missing OSM data</div>
+    </div>
+
+    <div class="stats">
+      <div class="bar"><div id="stat-fill"></div></div>
+      <div class="row">
+        <span><span class="big" id="stat-pct">0%</span> complete</span>
+        <span><b id="stat-visited">0</b> / <b id="stat-total">0</b> visited</span>
+      </div>
+    </div>
+
+    <div class="list" id="list"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>
