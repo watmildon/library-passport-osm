@@ -35,6 +35,16 @@ jobs:
           echo "count=$OLD" >> "$GITHUB_OUTPUT"
           echo "Currently committed: $OLD systems."
 
+      - name: Report QLever data freshness
+        run: |
+          # QLever's OSM data is a weekly planet snapshot (can lag OSM by ~1-2 weeks).
+          # Surface which snapshot we're building from, for the run log.
+          SRC=$(curl -sf --retry 3 --retry-delay 5 "https://qlever.dev/api/osm-planet?cmd=stats" \
+                | node -p "JSON.parse(require('fs').readFileSync(0,'utf8'))['name-index']" || echo "unavailable")
+          echo "QLever OSM source: $SRC"
+          echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
+          echo "$SRC" >> "$GITHUB_STEP_SUMMARY"
+
       - name: Regenerate systems list
         run: |
           node scripts/build-systems.mjs

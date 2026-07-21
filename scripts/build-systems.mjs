@@ -44,9 +44,17 @@ GROUP BY ?wd ?operator ORDER BY DESC(?count)`;
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// POST a SPARQL query, retrying a few times on transient failures so the weekly
-// GitHub Action doesn't fail on a momentary endpoint hiccup.
-async function sparql(endpoint, query, ua, attempts = 4) {
+// A descriptive User-Agent identifying this job. Public SPARQL endpoints
+// (QLever, Wikidata) apply stricter throttling — including outright 403s from
+// cloud IP ranges like GitHub Actions runners — to traffic that doesn't identify
+// itself, so we always send one. Override with the USER_AGENT env var.
+const USER_AGENT = process.env.USER_AGENT ||
+  'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; weekly systems-list build)';
+
+// POST a SPARQL query, retrying with backoff. Retries cover transient hiccups as
+// well as rate-limit / temporary-block responses (403/429/5xx), which the weekly
+// GitHub Action is prone to hit from shared cloud IPs.
+async function sparql(endpoint, query, attempts = 5) {
   let lastErr;
   for (let i = 0; i < attempts; i++) {
     try {
@@ -55,18 +63,25 @@ async function sparql(endpoint, query, ua, attempts = 4) {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/sparql-results+json',
-          ...(ua ? { 'User-Agent': ua } : {})
+          'User-Agent': USER_AGENT
         },
         body: 'query=' + encodeURIComponent(query)
       });
-      if (!res.ok) throw new Error(`${endpoint} -> HTTP ${res.status}`);
+      if (!res.ok) {
+        const retriable = res.status === 403 || res.status === 429 || res.status >= 500;
+        throw Object.assign(new Error(`${endpoint} -> HTTP ${res.status}`), { retriable });
+      }
       return (await res.json()).results.bindings;
     } catch (e) {
       lastErr = e;
-      if (i < attempts - 1) {
-        const wait = 2000 * (i + 1);
+      // Network errors have no status; treat them as retriable too.
+      const retriable = e.retriable !== false;
+      if (i < attempts - 1 && retriable) {
+        const wait = 5000 * (i + 1); // 5s, 10s, 15s, 20s
         console.warn(`  request failed (${e.message}) — retrying in ${wait / 1000}s…`);
         await sleep(wait);
+      } else if (!retriable) {
+        break; // a non-retriable error (e.g. 400 bad query) won't fix itself
       }
     }
   }
@@ -84,7 +99,7 @@ SELECT ?item ?label WHERE {
   VALUES ?item { ${values} }
   ?item rdfs:label ?label . FILTER(LANG(?label) = 'en')
 }`;
-  const rows = await sparql(WIKIDATA, query, 'library-passport-osm/1.0 (build-systems)');
+  const rows = await sparql(WIKIDATA, query);
   const out = {};
   for (const r of rows) out[r.item.value.split('/').pop()] = r.label.value;
   return out;
