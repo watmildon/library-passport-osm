@@ -1,7 +1,9 @@
 name: Update library systems list
 
-# Refresh data/us-library-systems.json weekly from OpenStreetMap (via QLever)
-# so the onboarding picker reflects mappers' latest additions and cleanups.
+# Refresh data/us-library-systems.json from OpenStreetMap US's Layercake POI
+# extract so the onboarding picker reflects mappers' latest additions and
+# cleanups. Layercake is queried directly over HTTP with DuckDB (no full
+# download) and, unlike QLever, does not block GitHub Actions runner IPs.
 
 on:
   schedule:
@@ -28,6 +30,11 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install DuckDB CLI
+        run: |
+          curl -fsSL https://install.duckdb.org | sh
+          echo "$HOME/.duckdb/cli/latest" >> "$GITHUB_PATH"
+
       - name: Record current system count
         id: before
         run: |
@@ -35,18 +42,19 @@ jobs:
           echo "count=$OLD" >> "$GITHUB_OUTPUT"
           echo "Currently committed: $OLD systems."
 
-      - name: Report QLever data freshness
+      - name: Report Layercake data freshness
         run: |
-          # QLever's OSM data is a weekly planet snapshot (can lag OSM by ~1-2 weeks).
-          # Surface which snapshot we're building from, for the run log.
-          SRC=$(curl -sf --retry 3 --retry-delay 5 "https://qlever.dev/api/osm-planet?cmd=stats" \
-                | node -p "JSON.parse(require('fs').readFileSync(0,'utf8'))['name-index']" || echo "unavailable")
-          echo "QLever OSM source: $SRC"
+          # Layercake is rebuilt periodically from OSM; surface how fresh the POI
+          # extract is (its Last-Modified date) in the run log and summary.
+          MOD=$(curl -sfI "https://data.openstreetmap.us/layercake/pois.parquet" \
+                | grep -i '^last-modified:' | sed 's/^[Ll]ast-[Mm]odified: //' | tr -d '\r' || echo "unknown")
+          echo "Layercake pois.parquet last modified: $MOD"
           echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
-          echo "$SRC" >> "$GITHUB_STEP_SUMMARY"
+          echo "OpenStreetMap US Layercake \`pois.parquet\` — last modified: $MOD" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Regenerate systems list
         run: |
+          duckdb --version
           node scripts/build-systems.mjs
 
       - name: Sanity-check the result

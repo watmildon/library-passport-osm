@@ -1,94 +1,72 @@
 #!/usr/bin/env node
 // build-systems.mjs — regenerate data/us-library-systems.json
 //
-// Pulls every operator= and operator:wikidata= value on amenity=library within
-// the US (OSM boundary relation 148838) from QLever's osm-planet SPARQL endpoint,
-// enriches Wikidata-only entries with English labels from the Wikidata Query
-// Service, and writes a ranked, de-duplicated system list for the onboarding picker.
+// Extracts every operator= and operator:wikidata= value on amenity=library within
+// the US from OpenStreetMap US's Layercake POI extract (a cloud-native GeoParquet
+// file), queried directly over HTTP with DuckDB — no full download. Wikidata-only
+// operators are enriched with English labels from the Wikidata Query Service.
+// Writes a ranked, de-duplicated system list for the onboarding picker.
+//
+// Requirements:
+//   - the DuckDB CLI on PATH (or set DUCKDB=/path/to/duckdb)
+//   - Node 18+ (global fetch)
 //
 // Usage:  node scripts/build-systems.mjs
 //
-// No dependencies — uses global fetch (Node 18+). Run from the repo root.
+// The heavy lifting (US point-in-polygon filter + aggregation) lives in the
+// sibling SQL file, us-library-operators.sql.
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, unlinkSync, mkdtempSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { spawnSync } from 'node:child_process';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const QLEVER = 'https://qlever.dev/api/osm-planet';
+const HERE = dirname(fileURLToPath(import.meta.url));
+const ROOT = join(HERE, '..');
+const SQL_FILE = join(HERE, 'us-library-operators.sql');
+const DUCKDB = process.env.DUCKDB || 'duckdb';
 const WIKIDATA = 'https://query.wikidata.org/sparql';
-const US_RELATION = 'osmrel:148838';
 
-const OPS_QUERY = `
-PREFIX osmkey: <https://www.openstreetmap.org/wiki/Key:>
-PREFIX osmrel: <https://www.openstreetmap.org/relation/>
-PREFIX ogc: <http://www.opengis.net/rdf#>
-SELECT ?operator (COUNT(?lib) AS ?count) WHERE {
-  ${US_RELATION} ogc:sfContains ?lib .
-  ?lib osmkey:amenity "library" .
-  ?lib osmkey:operator ?operator .
-}
-GROUP BY ?operator ORDER BY DESC(?count)`;
-
-const WD_QUERY = `
-PREFIX osmkey: <https://www.openstreetmap.org/wiki/Key:>
-PREFIX osmrel: <https://www.openstreetmap.org/relation/>
-PREFIX ogc: <http://www.opengis.net/rdf#>
-SELECT ?wd ?operator (COUNT(?lib) AS ?count) WHERE {
-  ${US_RELATION} ogc:sfContains ?lib .
-  ?lib osmkey:amenity "library" .
-  ?lib osmkey:operator:wikidata ?wd .
-  OPTIONAL { ?lib osmkey:operator ?operator . }
-}
-GROUP BY ?wd ?operator ORDER BY DESC(?count)`;
-
-const sleep = ms => new Promise(r => setTimeout(r, ms));
-
-// A descriptive User-Agent identifying this job. Public SPARQL endpoints
-// (QLever, Wikidata) apply stricter throttling — including outright 403s from
-// cloud IP ranges like GitHub Actions runners — to traffic that doesn't identify
-// itself, so we always send one. Override with the USER_AGENT env var.
 const USER_AGENT = process.env.USER_AGENT ||
   'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; weekly systems-list build)';
 
-// POST a SPARQL query, retrying with backoff. Retries cover transient hiccups as
-// well as rate-limit / temporary-block responses (403/429/5xx), which the weekly
-// GitHub Action is prone to hit from shared cloud IPs.
-async function sparql(endpoint, query, attempts = 5) {
-  let lastErr;
-  for (let i = 0; i < attempts; i++) {
-    try {
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/sparql-results+json',
-          'User-Agent': USER_AGENT
-        },
-        body: 'query=' + encodeURIComponent(query)
-      });
-      if (!res.ok) {
-        const retriable = res.status === 403 || res.status === 429 || res.status >= 500;
-        throw Object.assign(new Error(`${endpoint} -> HTTP ${res.status}`), { retriable });
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ---- Layercake via DuckDB ------------------------------------------------
+
+// Run the DuckDB query and return rows of { operator, wikidata, count }.
+// operator / wikidata are null when absent on a given library.
+function queryLayercake() {
+  const tmp = mkdtempSync(join(tmpdir(), 'libpass-'));
+  const outFile = join(tmp, 'systems-raw.json');
+  // DuckDB reads paths with forward slashes on every platform.
+  const sql = readFileSync(SQL_FILE, 'utf8').replaceAll('{{OUT}}', outFile.replace(/\\/g, '/'));
+
+  try {
+    const res = spawnSync(DUCKDB, [], { input: sql, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
+    if (res.error) {
+      if (res.error.code === 'ENOENT') {
+        throw new Error(`DuckDB CLI not found (tried "${DUCKDB}"). Install it or set the DUCKDB env var.`);
       }
-      return (await res.json()).results.bindings;
-    } catch (e) {
-      lastErr = e;
-      // Network errors have no status; treat them as retriable too.
-      const retriable = e.retriable !== false;
-      if (i < attempts - 1 && retriable) {
-        const wait = 5000 * (i + 1); // 5s, 10s, 15s, 20s
-        console.warn(`  request failed (${e.message}) — retrying in ${wait / 1000}s…`);
-        await sleep(wait);
-      } else if (!retriable) {
-        break; // a non-retriable error (e.g. 400 bad query) won't fix itself
-      }
+      throw res.error;
     }
+    if (res.status !== 0) {
+      throw new Error(`DuckDB exited ${res.status}:\n${res.stderr || res.stdout}`);
+    }
+    const rows = JSON.parse(readFileSync(outFile, 'utf8'));
+    return rows.map(r => ({
+      operator: r.operator ?? null,
+      wikidata: r.wikidata ?? null,
+      count: Number(r.count)
+    }));
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
   }
-  throw lastErr;
 }
 
-// Fetch English labels for a set of Q-ids from the Wikidata Query Service.
+// ---- Wikidata label enrichment ------------------------------------------
+
 async function wikidataLabels(qids) {
   if (!qids.length) return {};
   const values = qids.map(q => 'wd:' + q).join(' ');
@@ -99,33 +77,68 @@ SELECT ?item ?label WHERE {
   VALUES ?item { ${values} }
   ?item rdfs:label ?label . FILTER(LANG(?label) = 'en')
 }`;
-  const rows = await sparql(WIKIDATA, query);
-  const out = {};
-  for (const r of rows) out[r.item.value.split('/').pop()] = r.label.value;
-  return out;
+
+  let lastErr;
+  for (let i = 0; i < 5; i++) {
+    try {
+      const res = await fetch(WIKIDATA, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/sparql-results+json',
+          'User-Agent': USER_AGENT
+        },
+        body: 'query=' + encodeURIComponent(query)
+      });
+      if (!res.ok) throw new Error(`Wikidata -> HTTP ${res.status}`);
+      const rows = (await res.json()).results.bindings;
+      const out = {};
+      for (const r of rows) out[r.item.value.split('/').pop()] = r.label.value;
+      return out;
+    } catch (e) {
+      lastErr = e;
+      if (i < 4) {
+        const wait = 5000 * (i + 1);
+        console.warn(`  Wikidata request failed (${e.message}) — retrying in ${wait / 1000}s…`);
+        await sleep(wait);
+      }
+    }
+  }
+  // Labels are enrichment only — don't fail the whole build if Wikidata is down.
+  console.warn(`  Giving up on Wikidata labels: ${lastErr.message}`);
+  return {};
 }
 
+// ---- Build ---------------------------------------------------------------
+
 async function main() {
-  console.log('Querying QLever for US library operators…');
-  const ops = await sparql(QLEVER, OPS_QUERY);
-  console.log(`  ${ops.length} distinct operator names`);
+  console.log('Querying Layercake (via DuckDB) for US library operators…');
+  const rows = queryLayercake();
+  console.log(`  ${rows.length} (operator, wikidata) groups`);
 
-  console.log('Querying QLever for US operator:wikidata…');
-  const wds = await sparql(QLEVER, WD_QUERY);
-
-  const qids = [...new Set(wds.map(x => x.wd.value))].filter(q => /^Q\d+$/.test(q));
-  console.log(`  ${qids.length} distinct Wikidata operators — fetching labels…`);
-  const wdLabel = await wikidataLabels(qids);
-
-  // operator-name -> qid, so we can prefer the wikidata selector where both exist.
-  const nameToQid = {};
+  // Aggregate by operator name and by wikidata id.
+  const opRows = [];                 // { name, count } — operator-name totals
+  const opCount = {};
   const qidCount = {};
-  const qidName = {};
-  for (const x of wds) {
-    const qid = x.wd.value, c = +x.count.value;
-    qidCount[qid] = (qidCount[qid] || 0) + c;
-    if (x.operator) { nameToQid[x.operator.value] = qid; qidName[qid] ||= x.operator.value; }
+  const qidName = {};                // preferred operator= name seen for a qid
+  const nameToQid = {};              // operator name -> qid (when co-tagged)
+
+  for (const r of rows) {
+    if (r.operator) opCount[r.operator] = (opCount[r.operator] || 0) + r.count;
+    if (r.wikidata) {
+      qidCount[r.wikidata] = (qidCount[r.wikidata] || 0) + r.count;
+      if (r.operator) {
+        qidName[r.wikidata] ||= r.operator;
+        nameToQid[r.operator] = r.wikidata;
+      }
+    }
   }
+  for (const [name, count] of Object.entries(opCount)) opRows.push({ name, count });
+  opRows.sort((a, b) => b.count - a.count);
+
+  const qids = Object.keys(qidCount).filter(q => /^Q\d+$/.test(q));
+  console.log(`  ${Object.keys(opCount).length} operator names, ${qids.length} Wikidata operators — fetching labels…`);
+  const wdLabel = await wikidataLabels(qids);
 
   const seen = new Set();
   const systems = [];
@@ -137,10 +150,9 @@ async function main() {
     seen.add(name);
   }
   // Operator-name systems with no wikidata counterpart.
-  for (const x of ops) {
-    const name = x.operator.value;
+  for (const { name, count } of opRows) {
     if (nameToQid[name] || seen.has(name)) continue;
-    systems.push({ name, mode: 'operator', value: name, count: +x.count.value });
+    systems.push({ name, mode: 'operator', value: name, count });
     seen.add(name);
   }
 
@@ -148,7 +160,7 @@ async function main() {
 
   const out = {
     meta: {
-      source: 'QLever osm-planet SPARQL (US boundary relation 148838), enriched with Wikidata labels',
+      source: 'OpenStreetMap US Layercake POI extract (data.openstreetmap.us), US boundary relation 148838, enriched with Wikidata labels',
       generated: new Date().toISOString().slice(0, 10),
       boundary: 'United States (OSM relation 148838)',
       totalSystems: systems.length
