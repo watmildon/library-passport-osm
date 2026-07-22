@@ -1,5 +1,41 @@
 # Build scripts
 
+Both scripts query OpenStreetMap US's [Layercake](https://openstreetmap.us/our-work/layercake/)
+GeoParquet extracts remotely with DuckDB (only the needed columns/row-groups are
+read — the 4 GB POI file is never fully downloaded) and are run weekly by the
+[`update-systems`](../.github/workflows/update-systems.yml) GitHub Action.
+
+## `build-qa.mjs` — Data QA dataset
+
+Regenerates [`../data/qa-data.json`](../data/qa-data.json), the dataset behind
+[`qa.html`](../qa.html) (the Data QA page).
+
+```sh
+node scripts/build-qa.mjs
+```
+
+Runs [`qa-libraries.sql`](./qa-libraries.sql), which emits one row per US
+library (US-scoped by `ST_Contains` against boundary relation 148838, state
+assigned by point-in-polygon against `admin_level=4` boundaries) plus a list of
+likely-typo operator-name pairs (Levenshtein ≤ 2, length-scaled, computed in
+DuckDB). The Node script normalizes this into one compact file:
+
+- `meta` — generated date, Layercake freshness, totals
+- `tags` — the tag behind each bit of a library's `flags` bitmask
+  (phone, website, opening_hours, operator, operator:wikidata — only the tags
+  the app itself uses)
+- `states` / `systems` — lookup arrays referenced by index from `libs`
+- `libs` — `[systemIdx, type, id, name, stateIdx, flags, lon, lat]` per library
+- `collisions` — the likely-typo pairs
+- `ambiguous` — operator names whose libraries form 2+ geographic clusters more
+  than ~120 km apart (single-linkage): likely *distinct systems sharing a name*,
+  the highest-value `operator:wikidata` targets. Per cluster: states, branch
+  count, wikidata status, and a padded bbox for region-scoped Overpass queries.
+
+**Limitation:** Layercake's POI layer has no `addr:*` columns, so address
+completion isn't in the weekly stats. The QA page's "Load live details" action
+fills that gap per-system via Overpass (full tag set, incl. addresses).
+
 ## `build-systems.mjs` — US library-systems list
 
 Regenerates [`../data/us-library-systems.json`](../data/us-library-systems.json),

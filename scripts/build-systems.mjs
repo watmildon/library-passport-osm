@@ -168,7 +168,14 @@ async function main() {
     systems
   };
   const dest = join(ROOT, 'data', 'us-library-systems.json');
-  writeFileSync(dest, JSON.stringify(out));
+  // One system per line (still valid JSON) so weekly git diffs touch only the
+  // lines that actually changed, instead of rewriting one giant line.
+  const json = '{\n' +
+    `"meta": ${JSON.stringify(out.meta)},\n` +
+    '"systems": [\n' +
+    systems.map(s => JSON.stringify(s)).join(',\n') +
+    '\n]\n}\n';
+  writeFileSync(dest, json);
   console.log(`Wrote ${systems.length} systems -> ${dest}`);
 }
 

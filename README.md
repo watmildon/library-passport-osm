@@ -22,6 +22,9 @@ or state.
 - **Your progress stays with you** — everything is saved right in your browser, so
   your visited branches are still here when you come back. Nothing is uploaded, and
   no account is needed.
+- **Data QA dashboard** — want to give back? The [Data QA page](qa.html) shows
+  where US library data in OpenStreetMap needs love: missing tags, wikidata gaps,
+  and likely typos.
 
 ## Data & attribution
 

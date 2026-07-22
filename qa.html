@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Library Passport · Data QA</title>
+  <meta name="description" content="Data-quality dashboard for US library data in OpenStreetMap — find missing tags, wikidata gaps, and likely typos." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body class="qa-page">
+
+  <header class="qa-head">
+    <div class="qa-head-inner">
+      <div class="qa-title">
+        <h1>🔧 Library Data QA</h1>
+        <a class="qa-back" href="./index.html">← Library Passport</a>
+      </div>
+      <p class="qa-sub">Help improve US library data in <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap</a>.
+        Find missing tags, wikidata gaps, and likely typos — then fix them in the editor.</p>
+      <p class="qa-meta" id="qa-meta">Loading data…</p>
+      <nav class="qa-nav">
+        <a href="#overview">Overview</a>
+        <a href="#wikidata">Wikidata gaps</a>
+        <a href="#ambiguous">Shared operators</a>
+        <a href="#typos">Possible typos</a>
+        <a href="#explorer">System explorer</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="qa-main">
+
+    <details id="overview" class="qa-section" open>
+      <summary><h2>Overview</h2></summary>
+      <div class="qa-tiles" id="tiles"></div>
+
+      <h3>Tag completion — all US libraries</h3>
+      <div class="qa-meters" id="us-meters"></div>
+      <p class="qa-note">Address-tag completion isn't tracked here (not present in the weekly extract) —
+        use <a href="#explorer">System explorer → Load live details</a> to check addresses for a system.</p>
+
+      <h3>By state</h3>
+      <p class="qa-note">Click a column header to sort.</p>
+      <div class="qa-table-wrap">
+        <table class="qa-table" id="state-table"></table>
+      </div>
+    </details>
+
+    <details id="wikidata" class="qa-section" open>
+      <summary><h2>Wikidata gaps</h2></summary>
+      <p class="qa-note">Library systems with no <code>operator:wikidata</code> tag, biggest first.
+        Adding one makes the system unambiguous across name variations.</p>
+      <input id="wd-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
+      <div class="qa-table-wrap">
+        <table class="qa-table" id="wd-table"></table>
+      </div>
+      <button class="qa-more" id="wd-more" hidden>Show all</button>
+    </details>
+
+    <details id="ambiguous" class="qa-section" open>
+      <summary><h2>Shared operators, different places</h2></summary>
+      <p class="qa-note"><code>operator</code> values whose libraries form well-separated geographic groups — likely
+        <em>distinct systems sharing an operator name</em>. These are the highest-value <code>operator:wikidata</code>
+        targets: a shared operator value is ambiguous exactly here, and a wikidata tag per group resolves it.
+        (Groups are split when branches sit more than ~120&nbsp;km apart; a few may be genuine
+        multi-region operators — judge each.)</p>
+      <div id="ambiguous-list"></div>
+    </details>
+
+    <details id="typos" class="qa-section" open>
+      <summary><h2>Possible typos &amp; operator collisions</h2></summary>
+      <p class="qa-note"><code>operator</code> values within an edit or two of each other. Some are genuine typos
+        (fix the smaller one to match), others are different systems with similar operator names — judge each pair.</p>
+      <div id="collisions"></div>
+    </details>
+
+    <details id="explorer" class="qa-section" open>
+      <summary><h2>System explorer</h2></summary>
+      <div class="qa-explorer-search">
+        <input id="qa-search" type="text" placeholder="Search library systems…" autocomplete="off"
+               role="combobox" aria-expanded="false" aria-controls="qa-suggest" />
+        <div id="qa-suggest" class="suggest" role="listbox"></div>
+      </div>
+      <div id="system-view" hidden>
+        <div class="qa-sys-head">
+          <h3 id="sys-name"></h3>
+          <div class="qa-sys-meta" id="sys-meta"></div>
+        </div>
+        <div class="qa-meters" id="sys-meters"></div>
+        <div class="qa-live-row">
+          <button class="qa-live-btn" id="btn-live">⚡ Load live details (includes addresses)</button>
+          <span class="qa-live-note" id="live-note"></span>
+        </div>
+        <div class="qa-table-wrap">
+          <table class="qa-table" id="sys-table"></table>
+        </div>
+      </div>
+    </details>
+
+  </main>
+
+  <footer class="qa-foot">
+    Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> ·
+    weekly extract via <a href="https://openstreetmap.us/our-work/layercake/" target="_blank" rel="noopener">OSM US Layercake</a> ·
+    <a href="./index.html">Library Passport</a>
+  </footer>
+
+  <script type="module" src="./js/qa.js"></script>
+</body>
+</html>

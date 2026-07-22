@@ -35,12 +35,14 @@ jobs:
           curl -fsSL https://install.duckdb.org | sh
           echo "$HOME/.duckdb/cli/latest" >> "$GITHUB_PATH"
 
-      - name: Record current system count
+      - name: Record current counts
         id: before
         run: |
           OLD=$(node -p "require('./data/us-library-systems.json').systems.length")
           echo "count=$OLD" >> "$GITHUB_OUTPUT"
-          echo "Currently committed: $OLD systems."
+          OLD_QA=$(node -p "try { require('./data/qa-data.json').libs.length } catch { 0 }")
+          echo "qacount=$OLD_QA" >> "$GITHUB_OUTPUT"
+          echo "Currently committed: $OLD systems, $OLD_QA QA libraries."
 
       - name: Report Layercake data freshness
         run: |
@@ -57,37 +59,52 @@ jobs:
           duckdb --version
           node scripts/build-systems.mjs
 
-      - name: Sanity-check the result
+      - name: Regenerate QA dataset
+        run: |
+          node scripts/build-qa.mjs
+
+      - name: Sanity-check the results
         env:
           OLD: ${{ steps.before.outputs.count }}
+          OLD_QA: ${{ steps.before.outputs.qacount }}
         run: |
           NEW=$(node -p "require('./data/us-library-systems.json').systems.length")
-          echo "Generated $NEW systems (was $OLD)."
+          NEW_QA=$(node -p "require('./data/qa-data.json').libs.length")
+          echo "Generated $NEW systems (was $OLD), $NEW_QA QA libraries (was $OLD_QA)."
 
-          # Guard against a broken/empty upstream response gutting the list.
+          # Guard against a broken/empty upstream response gutting either file.
           if [ "$NEW" -lt 1000 ]; then
             echo "::error::Only $NEW systems generated (expected >= 1000). Refusing to commit."
+            exit 1
+          fi
+          if [ "$NEW_QA" -lt 10000 ]; then
+            echo "::error::Only $NEW_QA QA libraries generated (expected >= 10000). Refusing to commit."
             exit 1
           fi
 
           # Refuse a >20% swing in either direction — almost always an upstream
           # data glitch rather than a week of real mapping activity.
-          LOW=$(( OLD * 80 / 100 ))
-          HIGH=$(( OLD * 120 / 100 ))
-          if [ "$NEW" -lt "$LOW" ] || [ "$NEW" -gt "$HIGH" ]; then
-            echo "::error::System count changed from $OLD to $NEW (>20%). Refusing to commit; re-run manually if this is a real change."
-            exit 1
-          fi
+          check_band() {  # name old new
+            if [ "$2" -gt 0 ]; then
+              LOW=$(( $2 * 80 / 100 )); HIGH=$(( $2 * 120 / 100 ))
+              if [ "$3" -lt "$LOW" ] || [ "$3" -gt "$HIGH" ]; then
+                echo "::error::$1 count changed from $2 to $3 (>20%). Refusing to commit; re-run manually if this is a real change."
+                exit 1
+              fi
+            fi
+          }
+          check_band "System" "$OLD" "$NEW"
+          check_band "QA library" "$OLD_QA" "$NEW_QA"
 
       - name: Commit and push if changed
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data/us-library-systems.json; then
-            echo "No changes to the systems list."
+          if git diff --quiet -- data/us-library-systems.json data/qa-data.json; then
+            echo "No changes to the data files."
             exit 0
           fi
           COUNT=$(node -p "require('./data/us-library-systems.json').systems.length")
-          git add data/us-library-systems.json
-          git commit -m "chore: weekly refresh of US library systems list ($COUNT systems)"
+          git add data/us-library-systems.json data/qa-data.json
+          git commit -m "chore: weekly refresh of library data ($COUNT systems)"
           git push
