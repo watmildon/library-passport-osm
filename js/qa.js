@@ -101,12 +101,17 @@ async function boot() {
   renderStateTable();
   renderWikidataGaps();
   renderAmbiguous();
+  renderDomains();
   renderCollisions();
   setupExplorer();
 
   $('#wd-filter').addEventListener('input', e => {
     wdFilter = e.target.value;
     renderWikidataGaps();
+  });
+  $('#dom-filter').addEventListener('input', e => {
+    domFilter = e.target.value;
+    renderDomains();
   });
   openSection(location.hash.slice(1));
 }
@@ -198,32 +203,59 @@ function renderStateTable() {
 const WD_PREVIEW = 30;
 let wdExpanded = false;
 let wdFilter = '';
+let wdSort = { col: 'c', dir: -1 };
+
+const WD_COLS = [
+  { id: 'n',  label: 'System' },
+  { id: 'c',  label: 'Branches', num: true },
+  { id: 'sw', label: 'Suggested' }
+];
 
 function renderWikidataGaps() {
   const term = wdFilter.trim().toLowerCase();
+  const { col, dir } = wdSort;
   const gaps = data.systems
     .map((s, i) => ({ ...s, idx: i }))
     .filter(s => !s.w)
     .filter(s => !term || s.n.toLowerCase().includes(term))
-    .sort((a, b) => b.c - a.c || a.n.localeCompare(b.n));
+    .sort((a, b) => {
+      let cmp;
+      if (col === 'n') cmp = a.n.localeCompare(b.n);
+      else if (col === 'c') cmp = a.c - b.c;
+      else cmp = (a.sw ? 1 : 0) - (b.sw ? 1 : 0);              // suggested presence
+      return cmp * dir || b.c - a.c || a.n.localeCompare(b.n); // stable tiebreak
+    });
 
+  const arrow = c => wdSort.col === c ? (wdSort.dir === -1 ? ' ▾' : ' ▴') : '';
   const shown = wdExpanded ? gaps : gaps.slice(0, WD_PREVIEW);
   $('#wd-table').innerHTML = `
-    <thead><tr><th>System</th><th class="num">Branches</th><th>Actions</th></tr></thead>
+    <thead><tr>${WD_COLS.map(c =>
+      `<th data-col="${c.id}" class="${c.num ? 'num' : ''}">${escapeHtml(c.label)}${arrow(c.id)}</th>`).join('')}<th>Actions</th>
+    </tr></thead>
     <tbody>${shown.length ? shown.map(s => `<tr>
       <td>${escapeHtml(s.n)}</td>
       <td class="num">${fmt(s.c)}</td>
+      <td>${s.sw
+        ? `<span class="qa-badge qa-badge-mixed" title="Suggested via a shared website domain with wikidata-tagged libraries — verify before applying"><a href="https://www.wikidata.org/wiki/${escapeHtml(s.sw)}" target="_blank" rel="noopener">${escapeHtml(s.sw)}</a> ?</span>`
+        : ''}</td>
       <td class="qa-actions">
         ${wdSearchLink(s.n)}
         ${turboLink(turboUrl('operator', s.n))}
         <button class="qa-link-btn" data-sys="${s.idx}">Explore →</button>
       </td>
-    </tr>`).join('') : '<tr><td colspan="3" class="qa-note" style="padding:14px 10px">No systems match.</td></tr>'}</tbody>`;
+    </tr>`).join('') : '<tr><td colspan="4" class="qa-note" style="padding:14px 10px">No systems match.</td></tr>'}</tbody>`;
 
   const more = $('#wd-more');
   more.hidden = wdExpanded || gaps.length <= WD_PREVIEW;
   more.textContent = `Show all ${fmt(gaps.length)} systems`;
   more.onclick = () => { wdExpanded = true; renderWikidataGaps(); };
+
+  $('#wd-table').querySelectorAll('th[data-col]').forEach(th => th.addEventListener('click', () => {
+    const col = th.dataset.col;
+    if (wdSort.col === col) wdSort.dir *= -1;
+    else wdSort = { col, dir: col === 'n' ? 1 : -1 }; // names ascend, counts/suggestions descend
+    renderWikidataGaps();
+  }));
 
   bindExploreButtons($('#wd-table'));
 }
@@ -286,6 +318,50 @@ function renderAmbiguous() {
   }).join('');
 
   bindExploreButtons(list);
+}
+
+// ---------------- Website domain clusters ----------------
+// Turbo link for all US libraries whose website matches a domain. The domain is
+// used as a plain regex — an unescaped "." matches the literal dot anyway, and
+// avoiding backslashes sidesteps Overpass QL string-escaping pitfalls. The regex
+// filter comes LAST: regex matching is expensive for Overpass, so the cheap
+// amenity filter narrows the set first.
+function turboDomainUrl(domain) {
+  const q = `[out:json][timeout:60];\narea(3600148838)->.us;\nnwr[amenity=library]["website"~"${domain}",i](area.us);\nout center tags;`;
+  return 'https://overpass-turbo.eu/?Q=' + encodeURIComponent(q) + '&R';
+}
+
+const DOM_PREVIEW = 30;
+let domExpanded = false;
+let domFilter = '';
+
+function renderDomains() {
+  const term = domFilter.trim().toLowerCase();
+  const rows = (data.domains || [])
+    .filter(x => !term || x.d.toLowerCase().includes(term) || (x.op || '').toLowerCase().includes(term));
+
+  const shown = domExpanded ? rows : rows.slice(0, DOM_PREVIEW);
+  $('#dom-table').innerHTML = `
+    <thead><tr><th>Domain</th><th>State</th><th class="num">Libraries</th><th class="num">Missing operator</th><th>Suggested operator</th><th>Actions</th></tr></thead>
+    <tbody>${shown.length ? shown.map(x => {
+      const states = x.st.map(i => data.states[i] ?? 'Unknown').join(' / ');
+      const suggestion = x.op
+        ? `${escapeHtml(x.op)}${x.wd ? ` <span class="qa-badge qa-badge-wd"><a href="https://www.wikidata.org/wiki/${escapeHtml(x.wd)}" target="_blank" rel="noopener">${escapeHtml(x.wd)}</a> ✓</span>` : ''}`
+        : '<span class="qa-badge qa-badge-miss">unknown — research once, tag all</span>';
+      return `<tr>
+        <td><a href="https://${escapeHtml(x.d)}" target="_blank" rel="noopener">${escapeHtml(x.d)}</a></td>
+        <td>${escapeHtml(states)}</td>
+        <td class="num">${fmt(x.total)}</td>
+        <td class="num">${fmt(x.untagged)}</td>
+        <td>${suggestion}</td>
+        <td class="qa-actions">${turboLink(turboDomainUrl(x.d))}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="6" class="qa-note" style="padding:14px 10px">No domains match.</td></tr>'}</tbody>`;
+
+  const more = $('#dom-more');
+  more.hidden = domExpanded || rows.length <= DOM_PREVIEW;
+  more.textContent = `Show all ${fmt(rows.length)} domains`;
+  more.onclick = () => { domExpanded = true; renderDomains(); };
 }
 
 // ---------------- Collisions ----------------

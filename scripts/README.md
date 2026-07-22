@@ -31,6 +31,11 @@ DuckDB). The Node script normalizes this into one compact file:
   than ~120 km apart (single-linkage): likely *distinct systems sharing a name*,
   the highest-value `operator:wikidata` targets. Per cluster: states, branch
   count, wikidata status, and a padded bbox for region-scoped Overpass queries.
+- `domains` — website domains shared by 2+ libraries where at least one lacks an
+  `operator` tag. A shared domain is a strong operator fingerprint, so these are
+  ready-made work sets; when tagged siblings share the domain, their operator /
+  wikidata values are emitted as suggestions for the untagged rest. Generic
+  hosting platforms and >2-state spreads (vendor/aggregator domains) are excluded.
 
 **Limitation:** Layercake's POI layer has no `addr:*` columns, so address
 completion isn't in the weekly stats. The QA page's "Load live details" action

@@ -112,6 +112,43 @@ async function main() {
     return { n: s.n, w, c: s.c };
   });
 
+  // Domain-derived operator:wikidata suggestions for systems that lack one:
+  // when a system's libraries share a website domain with wikidata-tagged
+  // libraries (possibly under a differently-spelled operator), that Q-id very
+  // likely applies to the whole system. Stored as `sw` (suggested wikidata).
+  {
+    const domainWd = new Map();   // domain -> Map(qid -> votes)
+    const sysDomains = new Map(); // sysKey -> Set(domains)
+    for (const r of rawLibs) {
+      const d = websiteDomain(r.website);
+      if (!d || isGenericHost(d)) continue;
+      if (r.wikidata) {
+        if (!domainWd.has(d)) domainWd.set(d, new Map());
+        const m = domainWd.get(d);
+        m.set(r.wikidata, (m.get(r.wikidata) || 0) + 1);
+      }
+      const key = sysKey(r);
+      if (key) {
+        if (!sysDomains.has(key)) sysDomains.set(key, new Set());
+        sysDomains.get(key).add(d);
+      }
+    }
+    let suggested = 0;
+    systems.forEach((s, i) => {
+      if (s.w) return;
+      const doms = sysDomains.get(sysKeys[i]);
+      if (!doms) return;
+      const votes = new Map();
+      for (const d of doms) {
+        const m = domainWd.get(d);
+        if (m) for (const [q, n] of m) votes.set(q, (votes.get(q) || 0) + n);
+      }
+      const top = [...votes.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
+      if (top) { s.sw = top[0]; suggested++; }
+    });
+    console.log(`  ${suggested} wikidata-less systems got a domain-derived suggestion`);
+  }
+
   // Compact per-library rows.
   const libs = rawLibs.map(r => {
     let flags = 0;
@@ -148,6 +185,9 @@ async function main() {
   const ambiguous = findAmbiguousNames(rawLibs, stateIdx);
   console.log(`  ${ambiguous.length} operator names span multiple distinct regions`);
 
+  const domains = findDomainClusters(rawLibs, stateIdx);
+  console.log(`  ${domains.length} website domains with operator-less libraries`);
+
   const out = {
     meta: {
       source: 'OpenStreetMap US Layercake POI extract (data.openstreetmap.us), US boundary relation 148838',
@@ -161,7 +201,8 @@ async function main() {
     systems,
     libs,
     collisions,
-    ambiguous
+    ambiguous,
+    domains
   };
 
   const dest = join(ROOT, 'data', 'qa-data.json');
@@ -262,6 +303,80 @@ function findAmbiguousNames(rawLibs, stateIdx) {
   return result;
 }
 
+// ---- Website domain clusters ---------------------------------------------
+//
+// A shared website domain is a strong operator fingerprint: it's very unlikely
+// two different library systems use the same domain. Group libraries by the
+// hostname of their website tag; a domain with operator-less libraries is a
+// ready-made work set — and when tagged siblings share the domain, their
+// operator / operator:wikidata values are near-certain suggestions for the rest.
+
+// Normalized hostname from a website tag value ('' / unparseable -> null).
+function websiteDomain(url) {
+  if (!url) return null;
+  let u = url.split(';')[0].trim();           // some tags list multiple URLs
+  if (!u) return null;
+  if (!/^https?:\/\//i.test(u)) u = 'https://' + u;
+  try {
+    const h = new URL(u).hostname.toLowerCase().replace(/^www\d*\./, '');
+    return h.includes('.') ? h : null;        // require a real dotted hostname
+  } catch {
+    return null;
+  }
+}
+
+// Generic hosting platforms where a shared domain does NOT imply a shared
+// operator (many unrelated libraries park their pages there).
+const GENERIC_HOSTS = [
+  'facebook.com', 'sites.google.com', 'google.com',
+  'wordpress.com', 'weebly.com', 'wix.com', 'wixsite.com', 'squarespace.com',
+  'business.site', 'blogspot.com',
+  'youseemore.com'   // library-CMS vendor hosting many unrelated systems
+];
+const isGenericHost = d => GENERIC_HOSTS.some(g => d === g || d.endsWith('.' + g));
+
+function findDomainClusters(rawLibs, stateIdx) {
+  const byDomain = new Map();
+  for (const r of rawLibs) {
+    const d = websiteDomain(r.website);
+    if (!d || isGenericHost(d)) continue;
+    if (!byDomain.has(d)) byDomain.set(d, []);
+    byDomain.get(d).push(r);
+  }
+
+  const topVote = m => [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0]?.[0] ?? null;
+
+  const result = [];
+  for (const [domain, rows] of byDomain) {
+    const untagged = rows.filter(r => !r.operator).length;
+    // Interesting only when the domain groups multiple libraries and at least
+    // one of them has no operator tag.
+    if (rows.length < 2 || untagged === 0) continue;
+
+    const opVotes = new Map(), wdVotes = new Map();
+    for (const r of rows) {
+      if (r.operator) opVotes.set(r.operator, (opVotes.get(r.operator) || 0) + 1);
+      if (r.wikidata) wdVotes.set(r.wikidata, (wdVotes.get(r.wikidata) || 0) + 1);
+    }
+    const states = [...new Set(rows.map(r => r.state ? stateIdx.get(r.state) : -1))].sort((a, b) => a - b);
+    // A real library system essentially never spans 3+ states — a wide spread
+    // means a vendor/aggregator platform (e.g. a library-CMS host), where the
+    // shared domain implies nothing about the operator.
+    if (states.length > 2) continue;
+
+    result.push({
+      d: domain,
+      total: rows.length,
+      untagged,
+      op: topVote(opVotes),   // suggested operator from tagged siblings, if any
+      wd: topVote(wdVotes),   // suggested operator:wikidata, if any
+      st: states
+    });
+  }
+  result.sort((a, b) => b.untagged - a.untagged || b.total - a.total || a.d.localeCompare(b.d));
+  return result;
+}
+
 // One record per line (still valid JSON): weekly git diffs then touch only the
 // lines that actually changed, instead of rewriting one giant line.
 function serializeLinewise(out) {
@@ -273,7 +388,8 @@ function serializeLinewise(out) {
     `"systems": ${arr(out.systems)},\n` +
     `"libs": ${arr(out.libs)},\n` +
     `"collisions": ${arr(out.collisions)},\n` +
-    `"ambiguous": ${arr(out.ambiguous)}\n` +
+    `"ambiguous": ${arr(out.ambiguous)},\n` +
+    `"domains": ${arr(out.domains)}\n` +
     '}\n';
 }
 

@@ -23,6 +23,7 @@
         <a href="#overview">Overview</a>
         <a href="#wikidata">Wikidata gaps</a>
         <a href="#ambiguous">Shared operators</a>
+        <a href="#domains">Website domains</a>
         <a href="#typos">Possible typos</a>
         <a href="#explorer">System explorer</a>
       </nav>
@@ -50,7 +51,8 @@
     <details id="wikidata" class="qa-section" open>
       <summary><h2>Wikidata gaps</h2></summary>
       <p class="qa-note">Library systems with no <code>operator:wikidata</code> tag, biggest first.
-        Adding one makes the system unambiguous across name variations.</p>
+        Adding one makes the system unambiguous across name variations. Amber <em>Suggested</em>
+        badges come from wikidata-tagged libraries sharing the same website domain — verify, then apply.</p>
       <input id="wd-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
       <div class="qa-table-wrap">
         <table class="qa-table" id="wd-table"></table>
@@ -66,6 +68,20 @@
         (Groups are split when branches sit more than ~120&nbsp;km apart; a few may be genuine
         multi-region operators — judge each.)</p>
       <div id="ambiguous-list"></div>
+    </details>
+
+    <details id="domains" class="qa-section" open>
+      <summary><h2>Website domain clusters</h2></summary>
+      <p class="qa-note">Libraries with no <code>operator</code> tag, grouped by the domain of their
+        <code>website</code> tag — it's very unlikely two different systems share a domain. When tagged
+        siblings share the domain, their operator is a near-certain suggestion for the rest; otherwise
+        the group is a research-once, tag-all work set. (Vendor/platform hosts are excluded, but a few
+        state-portal domains hosting independent libraries may appear — judge each.)</p>
+      <input id="dom-filter" class="qa-filter" type="text" placeholder="Filter domains or operators…" autocomplete="off" />
+      <div class="qa-table-wrap">
+        <table class="qa-table" id="dom-table"></table>
+      </div>
+      <button class="qa-more" id="dom-more" hidden>Show all</button>
     </details>
 
     <details id="typos" class="qa-section" open>
