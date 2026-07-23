@@ -18,6 +18,19 @@ export const USER_AGENT = process.env.USER_AGENT ||
 
 export const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+export const LAYERCAKE_POIS_URL = 'https://data.openstreetmap.us/layercake/pois.parquet';
+
+// The Layercake POI extract's Last-Modified header (its snapshot timestamp), or
+// null if unavailable. HEAD request — no download.
+export async function layercakeModified() {
+  try {
+    const res = await fetch(LAYERCAKE_POIS_URL, { method: 'HEAD' });
+    return res.headers.get('last-modified') || null;
+  } catch {
+    return null;
+  }
+}
+
 // English labels for a set of Q-ids from the Wikidata Query Service.
 export async function wikidataLabels(qids) {
   if (!qids.length) return {};
@@ -64,8 +77,11 @@ SELECT ?item ?label WHERE {
 // Aggregate rows, enrich, rank, and write data/us-library-systems.json.
 // `rows`: Array<{ operator: string|null, wikidata: string|null, count: number }>
 // `source`: provenance string stored in meta.source.
-// `date`: YYYY-MM-DD stamped into meta.generated (the data's snapshot date).
-export async function writeSystems(rows, { source, date }) {
+// `date`: YYYY-MM-DD stamped into meta.generated (when this build ran).
+// `sourceModified`: optional upstream snapshot timestamp (e.g. Layercake's
+//   Last-Modified header), stamped into meta.sourceModified so a later run can
+//   tell whether the upstream data actually changed. Omitted when not known.
+export async function writeSystems(rows, { source, date, sourceModified }) {
   const opCount = {};
   const qidCount = {};
   const qidName = {};    // preferred operator= name seen for a qid
@@ -109,6 +125,7 @@ export async function writeSystems(rows, { source, date }) {
   const meta = {
     source,
     generated: date,
+    ...(sourceModified ? { sourceModified } : {}),
     boundary: 'United States (OSM relation 148838)',
     totalSystems: systems.length
   };

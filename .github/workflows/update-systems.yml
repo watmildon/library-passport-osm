@@ -9,6 +9,11 @@ on:
   schedule:
     - cron: '17 9 * * 1'   # Mondays at 09:17 UTC
   workflow_dispatch:         # allow manual runs from the Actions tab
+    inputs:
+      force:
+        description: 'Rebuild even if Layercake has not published a newer snapshot'
+        type: boolean
+        default: false
 
 # Let the job commit back to the repo.
 permissions:
@@ -44,26 +49,44 @@ jobs:
           echo "qacount=$OLD_QA" >> "$GITHUB_OUTPUT"
           echo "Currently committed: $OLD systems, $OLD_QA QA libraries."
 
-      - name: Report Layercake data freshness
+      - name: Freshness gate
+        id: gate
         run: |
-          # Layercake is rebuilt periodically from OSM; surface how fresh the POI
-          # extract is (its Last-Modified date) in the run log and summary.
-          MOD=$(curl -sfI "https://data.openstreetmap.us/layercake/pois.parquet" \
-                | grep -i '^last-modified:' | sed 's/^[Ll]ast-[Mm]odified: //' | tr -d '\r' || echo "unknown")
-          echo "Layercake pois.parquet last modified: $MOD"
+          # Layercake is rebuilt periodically from OSM. Skip the whole rebuild when
+          # its POI snapshot hasn't changed since our committed data was built —
+          # both data files record the snapshot's Last-Modified.
+          LIVE=$(curl -sfI "https://data.openstreetmap.us/layercake/pois.parquet" \
+                 | grep -i '^last-modified:' | sed 's/^[Ll]ast-[Mm]odified: //' | tr -d '\r' || echo "")
+          SYS=$(node -p "require('./data/us-library-systems.json').meta.sourceModified || ''" 2>/dev/null || echo "")
+          QA=$(node -p "require('./data/qa-data.json').meta.layercakeModified || ''" 2>/dev/null || echo "")
+          echo "Layercake live: '${LIVE:-unknown}'"
+          echo "Committed — systems: '${SYS:-none}', qa: '${QA:-none}'"
           echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
-          echo "OpenStreetMap US Layercake \`pois.parquet\` — last modified: $MOD" >> "$GITHUB_STEP_SUMMARY"
+          echo "OpenStreetMap US Layercake \`pois.parquet\` — live: ${LIVE:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+
+          RUN=yes
+          if [ "${{ github.event.inputs.force }}" = "true" ]; then
+            echo "Forced rebuild requested."
+          elif [ -n "$LIVE" ] && [ "$LIVE" = "$SYS" ] && [ "$LIVE" = "$QA" ]; then
+            echo "Committed data already matches the live Layercake snapshot — skipping rebuild."
+            echo "Up to date with Layercake snapshot ${LIVE}." >> "$GITHUB_STEP_SUMMARY"
+            RUN=no
+          fi
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"
 
       - name: Regenerate systems list
+        if: steps.gate.outputs.run == 'yes'
         run: |
           duckdb --version
           node scripts/build-systems.mjs
 
       - name: Regenerate QA dataset
+        if: steps.gate.outputs.run == 'yes'
         run: |
           node scripts/build-qa.mjs
 
       - name: Sanity-check the results
+        if: steps.gate.outputs.run == 'yes'
         env:
           OLD: ${{ steps.before.outputs.count }}
           OLD_QA: ${{ steps.before.outputs.qacount }}
@@ -97,6 +120,7 @@ jobs:
           check_band "QA library" "$OLD_QA" "$NEW_QA"
 
       - name: Commit and push if changed
+        if: steps.gate.outputs.run == 'yes'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"

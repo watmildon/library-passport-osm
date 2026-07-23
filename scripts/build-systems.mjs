@@ -21,7 +21,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { writeSystems } from './systems-core.mjs';
+import { writeSystems, layercakeModified } from './systems-core.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SQL_FILE = join(HERE, 'us-library-operators.sql');
@@ -68,7 +68,8 @@ async function main() {
 
   await writeSystems(rows, {
     source: 'OpenStreetMap US Layercake POI extract (data.openstreetmap.us), US boundary relation 148838, enriched with Wikidata labels',
-    date: new Date().toISOString().slice(0, 10)
+    date: new Date().toISOString().slice(0, 10),
+    sourceModified: await layercakeModified()   // Layercake snapshot timestamp
   });
 }
 

@@ -6,6 +6,13 @@ remotely with DuckDB (only the needed columns/row-groups are read — the 4 GB P
 file is never fully downloaded) and are run weekly by the
 [`update-systems`](../.github/workflows/update-systems.yml) GitHub Action.
 
+Both stamp Layercake's POI `Last-Modified` into their output
+(`us-library-systems.json` → `meta.sourceModified`, `qa-data.json` →
+`meta.layercakeModified`). The workflow's **freshness gate** compares that against
+the live header and skips the whole rebuild when Layercake hasn't published a
+newer snapshot — so a Monday run does nothing (and commits nothing) when there's
+no new upstream data. A manual run can pass `force: true` to rebuild anyway.
+
 `refresh-systems.mjs` is an on-demand alternative for the systems list that pulls
 from a dev Overpass instance instead — see below.
 
