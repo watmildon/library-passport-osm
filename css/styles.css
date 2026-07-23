@@ -322,6 +322,10 @@ body.qa-page { height: auto; background: var(--bg); }
 .qa-badge-miss { background: rgba(192,57,43,0.1); color: #c0392b; }
 .qa-badge-mixed { background: rgba(217,179,16,0.16); color: #9a7d00; }
 .qa-badge-mixed a { color: #9a7d00; text-decoration: none; }
+.qa-badge-not { background: #eef1f5; color: var(--muted); }
+.qa-badge-not a { color: var(--muted); text-decoration: line-through; }
+.qa-delta-miss { color: #9a7d00; font-weight: 700; }   /* fewer in OSM than Wikidata */
+.qa-delta-extra { color: var(--accent); font-weight: 700; } /* more in OSM than Wikidata */
 
 /* Ambiguous-name cards (shared names, different places) */
 .qa-amb { border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; }

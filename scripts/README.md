@@ -37,6 +37,20 @@ DuckDB). The Node script normalizes this into one compact file:
   wikidata values are emitted as suggestions for the untagged rest. Generic
   hosting platforms and >2-state spreads (vendor/aggregator domains) are excluded.
 
+**Wikidata branch counts.** Systems whose Wikidata item enumerates its branches
+(`P527` parts typed as library branch) get that count attached as `wb` (one
+WDQS query; fails soft). The QA page compares it against the OSM branch count —
+a completeness hint in both directions. When several of our systems share a
+Q-id (typo variants), only the principal (largest) one gets the count.
+
+**`not:` assertions.** OSM's `not:operator:wikidata` / `not:operator` tags record
+verified negatives ("definitely not that item"). Layercake doesn't extract them,
+so the build fetches them with one small Overpass query (set `OVERPASS_URL` to
+use a custom instance; fails soft if Overpass is unreachable). Ruled-out values
+never count as real tags, veto matching suggestions, and are exposed per system
+as `nw` — the QA page shows them as struck-through badges, with a conflict
+warning when a system's dominant wikidata tag is itself ruled out by a mapper.
+
 **Limitation:** Layercake's POI layer has no `addr:*` columns, so address
 completion isn't in the weekly stats. The QA page's "Load live details" action
 fills that gap per-system via Overpass (full tag set, incl. addresses).

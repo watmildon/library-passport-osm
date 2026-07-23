@@ -102,6 +102,7 @@ async function boot() {
   renderWikidataGaps();
   renderAmbiguous();
   renderDomains();
+  renderBranchCounts();
   renderCollisions();
   setupExplorer();
 
@@ -222,7 +223,10 @@ function renderWikidataGaps() {
       let cmp;
       if (col === 'n') cmp = a.n.localeCompare(b.n);
       else if (col === 'c') cmp = a.c - b.c;
-      else cmp = (a.sw ? 1 : 0) - (b.sw ? 1 : 0);              // suggested presence
+      else {
+        const score = s => s.sw ? 2 : (s.nw ? 1 : 0);          // suggested > ruled-out > none
+        cmp = score(a) - score(b);
+      }
       return cmp * dir || b.c - a.c || a.n.localeCompare(b.n); // stable tiebreak
     });
 
@@ -237,7 +241,8 @@ function renderWikidataGaps() {
       <td class="num">${fmt(s.c)}</td>
       <td>${s.sw
         ? `<span class="qa-badge qa-badge-mixed" title="Suggested via a shared website domain with wikidata-tagged libraries — verify before applying"><a href="https://www.wikidata.org/wiki/${escapeHtml(s.sw)}" target="_blank" rel="noopener">${escapeHtml(s.sw)}</a> ?</span>`
-        : ''}</td>
+        : ''}${(s.nw || []).map(q =>
+          `<span class="qa-badge qa-badge-not" title="Mappers ruled this item out (not:operator:wikidata) — no need to re-research it"><a href="https://www.wikidata.org/wiki/${escapeHtml(q)}" target="_blank" rel="noopener">not ${escapeHtml(q)}</a></span>`).join(' ')}</td>
       <td class="qa-actions">
         ${wdSearchLink(s.n)}
         ${turboLink(turboUrl('operator', s.n))}
@@ -318,6 +323,71 @@ function renderAmbiguous() {
   }).join('');
 
   bindExploreButtons(list);
+}
+
+// ---------------- Branch counts vs Wikidata ----------------
+const BR_PREVIEW = 30;
+let brExpanded = false;
+let brSort = { col: 'delta', dir: -1 };
+
+const BR_COLS = [
+  { id: 'n',     label: 'System' },
+  { id: 'c',     label: 'OSM', num: true },
+  { id: 'wb',    label: 'Wikidata', num: true },
+  { id: 'delta', label: 'Δ', num: true }
+];
+
+function renderBranchCounts() {
+  const { col, dir } = brSort;
+  const rows = data.systems
+    .map((s, i) => ({ ...s, idx: i, delta: s.c - (s.wb ?? 0) }))
+    .filter(s => s.wb != null)
+    .sort((a, b) => {
+      let cmp;
+      if (col === 'n') cmp = a.n.localeCompare(b.n);
+      else if (col === 'delta') cmp = Math.abs(a.delta) - Math.abs(b.delta);
+      else cmp = a[col] - b[col];
+      return cmp * dir || Math.abs(b.delta) - Math.abs(a.delta) || a.n.localeCompare(b.n);
+    });
+
+  const arrow = c => brSort.col === c ? (brSort.dir === -1 ? ' ▾' : ' ▴') : '';
+  const shown = brExpanded ? rows : rows.slice(0, BR_PREVIEW);
+  $('#br-table').innerHTML = `
+    <thead><tr>${BR_COLS.map(c =>
+      `<th data-col="${c.id}" class="${c.num ? 'num' : ''}">${escapeHtml(c.label)}${arrow(c.id)}</th>`).join('')}<th>Actions</th>
+    </tr></thead>
+    <tbody>${shown.map(s => {
+      const d = s.delta;
+      const deltaCell = d === 0
+        ? '<span class="qa-yes" title="OSM and Wikidata agree">✓</span>'
+        : `<span class="${d < 0 ? 'qa-delta-miss' : 'qa-delta-extra'}" title="${d < 0
+            ? Math.abs(d) + ' branch(es) on Wikidata not found in OSM — possibly unmapped'
+            : d + ' more branch(es) in OSM than Wikidata lists — duplicates, non-branches, or stale Wikidata'}">${d > 0 ? '+' + d : d}</span>`;
+      return `<tr>
+        <td>${escapeHtml(s.n)}</td>
+        <td class="num">${fmt(s.c)}</td>
+        <td class="num"><a href="https://www.wikidata.org/wiki/${escapeHtml(s.w)}" target="_blank" rel="noopener">${fmt(s.wb)}</a></td>
+        <td class="num">${deltaCell}</td>
+        <td class="qa-actions">
+          ${turboLink(turboUrl('wikidata', s.w))}
+          <button class="qa-link-btn" data-sys="${s.idx}">Explore →</button>
+        </td>
+      </tr>`;
+    }).join('')}</tbody>`;
+
+  const more = $('#br-more');
+  more.hidden = brExpanded || rows.length <= BR_PREVIEW;
+  more.textContent = `Show all ${fmt(rows.length)} systems`;
+  more.onclick = () => { brExpanded = true; renderBranchCounts(); };
+
+  $('#br-table').querySelectorAll('th[data-col]').forEach(th => th.addEventListener('click', () => {
+    const c = th.dataset.col;
+    if (brSort.col === c) brSort.dir *= -1;
+    else brSort = { col: c, dir: c === 'n' ? 1 : -1 };
+    renderBranchCounts();
+  }));
+
+  bindExploreButtons($('#br-table'));
 }
 
 // ---------------- Website domain clusters ----------------
@@ -454,10 +524,22 @@ function showSystem(idx) {
   $('#system-view').hidden = false;
   $('#qa-search').value = s.n;
   $('#sys-name').textContent = s.n;
+  const notBadges = (s.nw || []).map(q =>
+    `<span class="qa-badge qa-badge-not" title="Mappers ruled this item out (not:operator:wikidata)"><a href="https://www.wikidata.org/wiki/${escapeHtml(q)}" target="_blank" rel="noopener">not ${escapeHtml(q)}</a></span>`).join(' ');
+  const conflict = s.w && (s.nw || []).includes(s.w)
+    ? ' <span class="qa-badge qa-badge-miss" title="Some libraries tag this item as operator:wikidata while others rule it out with not:operator:wikidata — mappers disagree; worth resolving">⚠ conflicting tags</span>'
+    : '';
+  const wbNote = s.wb != null
+    ? (s.wb === s.c
+        ? ` · <span class="qa-yes" title="Wikidata lists the same number of branches">Wikidata: ${fmt(s.wb)} ✓</span>`
+        : ` · <span class="qa-badge qa-badge-mixed" title="Wikidata's branch list (P527) disagrees with the OSM count — unmapped branches, duplicates, or a stale list">Wikidata: ${fmt(s.wb)} branches</span>`)
+    : '';
   $('#sys-meta').innerHTML =
     `${fmt(s.c)} branches` +
     (s.w ? ` · <a href="https://www.wikidata.org/wiki/${escapeHtml(s.w)}" target="_blank" rel="noopener">${escapeHtml(s.w)}</a>` :
            ' · <span class="qa-badge qa-badge-miss">no operator:wikidata</span>') +
+    wbNote +
+    (notBadges ? ` · ${notBadges}` : '') + conflict +
     ` · ${turboLink(turboUrl(s.w ? 'wikidata' : 'operator', s.w || s.n))}`;
 
   $('#sys-meters').innerHTML = TAG_DEFS.map(t =>

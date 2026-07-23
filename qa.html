@@ -24,6 +24,7 @@
         <a href="#wikidata">Wikidata gaps</a>
         <a href="#ambiguous">Shared operators</a>
         <a href="#domains">Website domains</a>
+        <a href="#branches">Branch counts</a>
         <a href="#typos">Possible typos</a>
         <a href="#explorer">System explorer</a>
       </nav>
@@ -52,7 +53,8 @@
       <summary><h2>Wikidata gaps</h2></summary>
       <p class="qa-note">Library systems with no <code>operator:wikidata</code> tag, biggest first.
         Adding one makes the system unambiguous across name variations. Amber <em>Suggested</em>
-        badges come from wikidata-tagged libraries sharing the same website domain — verify, then apply.</p>
+        badges come from wikidata-tagged libraries sharing the same website domain — verify, then apply.
+        Grey <em>not Qxxx</em> badges are items mappers already ruled out (<code>not:operator:wikidata</code>).</p>
       <input id="wd-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
       <div class="qa-table-wrap">
         <table class="qa-table" id="wd-table"></table>
@@ -82,6 +84,17 @@
         <table class="qa-table" id="dom-table"></table>
       </div>
       <button class="qa-more" id="dom-more" hidden>Show all</button>
+    </details>
+
+    <details id="branches" class="qa-section" open>
+      <summary><h2>Branch counts vs Wikidata</h2></summary>
+      <p class="qa-note">Systems whose Wikidata item lists its branches (<code>P527</code>), compared with the
+        branch count in OSM. <em>Fewer in OSM</em> usually means unmapped branches; <em>more in OSM</em> can
+        mean duplicates, mis-tagged non-branches, or a stale Wikidata list — either way, worth a look.</p>
+      <div class="qa-table-wrap">
+        <table class="qa-table" id="br-table"></table>
+      </div>
+      <button class="qa-more" id="br-more" hidden>Show all</button>
     </details>
 
     <details id="typos" class="qa-section" open>

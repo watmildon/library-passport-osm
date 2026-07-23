@@ -31,6 +31,10 @@ const ROOT = join(HERE, '..');
 const SQL_FILE = join(HERE, 'qa-libraries.sql');
 const DUCKDB = process.env.DUCKDB || 'duckdb';
 const POIS_URL = 'https://data.openstreetmap.us/layercake/pois.parquet';
+const USER_AGENT = process.env.USER_AGENT ||
+  'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; weekly QA build)';
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // Bit positions must match the `tags` array written to meta below.
 const FLAG_BITS = ['phone', 'website', 'opening_hours', 'operator', 'operator:wikidata'];
@@ -63,6 +67,97 @@ function queryLayercake() {
   }
 }
 
+// ---- not:operator / not:operator:wikidata assertions ----------------------
+//
+// OSM's `not:` prefix records verified negatives: not:operator:wikidata=Q123
+// means a mapper confirmed the operator is definitely NOT that item (usually
+// after ruling out a tempting-but-wrong match, e.g. a city entity or a
+// similarly-named system). These tags aren't in Layercake's POI columns, so
+// they're fetched with one tiny Overpass query. They must never be grouped as
+// real values, and suggestions must never re-propose a ruled-out item.
+// A custom instance (OVERPASS_URL env var) is tried first when set.
+const OVERPASS_ENDPOINTS = [
+  ...(process.env.OVERPASS_URL ? [process.env.OVERPASS_URL] : []),
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
+
+// Returns { wd: Map(elKey -> Set(QIDs)), op: Map(elKey -> Set(names)) } where
+// elKey is `${type[0]}${id}` matching the Layercake rows. Fails soft: on total
+// Overpass failure the maps are empty and suggestions are simply unfiltered.
+async function fetchNotAssertions() {
+  const q = `[out:json][timeout:60];
+area(3600148838)->.us;
+(
+  nwr[amenity=library]["not:operator:wikidata"](area.us);
+  nwr[amenity=library]["not:operator"](area.us);
+);
+out tags;`;
+  const wd = new Map(), op = new Map();
+  for (const url of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+        body: 'data=' + encodeURIComponent(q)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      for (const el of json.elements || []) {
+        const key = el.type[0] + el.id;
+        const nwd = el.tags?.['not:operator:wikidata'];
+        const nop = el.tags?.['not:operator'];
+        if (nwd) wd.set(key, new Set(nwd.split(';').map(s => s.trim()).filter(Boolean)));
+        if (nop) op.set(key, new Set(nop.split(';').map(s => s.trim()).filter(Boolean)));
+      }
+      return { wd, op };
+    } catch (e) {
+      console.warn(`  not:-assertion fetch failed on ${url}: ${e.message}`);
+    }
+  }
+  console.warn('  proceeding without not:-assertions (all Overpass endpoints failed)');
+  return { wd, op };
+}
+
+// ---- Wikidata branch counts ----------------------------------------------
+//
+// Many US library-system items on Wikidata list their branches (P527 "has part"
+// entries typed as library branch). Comparing that count against the OSM branch
+// count is a completeness hint in both directions: fewer in OSM suggests
+// unmapped branches; more suggests duplicates in OSM or a stale Wikidata list.
+async function fetchWikidataBranchCounts() {
+  const query = `SELECT ?system (COUNT(?branch) AS ?count) WHERE {
+  ?system wdt:P31 wd:Q26271642.
+  ?system wdt:P17 wd:Q30.
+  ?system wdt:P527 ?branch.
+  ?branch wdt:P31 wd:Q11396180.
+} GROUP BY ?system`;
+
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch('https://query.wikidata.org/sparql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/sparql-results+json',
+          'User-Agent': USER_AGENT
+        },
+        body: 'query=' + encodeURIComponent(query)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = (await res.json()).results.bindings;
+      const out = new Map();
+      for (const r of rows) out.set(r.system.value.split('/').pop(), Number(r.count.value));
+      return out;
+    } catch (e) {
+      console.warn(`  Wikidata branch-count fetch failed (${e.message})${i < 2 ? ' — retrying…' : ''}`);
+      if (i < 2) await sleep(5000 * (i + 1));
+    }
+  }
+  console.warn('  proceeding without Wikidata branch counts');
+  return new Map();
+}
+
 // Layercake's POI extract freshness, for the page's "data as of" note.
 async function layercakeModified() {
   try {
@@ -82,6 +177,10 @@ async function main() {
   // runs, which would rewrite the whole committed file every week even with no
   // data change. Sorting here keeps weekly git diffs limited to real changes.
   rawLibs.sort((a, b) => a.type.localeCompare(b.type) || a.id - b.id);
+
+  console.log('Fetching not:operator assertions from Overpass…');
+  const notAssert = await fetchNotAssertions();
+  console.log(`  ${notAssert.wd.size} not:operator:wikidata, ${notAssert.op.size} not:operator elements`);
 
   if (rawLibs.length < 10000) {
     throw new Error(`Only ${rawLibs.length} libraries returned (expected >= 10000) — refusing to write a gutted dataset.`);
@@ -116,10 +215,19 @@ async function main() {
   // when a system's libraries share a website domain with wikidata-tagged
   // libraries (possibly under a differently-spelled operator), that Q-id very
   // likely applies to the whole system. Stored as `sw` (suggested wikidata).
+  // A system's not:operator:wikidata assertions veto matching suggestions and
+  // are surfaced as `nw` (ruled-out Q-ids).
   {
     const domainWd = new Map();   // domain -> Map(qid -> votes)
     const sysDomains = new Map(); // sysKey -> Set(domains)
+    const sysNotWd = new Map();   // sysKey -> Set(ruled-out QIDs)
     for (const r of rawLibs) {
+      const key = sysKey(r);
+      const elNot = notAssert.wd.get(r.type[0] + r.id);
+      if (key && elNot) {
+        if (!sysNotWd.has(key)) sysNotWd.set(key, new Set());
+        for (const q of elNot) sysNotWd.get(key).add(q);
+      }
       const d = websiteDomain(r.website);
       if (!d || isGenericHost(d)) continue;
       if (r.wikidata) {
@@ -127,7 +235,6 @@ async function main() {
         const m = domainWd.get(d);
         m.set(r.wikidata, (m.get(r.wikidata) || 0) + 1);
       }
-      const key = sysKey(r);
       if (key) {
         if (!sysDomains.has(key)) sysDomains.set(key, new Set());
         sysDomains.get(key).add(d);
@@ -135,18 +242,41 @@ async function main() {
     }
     let suggested = 0;
     systems.forEach((s, i) => {
+      const ruledOut = sysNotWd.get(sysKeys[i]);
+      if (ruledOut?.size) s.nw = [...ruledOut].sort();
       if (s.w) return;
       const doms = sysDomains.get(sysKeys[i]);
       if (!doms) return;
       const votes = new Map();
       for (const d of doms) {
         const m = domainWd.get(d);
-        if (m) for (const [q, n] of m) votes.set(q, (votes.get(q) || 0) + n);
+        if (m) for (const [q, n] of m) {
+          if (ruledOut?.has(q)) continue;   // never re-propose a ruled-out item
+          votes.set(q, (votes.get(q) || 0) + n);
+        }
       }
       const top = [...votes.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0];
       if (top) { s.sw = top[0]; suggested++; }
     });
     console.log(`  ${suggested} wikidata-less systems got a domain-derived suggestion`);
+  }
+
+  // Wikidata branch counts, attached as `wb` where a system's Q-id has one.
+  // When several of our systems share a Q-id (e.g. a typo'd operator variant
+  // alongside the real one), only the principal system — the one with the most
+  // branches — gets the count; comparing a 1-branch typo entry against the full
+  // Wikidata list would just produce a misleading delta.
+  {
+    console.log('Fetching Wikidata branch counts…');
+    const wdCounts = await fetchWikidataBranchCounts();
+    const principal = new Map(); // qid -> system with most branches
+    for (const s of systems) {
+      if (s.w && wdCounts.has(s.w) && (!principal.has(s.w) || s.c > principal.get(s.w).c)) {
+        principal.set(s.w, s);
+      }
+    }
+    for (const s of principal.values()) s.wb = wdCounts.get(s.w);
+    console.log(`  ${wdCounts.size} systems have counts on Wikidata; ${principal.size} matched ours`);
   }
 
   // Compact per-library rows.
@@ -185,7 +315,7 @@ async function main() {
   const ambiguous = findAmbiguousNames(rawLibs, stateIdx);
   console.log(`  ${ambiguous.length} operator names span multiple distinct regions`);
 
-  const domains = findDomainClusters(rawLibs, stateIdx);
+  const domains = findDomainClusters(rawLibs, stateIdx, notAssert);
   console.log(`  ${domains.length} website domains with operator-less libraries`);
 
   const out = {
@@ -335,7 +465,7 @@ const GENERIC_HOSTS = [
 ];
 const isGenericHost = d => GENERIC_HOSTS.some(g => d === g || d.endsWith('.' + g));
 
-function findDomainClusters(rawLibs, stateIdx) {
+function findDomainClusters(rawLibs, stateIdx, notAssert) {
   const byDomain = new Map();
   for (const r of rawLibs) {
     const d = websiteDomain(r.website);
@@ -353,10 +483,18 @@ function findDomainClusters(rawLibs, stateIdx) {
     // one of them has no operator tag.
     if (rows.length < 2 || untagged === 0) continue;
 
+    // not:-assertions from any library in the group veto matching suggestions —
+    // a negation on one branch almost certainly applies to the whole domain set.
+    const notWd = new Set(), notOp = new Set();
+    for (const r of rows) {
+      const key = r.type[0] + r.id;
+      for (const q of notAssert.wd.get(key) ?? []) notWd.add(q);
+      for (const n of notAssert.op.get(key) ?? []) notOp.add(n);
+    }
     const opVotes = new Map(), wdVotes = new Map();
     for (const r of rows) {
-      if (r.operator) opVotes.set(r.operator, (opVotes.get(r.operator) || 0) + 1);
-      if (r.wikidata) wdVotes.set(r.wikidata, (wdVotes.get(r.wikidata) || 0) + 1);
+      if (r.operator && !notOp.has(r.operator)) opVotes.set(r.operator, (opVotes.get(r.operator) || 0) + 1);
+      if (r.wikidata && !notWd.has(r.wikidata)) wdVotes.set(r.wikidata, (wdVotes.get(r.wikidata) || 0) + 1);
     }
     const states = [...new Set(rows.map(r => r.state ? stateIdx.get(r.state) : -1))].sort((a, b) => a - b);
     // A real library system essentially never spans 3+ states — a wide spread
