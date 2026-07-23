@@ -1,9 +1,36 @@
 # Build scripts
 
-Both scripts query OpenStreetMap US's [Layercake](https://openstreetmap.us/our-work/layercake/)
-GeoParquet extracts remotely with DuckDB (only the needed columns/row-groups are
-read — the 4 GB POI file is never fully downloaded) and are run weekly by the
+`build-systems.mjs` and `build-qa.mjs` query OpenStreetMap US's
+[Layercake](https://openstreetmap.us/our-work/layercake/) GeoParquet extracts
+remotely with DuckDB (only the needed columns/row-groups are read — the 4 GB POI
+file is never fully downloaded) and are run weekly by the
 [`update-systems`](../.github/workflows/update-systems.yml) GitHub Action.
+
+`refresh-systems.mjs` is an on-demand alternative for the systems list that pulls
+from a dev Overpass instance instead — see below.
+
+## `refresh-systems.mjs` — on-demand fresh systems list (dev Overpass)
+
+Layercake lags OSM by up to a couple of weeks. After a batch of operator cleanup,
+this regenerates `../data/us-library-systems.json` from live OSM via a private
+Overpass instance, sharing all aggregation/labelling/output with `build-systems.mjs`
+(via `systems-core.mjs`) so the file shape is identical.
+
+```sh
+npm run refresh:systems           # gated on data freshness
+node scripts/refresh-systems.mjs --force   # ignore the gate
+```
+
+- **Endpoint** comes from the `OVERPASS_URL` env var, or a `.overpass-url` file in
+  the repo root. That file is **gitignored** so a private instance URL never lands
+  in git.
+- **Freshness gate**: the committed file records the snapshot date it was built
+  from; the script asks Overpass for its data timestamp (`osm3s.timestamp_osm_base`)
+  and only regenerates when Overpass is newer. This keeps an on-demand run from
+  clobbering a fresher weekly Layercake commit or churning the file for nothing.
+  `--force` overrides it.
+- US-scoped with `area(3600148838)` (the same US boundary relation Layercake uses),
+  so counts stay consistent with the weekly build.
 
 ## `build-qa.mjs` — Data QA dataset
 

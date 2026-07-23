@@ -1,0 +1,13 @@
+{
+  "name": "library-passport-osm",
+  "version": "1.0.0",
+  "description": "Track every library you've visited on a clean interactive map.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:systems": "node scripts/build-systems.mjs",
+    "build:qa": "node scripts/build-qa.mjs",
+    "refresh:systems": "node scripts/refresh-systems.mjs"
+  },
+  "license": "CC0-1.0"
+}
