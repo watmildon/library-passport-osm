@@ -21,7 +21,9 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { writeSystems, layercakeModified } from './systems-core.mjs';
+import { writeSystems, layercakeModified, toISODate, committedSourceDate } from './systems-core.mjs';
+
+const FORCE = process.argv.includes('--force');
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SQL_FILE = join(HERE, 'us-library-operators.sql');
@@ -62,14 +64,27 @@ function queryLayercake() {
 // ---- Build ---------------------------------------------------------------
 
 async function main() {
+  // Layercake's snapshot timestamp gates the whole (expensive) rebuild: skip if
+  // our committed data already comes from an equal-or-newer source.
+  const sourceModified = await layercakeModified();
+  const sourceDate = toISODate(sourceModified);
+  if (!sourceDate) throw new Error('Could not read Layercake Last-Modified — aborting.');
+
+  const committed = committedSourceDate();
+  if (!FORCE && committed && committed >= sourceDate) {
+    console.log(`Committed data source ${committed} is not older than Layercake ${sourceDate} — nothing to do. (Use --force to override.)`);
+    return;
+  }
+
   console.log('Querying Layercake (via DuckDB) for US library operators…');
   const rows = queryLayercake();
   console.log(`  ${rows.length} (operator, wikidata) groups`);
 
   await writeSystems(rows, {
-    source: 'OpenStreetMap US Layercake POI extract (data.openstreetmap.us), US boundary relation 148838, enriched with Wikidata labels',
-    date: new Date().toISOString().slice(0, 10),
-    sourceModified: await layercakeModified()   // Layercake snapshot timestamp
+    source: 'Layercake (OpenStreetMap US), US boundary relation 148838, enriched with Wikidata labels',
+    sourceDate,
+    sourceModified,
+    force: FORCE
   });
 }
 

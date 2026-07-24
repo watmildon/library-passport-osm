@@ -5,7 +5,7 @@
 // them here. This module does the aggregation, Wikidata label enrichment, ranking,
 // and byte-stable serialization so the two paths yield identical output shape.
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -26,6 +26,26 @@ export async function layercakeModified() {
   try {
     const res = await fetch(LAYERCAKE_POIS_URL, { method: 'HEAD' });
     return res.headers.get('last-modified') || null;
+  } catch {
+    return null;
+  }
+}
+
+// Normalize any date-ish string (an HTTP date, an ISO timestamp, YYYY-MM-DD) to a
+// comparable YYYY-MM-DD, or null if it can't be parsed.
+export function toISODate(value) {
+  if (!value) return null;
+  const t = Date.parse(value);
+  return Number.isNaN(t) ? null : new Date(t).toISOString().slice(0, 10);
+}
+
+// The sourceDate already committed to a data file (YYYY-MM-DD), or null. Reads
+// meta.sourceDate, falling back to a parseable meta.sourceModified for files
+// written before sourceDate existed.
+export function committedSourceDate(file = DEST) {
+  try {
+    const meta = JSON.parse(readFileSync(file, 'utf8')).meta || {};
+    return meta.sourceDate || toISODate(meta.sourceModified) || null;
   } catch {
     return null;
   }
@@ -76,12 +96,27 @@ SELECT ?item ?label WHERE {
 
 // Aggregate rows, enrich, rank, and write data/us-library-systems.json.
 // `rows`: Array<{ operator: string|null, wikidata: string|null, count: number }>
-// `source`: provenance string stored in meta.source.
-// `date`: YYYY-MM-DD stamped into meta.generated (when this build ran).
-// `sourceModified`: optional upstream snapshot timestamp (e.g. Layercake's
-//   Last-Modified header), stamped into meta.sourceModified so a later run can
-//   tell whether the upstream data actually changed. Omitted when not known.
-export async function writeSystems(rows, { source, date, sourceModified }) {
+// `source`: provenance string stored in meta.source (a generic name is fine).
+// `sourceDate`: REQUIRED. The snapshot date of the source data (YYYY-MM-DD) —
+//   Layercake's Last-Modified, Overpass's timestamp_osm_base, etc. Writers must
+//   always supply one so any writer can tell whether it has newer data.
+// `sourceModified`: optional human-readable form of the same (e.g. the raw HTTP
+//   Last-Modified string), kept in meta for display.
+// `force`: write even if the committed data has an equal-or-newer sourceDate.
+//
+// Returns the systems count on write, or null when skipped because the committed
+// data is already at least as fresh (nothing to contribute).
+export async function writeSystems(rows, { source, sourceDate, sourceModified, force = false }) {
+  const incoming = toISODate(sourceDate);
+  if (!incoming) throw new Error(`writeSystems: a valid sourceDate is required (got ${JSON.stringify(sourceDate)})`);
+
+  // Freshness gate: don't overwrite data built from an equal-or-newer source.
+  const committed = committedSourceDate();
+  if (!force && committed && committed >= incoming) {
+    console.log(`  committed data source ${committed} is not older than ${incoming} — skipping write (use force to override).`);
+    return null;
+  }
+
   const opCount = {};
   const qidCount = {};
   const qidName = {};    // preferred operator= name seen for a qid
@@ -124,7 +159,8 @@ export async function writeSystems(rows, { source, date, sourceModified }) {
 
   const meta = {
     source,
-    generated: date,
+    generated: new Date().toISOString().slice(0, 10),
+    sourceDate: incoming,
     ...(sourceModified ? { sourceModified } : {}),
     boundary: 'United States (OSM relation 148838)',
     totalSystems: systems.length

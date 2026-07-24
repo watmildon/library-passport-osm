@@ -6,12 +6,22 @@ remotely with DuckDB (only the needed columns/row-groups are read — the 4 GB P
 file is never fully downloaded) and are run weekly by the
 [`update-systems`](../.github/workflows/update-systems.yml) GitHub Action.
 
-Both stamp Layercake's POI `Last-Modified` into their output
-(`us-library-systems.json` → `meta.sourceModified`, `qa-data.json` →
-`meta.layercakeModified`). The workflow's **freshness gate** compares that against
-the live header and skips the whole rebuild when Layercake hasn't published a
-newer snapshot — so a Monday run does nothing (and commits nothing) when there's
-no new upstream data. A manual run can pass `force: true` to rebuild anyway.
+## Freshness — every writer records `meta.sourceDate`
+
+Each data writer stamps the snapshot date of the source it built from into
+`meta.sourceDate` (YYYY-MM-DD) — Layercake's POI `Last-Modified` for the two
+`build-*` scripts, Overpass's `timestamp_osm_base` for `refresh-systems.mjs`.
+The generic `meta.source` names *which* source; `sourceDate` makes freshness
+comparable across sources.
+
+Before writing, a writer **compares its source date against the committed
+`sourceDate` and only writes if it is contributing newer data** (pass `--force`
+to override). This means the weekly Layercake job will *not* clobber a fresher
+out-of-band refresh — e.g. after a manual Overpass run (dated later than the last
+Layercake snapshot), the Monday Layercake build sees the committed data is newer
+and skips. The [`update-systems`](../.github/workflows/update-systems.yml)
+workflow applies the same gate up front (`force: true` input overrides) to also
+skip the DuckDB install when nothing newer is available.
 
 `refresh-systems.mjs` is an on-demand alternative for the systems list that pulls
 from a dev Overpass instance instead — see below.

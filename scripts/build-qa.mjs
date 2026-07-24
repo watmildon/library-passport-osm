@@ -25,12 +25,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
+import { layercakeModified, toISODate, committedSourceDate } from './systems-core.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const SQL_FILE = join(HERE, 'qa-libraries.sql');
+const DEST = join(ROOT, 'data', 'qa-data.json');
 const DUCKDB = process.env.DUCKDB || 'duckdb';
-const POIS_URL = 'https://data.openstreetmap.us/layercake/pois.parquet';
+const FORCE = process.argv.includes('--force');
 const USER_AGENT = process.env.USER_AGENT ||
   'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; weekly QA build)';
 
@@ -158,17 +160,19 @@ async function fetchWikidataBranchCounts() {
   return new Map();
 }
 
-// Layercake's POI extract freshness, for the page's "data as of" note.
-async function layercakeModified() {
-  try {
-    const res = await fetch(POIS_URL, { method: 'HEAD' });
-    return res.headers.get('last-modified') || null;
-  } catch {
-    return null;
-  }
-}
-
 async function main() {
+  // Layercake's snapshot timestamp gates the whole rebuild: skip if the committed
+  // QA dataset already comes from an equal-or-newer source.
+  const sourceModified = await layercakeModified();
+  const sourceDate = toISODate(sourceModified);
+  if (!sourceDate) throw new Error('Could not read Layercake Last-Modified — aborting.');
+
+  const committed = committedSourceDate(DEST);
+  if (!FORCE && committed && committed >= sourceDate) {
+    console.log(`Committed QA data source ${committed} is not older than Layercake ${sourceDate} — nothing to do. (Use --force to override.)`);
+    return;
+  }
+
   console.log('Querying Layercake (via DuckDB) for per-library QA data…');
   const { libs: rawLibs, collisions: rawColl } = queryLayercake();
   console.log(`  ${rawLibs.length} US libraries, ${rawColl.length} possible name collisions`);
@@ -320,9 +324,10 @@ async function main() {
 
   const out = {
     meta: {
-      source: 'OpenStreetMap US Layercake POI extract (data.openstreetmap.us), US boundary relation 148838',
+      source: 'Layercake (OpenStreetMap US), US boundary relation 148838',
       generated: new Date().toISOString().slice(0, 10),
-      layercakeModified: await layercakeModified(),
+      sourceDate,
+      layercakeModified: sourceModified,
       totalLibraries: libs.length,
       totalSystems: systems.length
     },

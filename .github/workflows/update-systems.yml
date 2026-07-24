@@ -53,23 +53,27 @@ jobs:
         id: gate
         run: |
           # Layercake is rebuilt periodically from OSM. Skip the whole rebuild when
-          # its POI snapshot hasn't changed since our committed data was built —
-          # both data files record the snapshot's Last-Modified.
+          # our committed data already comes from an equal-or-newer source (each
+          # data file records meta.sourceDate). This also avoids clobbering a
+          # fresher out-of-band refresh (e.g. a manual Overpass run).
           LIVE=$(curl -sfI "https://data.openstreetmap.us/layercake/pois.parquet" \
                  | grep -i '^last-modified:' | sed 's/^[Ll]ast-[Mm]odified: //' | tr -d '\r' || echo "")
-          SYS=$(node -p "require('./data/us-library-systems.json').meta.sourceModified || ''" 2>/dev/null || echo "")
-          QA=$(node -p "require('./data/qa-data.json').meta.layercakeModified || ''" 2>/dev/null || echo "")
-          echo "Layercake live: '${LIVE:-unknown}'"
-          echo "Committed — systems: '${SYS:-none}', qa: '${QA:-none}'"
+          LIVE_DATE=$(node -e "const t=Date.parse(process.argv[1]); process.stdout.write(Number.isNaN(t)?'':new Date(t).toISOString().slice(0,10))" "$LIVE" 2>/dev/null || echo "")
+          SYS=$(node -p "const m=require('./data/us-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
+          QA=$(node -p "const m=require('./data/qa-data.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
+          echo "Layercake live: '${LIVE:-unknown}' (${LIVE_DATE:-?})"
+          echo "Committed sourceDate — systems: '${SYS:-none}', qa: '${QA:-none}'"
           echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
           echo "OpenStreetMap US Layercake \`pois.parquet\` — live: ${LIVE:-unknown}" >> "$GITHUB_STEP_SUMMARY"
 
           RUN=yes
+          # Skip only if BOTH committed files are already at least as fresh as live.
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             echo "Forced rebuild requested."
-          elif [ -n "$LIVE" ] && [ "$LIVE" = "$SYS" ] && [ "$LIVE" = "$QA" ]; then
-            echo "Committed data already matches the live Layercake snapshot — skipping rebuild."
-            echo "Up to date with Layercake snapshot ${LIVE}." >> "$GITHUB_STEP_SUMMARY"
+          elif [ -n "$LIVE_DATE" ] && [ -n "$SYS" ] && [ -n "$QA" ] \
+               && [ ! "$SYS" \< "$LIVE_DATE" ] && [ ! "$QA" \< "$LIVE_DATE" ]; then
+            echo "Committed data is not older than the live Layercake snapshot — skipping rebuild."
+            echo "Up to date (committed sourceDate >= Layercake ${LIVE_DATE})." >> "$GITHUB_STEP_SUMMARY"
             RUN=no
           fi
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
@@ -78,12 +82,12 @@ jobs:
         if: steps.gate.outputs.run == 'yes'
         run: |
           duckdb --version
-          node scripts/build-systems.mjs
+          node scripts/build-systems.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Regenerate QA dataset
         if: steps.gate.outputs.run == 'yes'
         run: |
-          node scripts/build-qa.mjs
+          node scripts/build-qa.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Sanity-check the results
         if: steps.gate.outputs.run == 'yes'
