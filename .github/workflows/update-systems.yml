@@ -86,6 +86,12 @@ jobs:
           duckdb --version
           node scripts/build-systems.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
+      - name: Refresh IMLS PLS data
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          # Self-gates on fiscal year — a no-op unless a new PLS release is out.
+          node scripts/build-pls.mjs
+
       - name: Regenerate QA dataset
         if: steps.gate.outputs.run == 'yes'
         run: |
@@ -130,11 +136,11 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data/us-library-systems.json data/qa-data.json; then
+          if git diff --quiet -- data/us-library-systems.json data/qa-data.json data/pls-outlets.json; then
             echo "No changes to the data files."
             exit 0
           fi
           COUNT=$(node -p "require('./data/us-library-systems.json').systems.length")
-          git add data/us-library-systems.json data/qa-data.json
+          git add data/us-library-systems.json data/qa-data.json data/pls-outlets.json
           git commit -m "chore: weekly refresh of library data ($COUNT systems)"
           git push

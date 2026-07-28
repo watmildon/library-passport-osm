@@ -49,6 +49,25 @@ node scripts/refresh-systems.mjs --force   # ignore the gate
 - US-scoped with `area(3600148838)` (the same US boundary relation Layercake uses),
   so counts stay consistent with the weekly build.
 
+## `build-pls.mjs` — IMLS PLS outlet data
+
+Regenerates [`../data/pls-outlets.json`](../data/pls-outlets.json) from the
+**IMLS Public Libraries Survey** (PLS) — a federal census of US public libraries
+(public domain, ~16,900 central + branch outlets, each with an IMLS-geocoded
+lat/lon). `build-qa.mjs` cross-references this against OSM to find missing and
+untagged branches.
+
+```sh
+node scripts/build-pls.mjs [--force]
+```
+
+Downloads the FY CSV zip, transcodes the Windows-1252 CSVs to UTF-8 (they contain
+bytes that break UTF-8 readers), and runs [`pls-outlets.sql`](./pls-outlets.sql)
+via DuckDB. PLS is published **annually with a ~2-year lag** (FY2023 released
+Aug 2025); the build is gated on the fiscal year, so a rerun on the same release
+is a no-op. When a new FY is published, bump `PLS_FY` and `PLS_ZIP_URL` in
+`build-pls.mjs`.
+
 ## `build-qa.mjs` — Data QA dataset
 
 Regenerates [`../data/qa-data.json`](../data/qa-data.json), the dataset behind
@@ -80,6 +99,18 @@ DuckDB). The Node script normalizes this into one compact file:
   ready-made work sets; when tagged siblings share the domain, their operator /
   wikidata values are emitted as suggestions for the untagged rest. Generic
   hosting platforms and >2-state spreads (vendor/aggregator domains) are excluded.
+- `pls` — per-system IMLS PLS cross-reference (see below): `{ sysIdx, fscskey,
+  plsCount, osmCount, matched, untagged[], missing[], discrepancies[] }`.
+
+**IMLS PLS matching** ([`pls-match.mjs`](./pls-match.mjs)). Each OSM system with
+≥3 libraries is crosswalked to a PLS system: name similarity proposes candidates,
+and a **spatial check confirms** (a PLS system whose outlets sit near the OSM
+libraries is the match — this disambiguates e.g. "New York Public Library" from
+"New York Mills Public Library"). Each matched PLS outlet is then classified:
+_matched_ (in OSM), _untagged_ (an OSM library exists nearby but without this
+operator — add the tag), _missing_ (no OSM library there — likely create one), or
+_discrepancy_ (name-matched but far from the OSM coordinate — verify location).
+Requires `data/pls-outlets.json`; if absent, PLS matching is skipped.
 
 **Wikidata branch counts.** Systems whose Wikidata item enumerates its branches
 (`P527` parts typed as library branch) get that count attached as `wb` (one

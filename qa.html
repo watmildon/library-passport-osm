@@ -18,12 +18,22 @@
       </div>
       <p class="qa-sub">Help improve US library data in <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap</a>.
         Find missing tags, wikidata gaps, and likely typos — then fix them in the editor.</p>
+      <div class="qa-editor-pick">
+        <label for="editor-select">Open edit links in:</label>
+        <select id="editor-select">
+          <option value="id">iD</option>
+          <option value="rapid">Rapid</option>
+          <option value="josm">JOSM (remote)</option>
+        </select>
+        <span class="qa-editor-hint" id="editor-hint"></span>
+      </div>
       <p class="qa-meta" id="qa-meta">Loading data…</p>
       <nav class="qa-nav">
         <a href="#overview">Overview</a>
         <a href="#wikidata">Wikidata gaps</a>
         <a href="#ambiguous">Shared operators</a>
         <a href="#domains">Website domains</a>
+        <a href="#pls">Missing branches</a>
         <a href="#branches">Branch counts</a>
         <a href="#typos">Possible typos</a>
         <a href="#explorer">System explorer</a>
@@ -86,8 +96,26 @@
       <button class="qa-more" id="dom-more" hidden>Show all</button>
     </details>
 
+    <details id="pls" class="qa-section" open>
+      <summary><h2>Missing &amp; untagged branches (IMLS PLS)</h2></summary>
+      <p class="qa-note">Cross-referenced against the <a href="https://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls" target="_blank" rel="noopener">IMLS Public Libraries Survey</a>,
+        a federal census of US public libraries (public domain). For systems that match, PLS reveals branches
+        that are <strong>missing from OSM entirely</strong> (create them) or <strong>present but not tagged
+        with the operator</strong> (add the tag). Coordinates are IMLS-geocoded — <em>verify on the ground or
+        against imagery before adding</em>; the survey data lags ~2 years and a listed address may be an
+        administrative office or a since-closed branch.</p>
+      <div class="qa-filter-row">
+        <input id="pls-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
+        <select id="pls-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
+      <div id="pls-list"></div>
+      <button class="qa-more" id="pls-more" hidden>Show all</button>
+    </details>
+
     <details id="branches" class="qa-section" open>
-      <summary><h2>Branch counts vs Wikidata</h2></summary>
+      <summary><h2>Branch counts vs Wikidata &amp; PLS</h2></summary>
       <p class="qa-note">Systems whose Wikidata item lists its branches (<code>P527</code>), compared with the
         branch count in OSM. <em>Fewer in OSM</em> usually means unmapped branches; <em>more in OSM</em> can
         mean duplicates, mis-tagged non-branches, or a stale Wikidata list — either way, worth a look.</p>

@@ -14,6 +14,24 @@ function escapeHtml(s) {
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }
 
+// Title-case an ALL-CAPS name (PLS ships names uppercase). Lowercases short
+// joining words except when first, preserves roman numerals and short
+// directionals/abbreviations that read better capitalized.
+const TC_SMALL = new Set(['of', 'the', 'and', 'at', 'in', 'on', 'for', 'to', 'a', 'an', 'by']);
+const TC_KEEP_UPPER = new Set(['NE', 'NW', 'SE', 'SW', 'N', 'S', 'E', 'W', 'US', 'USA']);
+function titleCase(s) {
+  if (!s) return s;
+  const words = s.toLowerCase().split(/\s+/);
+  return words.map((w, i) => {
+    const up = w.toUpperCase();
+    if (TC_KEEP_UPPER.has(up)) return up;
+    if (/^[ivxlcdm]+$/i.test(w) && w.length > 1) return up;      // roman numerals
+    if (i > 0 && TC_SMALL.has(w)) return w;                       // small joining words
+    // Capitalize after hyphens/slashes too: "algona-pacific" -> "Algona-Pacific"
+    return w.replace(/(^|[-/])([a-z])/g, (_, sep, c) => sep + c.toUpperCase());
+  }).join(' ');
+}
+
 // Column meaning of each bit in a library row's flags (matches build-qa.mjs).
 // Only the tags the app itself uses are tracked.
 const TAG_DEFS = [
@@ -28,9 +46,107 @@ const TAG_DEFS = [
 const L = { sys: 0, type: 1, id: 2, name: 3, state: 4, flags: 5, lon: 6, lat: 7 };
 
 const OSM_TYPE = { n: 'node', w: 'way', r: 'relation' };
-const editUrl = (t, id) => `https://www.openstreetmap.org/edit?${OSM_TYPE[t]}=${id}`;
 const pct = (n, d) => d ? Math.round((n / d) * 100) : 0;
 const fmt = n => n.toLocaleString();
+
+// ---------------- Editor links (iD / Rapid / JOSM) ----------------
+// The user's choice is remembered in localStorage. iD and Rapid are web editors
+// (open in a new tab); JOSM uses its remote-control HTTP endpoint on localhost,
+// which requires JOSM running with Remote Control enabled.
+const EDITOR_KEY = 'libpass:editor';
+let currentEditor = (() => { try { return localStorage.getItem(EDITOR_KEY) || 'id'; } catch { return 'id'; } })();
+function setEditor(e) { currentEditor = e; try { localStorage.setItem(EDITOR_KEY, e); } catch {} }
+
+// A small bounding box (~40m) around a coordinate, for JOSM load_and_zoom.
+function bboxAround(lat, lon, d = 0.0002) {
+  return { left: (lon - d).toFixed(6), right: (lon + d).toFixed(6), top: (lat + d).toFixed(6), bottom: (lat - d).toFixed(6) };
+}
+
+// JOSM remote control: browsers whitelist http://127.0.0.1 from HTTPS pages, so
+// we call the HTTP endpoint on 8111 (the HTTPS/8112 endpoint is deprecated).
+const JOSM = 'http://127.0.0.1:8111';
+
+// Link to edit an existing object (node/way/relation). lat/lon optional but
+// needed for JOSM (to build a bbox to load and select within).
+function editObject(type, id, lat, lon) {
+  const t = OSM_TYPE[type] || type; // accept 'n'/'node'
+  const obj = `${t[0]}${id}`;       // e.g. w12345
+  if (currentEditor === 'rapid') return `https://rapideditor.org/edit#id=${obj}${lat != null ? `&map=19/${lat}/${lon}` : ''}`;
+  if (currentEditor === 'josm') {
+    if (lat == null) return `${JOSM}/import?url=https://www.openstreetmap.org/api/0.6/${t}/${id}/full`;
+    const b = bboxAround(lat, lon);
+    return `${JOSM}/load_and_zoom?left=${b.left}&right=${b.right}&top=${b.top}&bottom=${b.bottom}&select=${obj}`;
+  }
+  return `https://www.openstreetmap.org/edit?editor=id&${t}=${id}`;
+}
+
+// Link to edit at a coordinate (for creating a new node / checking a location).
+function editAt(lat, lon) {
+  if (currentEditor === 'rapid') return `https://rapideditor.org/edit#map=19/${lat}/${lon}`;
+  if (currentEditor === 'josm') {
+    const b = bboxAround(lat, lon);
+    return `${JOSM}/load_and_zoom?left=${b.left}&right=${b.right}&top=${b.top}&bottom=${b.bottom}`;
+  }
+  return `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
+}
+
+// Send a JOSM remote-control command in the background (no new tab). JOSM's
+// response has no CORS headers, so a no-cors request can't be read — we can only
+// tell whether it was dispatched vs. the connection was refused (JOSM not
+// running). The opaque response means we can't confirm JOSM actually accepted it.
+async function josmRemote(url) {
+  try {
+    await fetch(url, { mode: 'no-cors' });
+    toast('Sent to JOSM');
+  } catch {
+    toast('JOSM didn’t respond — is it running with Remote Control enabled?', true);
+  }
+}
+
+// A brief status toast (bottom-center).
+let toastTimer = null;
+function toast(msg, isError = false) {
+  let el = $('#qa-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'qa-toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.className = 'qa-toast show' + (isError ? ' qa-toast-error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'qa-toast'; }, isError ? 4000 : 1800);
+}
+
+// Wire up the header editor <select>: restore the saved choice, show a JOSM note,
+// re-render link-bearing sections on change, and intercept JOSM links so they
+// fire in the background instead of opening a tab.
+function setupEditorPicker() {
+  const sel = $('#editor-select');
+  const hint = $('#editor-hint');
+  const showHint = () => {
+    hint.textContent = currentEditor === 'josm'
+      ? 'JOSM must be running with Remote Control enabled.'
+      : '';
+  };
+  sel.value = currentEditor;
+  showHint();
+  sel.addEventListener('change', () => {
+    setEditor(sel.value);
+    showHint();
+    renderPls();
+    if (currentSys >= 0) showSystem(currentSys);  // re-render the explorer table
+  });
+
+  // Delegated: any edit link pointing at the JOSM host is sent in the background.
+  document.addEventListener('click', e => {
+    const a = e.target.closest('a');
+    if (a && a.href.startsWith(JOSM)) {
+      e.preventDefault();
+      josmRemote(a.href);
+    }
+  });
+}
 
 // Compact icon links using the services' own logos.
 // Overpass Turbo's mark (from its favicon), recolored to inherit the link color.
@@ -96,12 +212,16 @@ async function boot() {
     idx: i
   }));
 
+  // PLS findings, indexed by system for the branch-count column.
+  plsBySys = new Map((data.pls || []).map(p => [p.sysIdx, p]));
+
   renderTiles();
   renderUsMeters();
   renderStateTable();
   renderWikidataGaps();
   renderAmbiguous();
   renderDomains();
+  renderPls();
   renderBranchCounts();
   renderCollisions();
   setupExplorer();
@@ -114,26 +234,42 @@ async function boot() {
     domFilter = e.target.value;
     renderDomains();
   });
+  $('#pls-filter').addEventListener('input', e => {
+    plsFilter = e.target.value;
+    plsExpanded = false;
+    renderPls();
+  });
+  setupPlsStateFilter();
+  setupEditorPicker();
   openSection(location.hash.slice(1));
 }
 
 // ---------------- Overview ----------------
-function tile(label, value, hint) {
-  return `<div class="qa-tile" ${hint ? `title="${escapeHtml(hint)}"` : ''}>
-    <div class="qa-tile-label">${escapeHtml(label)}</div>
-    <div class="qa-tile-value">${value}</div>
-  </div>`;
+function tile(label, value, hint, href) {
+  const inner = `<div class="qa-tile-label">${escapeHtml(label)}</div>
+    <div class="qa-tile-value">${value}</div>`;
+  return href
+    ? `<a class="qa-tile qa-tile-link" href="${href}" ${hint ? `title="${escapeHtml(hint)}"` : ''}>${inner}</a>`
+    : `<div class="qa-tile" ${hint ? `title="${escapeHtml(hint)}"` : ''}>${inner}</div>`;
 }
 
 function renderTiles() {
   const total = data.libs.length;
   const withOp = data.libs.filter(l => l[L.flags] & 8).length;
   const withWd = data.libs.filter(l => l[L.flags] & 16).length;
+  const plsMissing = (data.pls || []).reduce((n, p) => n + p.missing.length, 0);
+  const plsUntagged = (data.pls || []).reduce((n, p) => n + p.untagged.length, 0);
   $('#tiles').innerHTML =
     tile('US libraries', fmt(total)) +
     tile('Library systems', fmt(data.systems.length)) +
     tile('Have an operator', pct(withOp, total) + '%', `${fmt(withOp)} of ${fmt(total)}`) +
-    tile('Have operator:wikidata', pct(withWd, total) + '%', `${fmt(withWd)} of ${fmt(total)}`);
+    tile('Have operator:wikidata', pct(withWd, total) + '%', `${fmt(withWd)} of ${fmt(total)}`) +
+    (data.pls && data.pls.length ? (
+      tile('Branches missing from OSM', `<span class="qa-delta-miss">${fmt(plsMissing)}</span>`,
+        'IMLS PLS branches with no OSM library nearby — likely need creating', '#pls') +
+      tile('Branches untagged in OSM', `<span class="pls-untagged-n">${fmt(plsUntagged)}</span>`,
+        'IMLS PLS branches present in OSM but missing the operator tag', '#pls')
+    ) : '');
 }
 
 function meterRow(label, n, d) {
@@ -325,6 +461,96 @@ function renderAmbiguous() {
   bindExploreButtons(list);
 }
 
+// ---------------- Missing & untagged branches (IMLS PLS) ----------------
+let plsBySys = new Map();
+const PLS_PREVIEW = 20;
+let plsExpanded = false;
+let plsFilter = '';
+let plsState = '';
+
+// Populate the state <select> with the states that actually have PLS findings.
+function setupPlsStateFilter() {
+  const sel = $('#pls-state');
+  if (!sel || !data.pls) return;
+  const states = [...new Set(data.pls.map(p => p.state).filter(Boolean))].sort();
+  sel.insertAdjacentHTML('beforeend',
+    states.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join(''));
+  sel.addEventListener('change', () => { plsState = sel.value; plsExpanded = false; renderPls(); });
+}
+
+function renderPls() {
+  const list = $('#pls-list');
+  if (!data.pls || !data.pls.length) {
+    list.innerHTML = '<p class="qa-note">No PLS findings (dataset unavailable, or every matched system is complete). 🎉</p>';
+    $('#pls-more').hidden = true;
+    return;
+  }
+  const term = plsFilter.trim().toLowerCase();
+  const rows = data.pls
+    .map(p => ({ p, name: data.systems[p.sysIdx]?.n || '' }))
+    .filter(x => !plsState || x.p.state === plsState)
+    .filter(x => !term || x.name.toLowerCase().includes(term));
+
+  if (!rows.length) {
+    list.innerHTML = '<p class="qa-note">No systems match.</p>';
+    $('#pls-more').hidden = true;
+    return;
+  }
+
+  const shown = plsExpanded ? rows : rows.slice(0, PLS_PREVIEW);
+  list.innerHTML = shown.map(({ p, name }) => {
+    const sys = data.systems[p.sysIdx];
+    // Every row is: name | detail | meta | action — so columns line up across
+    // the three row types regardless of what each has to show.
+    const row = (cls, name, detail, meta, lat, lon, title) => `
+      <div class="pls-row ${cls}">
+        <span class="pls-name">${escapeHtml(name)}</span>
+        <span class="pls-detail">${detail}</span>
+        <span class="pls-meta">${meta}</span>
+        <a class="qa-icon-link" href="${editAt(lat, lon)}" target="_blank" rel="noopener" title="${title}">✏️</a>
+      </div>`;
+    const missing = p.missing.map(m => row('pls-missing', titleCase(m.name),
+      escapeHtml([titleCase(m.addr), titleCase(m.city)].filter(Boolean).join(', ')),
+      `<span class="pls-geo" title="IMLS geocode precision">${escapeHtml(m.geo || '')}</span>`,
+      m.lat, m.lon, 'Create in OSM editor')).join('');
+    const untagged = p.untagged.map(u => row('pls-untagged', titleCase(u.name),
+      `↳ OSM: “${escapeHtml(u.osmName)}”`,
+      u.osmHasOperator ? '<span class="qa-badge qa-badge-mixed">wrong operator?</span>' : '<span class="qa-badge qa-badge-miss">no operator tag</span>',
+      u.lat, u.lon, 'Fix tags in OSM editor')).join('');
+    const disc = p.discrepancies.map(dd => row('pls-disc', titleCase(dd.name),
+      `OSM coordinate is ~${fmt(dd.dist)}m from the PLS location — verify`,
+      '', dd.lat, dd.lon, 'Check location in OSM editor')).join('');
+
+    // Show the system's operator:wikidata so it's handy to copy when tagging the
+    // untagged/missing branches below. Confirmed (.w) is a solid badge; a
+    // domain-derived suggestion (.sw) is shown as an unconfirmed hint.
+    const qidNote = sys.w
+      ? `<span class="pls-qid" title="operator:wikidata for this system — apply to the branches below">operator:wikidata = <a href="https://www.wikidata.org/wiki/${escapeHtml(sys.w)}" target="_blank" rel="noopener">${escapeHtml(sys.w)}</a></span>`
+      : sys.sw
+        ? `<span class="pls-qid pls-qid-suggested" title="Suggested via a shared website domain — verify before applying">operator:wikidata ≈ <a href="https://www.wikidata.org/wiki/${escapeHtml(sys.sw)}" target="_blank" rel="noopener">${escapeHtml(sys.sw)}</a> ?</span>`
+        : '';
+
+    return `<div class="pls-sys">
+      <div class="pls-sys-head">
+        <span class="qa-coll-name">${escapeHtml(name)}</span>
+        <span class="qa-coll-meta">PLS ${fmt(p.plsCount)} · OSM ${fmt(p.osmCount)} ·
+          ${p.missing.length ? `<b class="qa-delta-miss">${p.missing.length} missing</b>` : ''}
+          ${p.missing.length && p.untagged.length ? ' · ' : ''}
+          ${p.untagged.length ? `<b class="pls-untagged-n">${p.untagged.length} untagged</b>` : ''}
+          <button class="qa-link-btn" data-sys="${p.sysIdx}">Explore →</button></span>
+      </div>
+      ${qidNote ? `<div class="pls-qid-row">${qidNote}</div>` : ''}
+      ${missing}${untagged}${disc}
+    </div>`;
+  }).join('');
+
+  const more = $('#pls-more');
+  more.hidden = plsExpanded || rows.length <= PLS_PREVIEW;
+  more.textContent = `Show all ${fmt(rows.length)} systems`;
+  more.onclick = () => { plsExpanded = true; renderPls(); };
+  bindExploreButtons(list);
+}
+
 // ---------------- Branch counts vs Wikidata ----------------
 const BR_PREVIEW = 30;
 let brExpanded = false;
@@ -334,19 +560,22 @@ const BR_COLS = [
   { id: 'n',     label: 'System' },
   { id: 'c',     label: 'OSM', num: true },
   { id: 'wb',    label: 'Wikidata', num: true },
+  { id: 'pls',   label: 'PLS', num: true },
   { id: 'delta', label: 'Δ', num: true }
 ];
 
 function renderBranchCounts() {
   const { col, dir } = brSort;
+  // PLS branch count per system (matched + untagged + missing = its true count).
+  const plsCountOf = i => { const p = plsBySys.get(i); return p ? p.plsCount : null; };
   const rows = data.systems
-    .map((s, i) => ({ ...s, idx: i, delta: s.c - (s.wb ?? 0) }))
-    .filter(s => s.wb != null)
+    .map((s, i) => ({ ...s, idx: i, delta: s.c - (s.wb ?? 0), pls: plsCountOf(i) }))
+    .filter(s => s.wb != null || s.pls != null)   // show if either external source has a count
     .sort((a, b) => {
       let cmp;
       if (col === 'n') cmp = a.n.localeCompare(b.n);
       else if (col === 'delta') cmp = Math.abs(a.delta) - Math.abs(b.delta);
-      else cmp = a[col] - b[col];
+      else cmp = (a[col] ?? -1) - (b[col] ?? -1);
       return cmp * dir || Math.abs(b.delta) - Math.abs(a.delta) || a.n.localeCompare(b.n);
     });
 
@@ -357,19 +586,26 @@ function renderBranchCounts() {
       `<th data-col="${c.id}" class="${c.num ? 'num' : ''}">${escapeHtml(c.label)}${arrow(c.id)}</th>`).join('')}<th>Actions</th>
     </tr></thead>
     <tbody>${shown.map(s => {
+      const hasWb = s.wb != null;
       const d = s.delta;
-      const deltaCell = d === 0
-        ? '<span class="qa-yes" title="OSM and Wikidata agree">✓</span>'
-        : `<span class="${d < 0 ? 'qa-delta-miss' : 'qa-delta-extra'}" title="${d < 0
-            ? Math.abs(d) + ' branch(es) on Wikidata not found in OSM — possibly unmapped'
-            : d + ' more branch(es) in OSM than Wikidata lists — duplicates, non-branches, or stale Wikidata'}">${d > 0 ? '+' + d : d}</span>`;
+      const deltaCell = !hasWb ? '<span class="qa-no" title="no Wikidata branch list">—</span>'
+        : d === 0
+          ? '<span class="qa-yes" title="OSM and Wikidata agree">✓</span>'
+          : `<span class="${d < 0 ? 'qa-delta-miss' : 'qa-delta-extra'}" title="${d < 0
+              ? Math.abs(d) + ' branch(es) on Wikidata not found in OSM — possibly unmapped'
+              : d + ' more branch(es) in OSM than Wikidata lists — duplicates, non-branches, or stale Wikidata'}">${d > 0 ? '+' + d : d}</span>`;
+      // PLS cell: colored when it exceeds OSM (undermapped) — the actionable case.
+      const plsCell = s.pls == null ? '<span class="qa-no">—</span>'
+        : s.pls > s.c ? `<span class="qa-delta-miss" title="${s.pls - s.c} more in PLS than OSM has tagged">${fmt(s.pls)}</span>`
+        : fmt(s.pls);
       return `<tr>
         <td>${escapeHtml(s.n)}</td>
         <td class="num">${fmt(s.c)}</td>
-        <td class="num"><a href="https://www.wikidata.org/wiki/${escapeHtml(s.w)}" target="_blank" rel="noopener">${fmt(s.wb)}</a></td>
+        <td class="num">${hasWb ? `<a href="https://www.wikidata.org/wiki/${escapeHtml(s.w)}" target="_blank" rel="noopener">${fmt(s.wb)}</a>` : '<span class="qa-no">—</span>'}</td>
+        <td class="num">${plsCell}</td>
         <td class="num">${deltaCell}</td>
         <td class="qa-actions">
-          ${turboLink(turboUrl('wikidata', s.w))}
+          ${turboLink(turboUrl(s.w ? 'wikidata' : 'operator', s.w || s.n))}
           <button class="qa-link-btn" data-sys="${s.idx}">Explore →</button>
         </td>
       </tr>`;
@@ -558,7 +794,7 @@ function showSystem(idx) {
       <td>${escapeHtml(l[L.name] || '(unnamed)')}</td>
       <td>${escapeHtml(data.states[l[L.state]] || '')}</td>
       ${TAG_DEFS.map(t => `<td class="num">${(l[L.flags] & t.bit) ? CHECK : CROSS}</td>`).join('')}
-      <td><a href="${editUrl(l[L.type], l[L.id])}" target="_blank" rel="noopener">edit ↗</a></td>
+      <td><a href="${editObject(l[L.type], l[L.id], l[L.lat], l[L.lon])}" target="_blank" rel="noopener">edit ↗</a></td>
     </tr>`).join('')}</tbody>`;
 }
 
@@ -582,11 +818,12 @@ async function loadLive() {
         <th></th></tr></thead>
       <tbody>${feats.map(f => {
         const p = f.properties;
+        const [lon, lat] = f.geometry?.coordinates || [];
         return `<tr>
           <td>${escapeHtml(p.name)}</td>
           <td>${escapeHtml(p.city || '')}</td>
           ${TRACKED_TAGS.map(t => `<td class="num">${t.get(p) ? CHECK : CROSS}</td>`).join('')}
-          <td><a href="https://www.openstreetmap.org/edit?${p.osmType}=${p.osmId}" target="_blank" rel="noopener">edit ↗</a></td>
+          <td><a href="${editObject(p.osmType, p.osmId, lat, lon)}" target="_blank" rel="noopener">edit ↗</a></td>
         </tr>`;
       }).join('')}</tbody>`;
   } catch (e) {

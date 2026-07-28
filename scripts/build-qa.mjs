@@ -26,11 +26,13 @@ import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { layercakeModified, toISODate, committedSourceDate } from './systems-core.mjs';
+import { indexPls, crosswalk, classify, haversineM } from './pls-match.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const SQL_FILE = join(HERE, 'qa-libraries.sql');
 const DEST = join(ROOT, 'data', 'qa-data.json');
+const PLS_FILE = join(ROOT, 'data', 'pls-outlets.json');
 const DUCKDB = process.env.DUCKDB || 'duckdb';
 const FORCE = process.argv.includes('--force');
 const USER_AGENT = process.env.USER_AGENT ||
@@ -197,15 +199,17 @@ async function main() {
   // Systems, indexed. Keyed by operator name; wikidata-only libraries get a
   // system keyed (and named) by their Q-id. The system's wikidata is the most
   // frequent non-null Q-id seen alongside that operator name.
-  const sysMap = new Map(); // key -> { n, wdVotes: Map, c }
+  const sysMap = new Map(); // key -> { n, wdVotes: Map, c, libs: [], states: Map }
   const sysKey = r => r.operator ?? (r.wikidata ? `wd:${r.wikidata}` : null);
   for (const r of rawLibs) {
     const key = sysKey(r);
     if (!key) continue;
     let s = sysMap.get(key);
-    if (!s) { s = { n: r.operator ?? r.wikidata, wdVotes: new Map(), c: 0 }; sysMap.set(key, s); }
+    if (!s) { s = { n: r.operator ?? r.wikidata, wdVotes: new Map(), c: 0, libs: [], states: new Map() }; sysMap.set(key, s); }
     s.c++;
     if (r.wikidata) s.wdVotes.set(r.wikidata, (s.wdVotes.get(r.wikidata) || 0) + 1);
+    s.libs.push({ id: r.type[0] + r.id, name: r.name || '', lat: r.lat, lon: r.lon });
+    if (r.state) s.states.set(r.state, (s.states.get(r.state) || 0) + 1);
   }
   const sysKeys = [...sysMap.keys()];
   const sysIdx = new Map(sysKeys.map((k, i) => [k, i]));
@@ -322,6 +326,9 @@ async function main() {
   const domains = findDomainClusters(rawLibs, stateIdx, notAssert);
   console.log(`  ${domains.length} website domains with operator-less libraries`);
 
+  // ---- IMLS PLS matching: find branches missing / untagged vs the federal census.
+  const pls = matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames);
+
   const out = {
     meta: {
       source: 'Layercake (OpenStreetMap US), US boundary relation 148838',
@@ -329,7 +336,8 @@ async function main() {
       sourceDate,
       layercakeModified: sourceModified,
       totalLibraries: libs.length,
-      totalSystems: systems.length
+      totalSystems: systems.length,
+      ...(pls?.meta ? { plsFiscalYear: pls.meta.fiscalYear } : {})
     },
     tags: FLAG_BITS,
     states: stateNames,
@@ -337,7 +345,8 @@ async function main() {
     libs,
     collisions,
     ambiguous,
-    domains
+    domains,
+    pls: pls?.results ?? []
   };
 
   const dest = join(ROOT, 'data', 'qa-data.json');
@@ -520,6 +529,134 @@ function findDomainClusters(rawLibs, stateIdx, notAssert) {
   return result;
 }
 
+// ---- IMLS PLS matching ---------------------------------------------------
+//
+// Cross-reference each OSM library system against the IMLS Public Libraries
+// Survey (a federal census). For each system we can match, classify its PLS
+// outlets into: matched (in OSM), untagged (a library exists in OSM nearby but
+// isn't tagged with this operator — add the tag), missing (no OSM library there
+// — likely needs creating), and discrepancy (matched by name but far from the
+// OSM coordinate — verify location). Only systems with >= MIN_LIBS OSM libraries
+// are checked, to keep the crosswalk reliable and the output focused.
+const MIN_LIBS_FOR_PLS = 3;
+
+function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
+  let plsData;
+  try {
+    plsData = JSON.parse(readFileSync(PLS_FILE, 'utf8'));
+  } catch {
+    console.warn('  PLS data not found (data/pls-outlets.json) — skipping PLS matching.');
+    return null;
+  }
+  const plsIndex = indexPls(plsData.outlets);
+
+  // Spatial grid over ALL OSM libraries (any operator) for the untagged-vs-missing
+  // split: ~0.02° cells (~2km) so a 200m nearest-lookup checks 9 cells.
+  const CELL = 0.02;
+  const grid = new Map();
+  const cellKey = (lat, lon) => `${Math.floor(lat / CELL)}:${Math.floor(lon / CELL)}`;
+  for (const r of rawLibs) {
+    if (r.lat == null) continue;
+    const k = cellKey(r.lat, r.lon);
+    if (!grid.has(k)) grid.set(k, []);
+    grid.get(k).push(r);
+  }
+  const nearbyLib = (lat, lon) => {
+    const ci = Math.floor(lat / CELL), cj = Math.floor(lon / CELL);
+    let best = null;
+    for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
+      for (const r of grid.get(`${ci + di}:${cj + dj}`) || []) {
+        const d = haversineM(lat, lon, r.lat, r.lon);
+        if (d <= 200 && (!best || d < best.dist)) best = { name: r.name || '', operator: r.operator || '', dist: Math.round(d) };
+      }
+    }
+    return best;
+  };
+
+  // A grid over PLS outlets too, to assign each OSM system its state exactly by
+  // nearest PLS outlet (PLS carries a reliable 2-letter state per outlet).
+  const plsGrid = new Map();
+  for (const o of plsData.outlets) {
+    const k = cellKey(o.lat, o.lon);
+    if (!plsGrid.has(k)) plsGrid.set(k, []);
+    plsGrid.get(k).push(o);
+  }
+  plsGrid.cell = CELL;
+
+  const results = [];
+  let checked = 0, crosswalked = 0;
+  for (let i = 0; i < sysKeys.length; i++) {
+    const s = sysMap.get(sysKeys[i]);
+    if (s.c < MIN_LIBS_FOR_PLS) continue;
+    checked++;
+    // Dominant state of this system's OSM libraries (2-letter — but our stateNames
+    // are full names; PLS uses abbreviations, so map via the outlets' coordinates
+    // instead: try each state the system appears in).
+    const osmCoords = s.libs.filter(l => l.lat != null).map(l => ({ lat: l.lat, lon: l.lon }));
+    if (!osmCoords.length) continue;
+    // State to scope the crosswalk: the modal state of the nearest PLS outlet to
+    // each OSM library. Using PLS's own points as reference is exact (no bbox
+    // guessing) and cheap via the same spatial grid.
+    const st = plsStateForCoords(osmCoords, plsGrid);
+    if (!st) continue;
+    const cw = crosswalk(plsIndex, s.n, st, osmCoords);
+    if (!cw) continue;
+    crosswalked++;
+
+    const plsSystem = plsIndex.byKey.get(cw.fscskey);
+    const cls = classify(plsSystem.outlets, s.libs, s.n, nearbyLib);
+    // Only surface systems where PLS reveals something actionable.
+    if (cls.untagged.length === 0 && cls.missing.length === 0 && cls.discrepancies.length === 0) continue;
+
+    results.push({
+      sysIdx: i,
+      fscskey: cw.fscskey,
+      state: plsSystem.state,   // 2-letter PLS state, for the state filter
+      plsCount: cls.plsCount,
+      osmCount: s.c,
+      matched: cls.matched,
+      untagged: cls.untagged.map(u => ({
+        name: u.p.name, addr: u.p.addr, city: u.p.city, lat: u.p.lat, lon: u.p.lon,
+        osmName: u.near.name, osmHasOperator: !!u.near.operator
+      })),
+      missing: cls.missing.map(o => ({
+        name: o.name, addr: o.addr, city: o.city, zip: o.zip, lat: o.lat, lon: o.lon,
+        geo: o.geomtype, structchg: o.structchg
+      })),
+      discrepancies: cls.discrepancies.map(d => ({ name: d.p.name, lat: d.p.lat, lon: d.p.lon, osmId: d.osmId, dist: d.dist }))
+    });
+  }
+  // Biggest opportunities first.
+  results.sort((a, b) => (b.missing.length + b.untagged.length) - (a.missing.length + a.untagged.length));
+  console.log(`  PLS: ${checked} systems checked, ${crosswalked} crosswalked, ${results.length} with findings`);
+  return { meta: plsData.meta, results };
+}
+
+// The 2-letter PLS state code for a system, by modal nearest-PLS-outlet state.
+// Exact (uses PLS's own points as reference) and cheap via the grid. Expands the
+// search ring until a nearby outlet is found, so rural systems still resolve.
+function plsStateForCoords(coords, plsGrid) {
+  const CELL = plsGrid.cell;
+  const votes = new Map();
+  for (const c of coords) {
+    const ci = Math.floor(c.lat / CELL), cj = Math.floor(c.lon / CELL);
+    let best = null;
+    for (let ring = 1; ring <= 8 && !best; ring++) {
+      for (let di = -ring; di <= ring; di++) for (let dj = -ring; dj <= ring; dj++) {
+        if (Math.max(Math.abs(di), Math.abs(dj)) !== ring && ring > 1) continue; // only new ring cells
+        for (const o of plsGrid.get(`${ci + di}:${cj + dj}`) || []) {
+          const d = haversineM(c.lat, c.lon, o.lat, o.lon);
+          if (!best || d < best.d) best = { st: o.state, d };
+        }
+      }
+    }
+    if (best) votes.set(best.st, (votes.get(best.st) || 0) + 1);
+  }
+  let winner = null;
+  for (const [st, n] of votes) if (!winner || n > winner.n) winner = { st, n };
+  return winner?.st ?? null;
+}
+
 // One record per line (still valid JSON): weekly git diffs then touch only the
 // lines that actually changed, instead of rewriting one giant line.
 function serializeLinewise(out) {
@@ -532,7 +669,8 @@ function serializeLinewise(out) {
     `"libs": ${arr(out.libs)},\n` +
     `"collisions": ${arr(out.collisions)},\n` +
     `"ambiguous": ${arr(out.ambiguous)},\n` +
-    `"domains": ${arr(out.domains)}\n` +
+    `"domains": ${arr(out.domains)},\n` +
+    `"pls": ${arr(out.pls)}\n` +
     '}\n';
 }
 
