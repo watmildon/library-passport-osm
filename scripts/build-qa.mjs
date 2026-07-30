@@ -22,11 +22,12 @@
 
 import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { layercakeModified, toISODate, committedSourceDate } from './systems-core.mjs';
 import { indexPls, crosswalk, classify, haversineM } from './pls-match.mjs';
+import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -329,6 +330,9 @@ async function main() {
   // ---- IMLS PLS matching: find branches missing / untagged vs the federal census.
   const pls = matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames);
 
+  // ---- IMLS PLS augmentation: per-crosswalked-system live tag fetch + suggestions.
+  const augment = await buildAugment(pls, systems);
+
   const out = {
     meta: {
       source: 'Layercake (OpenStreetMap US), US boundary relation 148838',
@@ -346,7 +350,8 @@ async function main() {
     collisions,
     ambiguous,
     domains,
-    pls: pls?.results ?? []
+    pls: pls?.results ?? [],
+    augment
   };
 
   const dest = join(ROOT, 'data', 'qa-data.json');
@@ -584,6 +589,7 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
   plsGrid.cell = CELL;
 
   const results = [];
+  const crosswalks = [];   // every crosswalked system, for the augment pass to reuse
   let checked = 0, crosswalked = 0;
   for (let i = 0; i < sysKeys.length; i++) {
     const s = sysMap.get(sysKeys[i]);
@@ -604,6 +610,10 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
     crosswalked++;
 
     const plsSystem = plsIndex.byKey.get(cw.fscskey);
+    // Record the crosswalk so buildAugment can fetch this system's live OSM tags
+    // and compute augmentation suggestions without re-deriving the match.
+    crosswalks.push({ sysIdx: i, sysKey: sysKeys[i], fscskey: cw.fscskey, state: plsSystem.state });
+
     const cls = classify(plsSystem.outlets, s.libs, s.n, nearbyLib);
     // Only surface systems where PLS reveals something actionable.
     if (cls.untagged.length === 0 && cls.missing.length === 0 && cls.discrepancies.length === 0) continue;
@@ -629,7 +639,109 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
   // Biggest opportunities first.
   results.sort((a, b) => (b.missing.length + b.untagged.length) - (a.missing.length + a.untagged.length));
   console.log(`  PLS: ${checked} systems checked, ${crosswalked} crosswalked, ${results.length} with findings`);
-  return { meta: plsData.meta, results };
+  return { meta: plsData.meta, results, crosswalks, plsIndex };
+}
+
+// ---- IMLS PLS augmentation ------------------------------------------------
+//
+// For each crosswalked system, fetch its libraries' CURRENT OSM tags (Layercake
+// omits addr:*, so we go to Overpass) and turn matched PLS outlets into additive
+// tag suggestions — plus create-node suggestions for truly-missing branches. The
+// augmentation page delivers these into JOSM review layers.
+//
+// Cost is bounded: only crosswalked systems are queried (hundreds, not 17k), one
+// Overpass request each, with a polite delay and a hard cap. Any Overpass failure
+// skips that one system rather than failing the build — augmentation is additive
+// to the QA data, never a gate on it.
+const AUGMENT_MAX_SYSTEMS = Number(process.env.AUGMENT_MAX_SYSTEMS || 400);
+const AUGMENT_SLEEP_MS = Number(process.env.AUGMENT_SLEEP_MS || 1100);
+
+// Full-tag Overpass fetch for one system (by operator:wikidata or operator name),
+// US-scoped. Returns [{ id, name, lat, lon, tags }] or null on failure.
+async function fetchSystemTags(mode, value) {
+  const esc = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+  const sel = mode === 'wikidata' ? `["operator:wikidata"="${esc}"]` : `["operator"="${esc}"]`;
+  const q = `[out:json][timeout:90];\narea(3600148838)->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
+  for (const url of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+        body: 'data=' + encodeURIComponent(q)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      return (json.elements || []).map(e => {
+        const lat = e.lat ?? e.center?.lat, lon = e.lon ?? e.center?.lon;
+        if (lat == null || lon == null) return null;
+        return { id: e.type[0] + e.id, name: e.tags?.name || '', lat, lon, tags: e.tags || {} };
+      }).filter(Boolean);
+    } catch (e) {
+      console.warn(`    augment: overpass ${url} failed for ${value}: ${e.message}`);
+    }
+  }
+  return null;
+}
+
+async function buildAugment(pls, systems) {
+  if (!pls?.crosswalks?.length) return [];
+  const { crosswalks, plsIndex } = pls;
+  const augment = [];
+  let queried = 0, skipped = 0;
+
+  console.log(`Augment: fetching live tags for up to ${Math.min(crosswalks.length, AUGMENT_MAX_SYSTEMS)} crosswalked systems…`);
+  for (const cw of crosswalks) {
+    if (queried >= AUGMENT_MAX_SYSTEMS) { skipped++; continue; }
+    const sys = systems[cw.sysIdx];
+    const qid = sys.w || null;                 // confirmed operator:wikidata, if any
+    const qidConfirmed = !!sys.w;
+    const suggestQid = qid || sys.sw || null;  // fall back to a domain-derived suggestion
+    const mode = sys.w ? 'wikidata' : 'operator';
+    const value = sys.w || sys.n;
+
+    queried++;
+    const osmLibs = await fetchSystemTags(mode, value);
+    await sleep(AUGMENT_SLEEP_MS);
+    if (!osmLibs) { skipped++; continue; }     // Overpass failed for this system
+
+    const plsSystem = plsIndex.byKey.get(cw.fscskey);
+    const cls = classify(plsSystem.outlets, osmLibs, sys.n, null);
+    const osmById = new Map(osmLibs.map(o => [o.id, o]));
+
+    const branches = [];
+
+    // Augment EXISTING matched OSM libraries: fill blank tags, flag conflicts.
+    // (Missing branches — creating new nodes — are the QA page's job, not this.)
+    for (const pair of cls.matchedPairs) {
+      const osm = osmById.get(pair.o.id);
+      if (!osm) continue;
+      const allowAddr = isPreciseGeocode(pair.p);
+      const { tags, conflicts } = suggestTagsForOutlet(pair.p, suggestQid, osm.tags, {
+        allowAddr, qidConfirmed
+      });
+      if (Object.keys(tags).length === 0 && conflicts.length === 0) continue;  // nothing to say
+      branches.push({
+        osm: pair.o.id, lat: osm.lat, lon: osm.lon,
+        plsName: titleCase(pair.p.name), dist: pair.dist, tags, conflicts
+      });
+    }
+
+    if (!branches.length) continue;
+    augment.push({
+      sysIdx: cw.sysIdx,
+      fscskey: cw.fscskey,
+      state: cw.state,
+      qid: suggestQid,
+      qidConfirmed,
+      branches
+    });
+  }
+
+  // Biggest opportunities first.
+  augment.sort((a, b) => b.branches.length - a.branches.length);
+  const totalBranches = augment.reduce((n, a) => n + a.branches.length, 0);
+  console.log(`  Augment: ${queried} systems queried, ${skipped} skipped, ${augment.length} with suggestions (${totalBranches} branches)`);
+  return augment;
 }
 
 // The 2-letter PLS state code for a system, by modal nearest-PLS-outlet state.
@@ -658,8 +770,9 @@ function plsStateForCoords(coords, plsGrid) {
 }
 
 // One record per line (still valid JSON): weekly git diffs then touch only the
-// lines that actually changed, instead of rewriting one giant line.
-function serializeLinewise(out) {
+// lines that actually changed, instead of rewriting one giant line. Exported so
+// augment-state.mjs writes qa-data.json in the exact same reviewable format.
+export function serializeLinewise(out) {
   const arr = a => '[\n' + a.map(x => JSON.stringify(x)).join(',\n') + '\n]';
   return '{\n' +
     `"meta": ${JSON.stringify(out.meta)},\n` +
@@ -670,8 +783,12 @@ function serializeLinewise(out) {
     `"collisions": ${arr(out.collisions)},\n` +
     `"ambiguous": ${arr(out.ambiguous)},\n` +
     `"domains": ${arr(out.domains)},\n` +
-    `"pls": ${arr(out.pls)}\n` +
+    `"pls": ${arr(out.pls)},\n` +
+    `"augment": ${arr(out.augment)}\n` +
     '}\n';
 }
 
-main().catch(e => { console.error(e); process.exit(1); });
+// Run only when executed directly (not when imported for serializeLinewise).
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch(e => { console.error(e); process.exit(1); });
+}

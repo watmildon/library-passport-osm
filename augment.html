@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Library Passport · Augment (JOSM)</title>
+  <meta name="description" content="Deliver IMLS PLS-derived suggested edits (phone, address, operator:wikidata, name) into JOSM review layers for US libraries in OpenStreetMap." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧩</text></svg>" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body class="qa-page">
+
+  <header class="qa-head">
+    <div class="qa-head-inner">
+      <div class="qa-title">
+        <h1>🧩 Augment libraries in JOSM</h1>
+        <a class="qa-back" href="./qa.html">← Data QA</a>
+      </div>
+      <p class="qa-sub">Deliver federal <a href="https://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls" target="_blank" rel="noopener">IMLS PLS</a>
+        data — phone, address, <code>operator:wikidata</code>, name — into <a href="https://josm.openstreetmap.de/" target="_blank" rel="noopener">JOSM</a>
+        as pre-filled suggestions you review before uploading.</p>
+
+      <div class="aug-josm-callout" id="josm-callout">
+        <strong>JOSM-first workflow.</strong> Start JOSM, enable <em>Remote Control</em>
+        (Preferences → Remote Control → “Enable remote control”), and keep it running.
+        “Send” loads the existing library into a single named <em>review layer</em>
+        with the fill-blank tags already applied — no per-tag prompts.
+        <strong>Conflicts (where PLS differs from an existing tag) are shown for
+        review only and never sent.</strong> Review every change before uploading.
+        Missing branches? Those live on the <a href="./qa.html#pls">Data QA page</a>.
+        <span class="aug-josm-status" id="josm-status"></span>
+      </div>
+
+      <p class="qa-meta" id="qa-meta">Loading data…</p>
+      <nav class="qa-nav">
+        <a href="#overview">Overview</a>
+        <a href="#systems">Systems</a>
+        <a href="#explorer">Augment a system</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="qa-main">
+
+    <details id="overview" class="qa-section" open>
+      <summary><h2>Overview</h2></summary>
+      <div class="qa-tiles" id="tiles"></div>
+      <p class="qa-note">Suggestions are <strong>additive only</strong> — a tag is proposed
+        only when the OSM element is missing it; existing values are never changed.
+        Addresses are suggested only where the PLS geocode is precise, and the street/house-number
+        split is conservative (ambiguous addresses are skipped). Website isn’t offered — PLS
+        doesn’t collect it.</p>
+    </details>
+
+    <details id="systems" class="qa-section" open>
+      <summary><h2>Systems with suggestions</h2></summary>
+      <div class="qa-filter-row">
+        <input id="sys-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
+        <select id="sys-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
+      <div class="qa-table-wrap">
+        <table class="qa-table" id="sys-table"></table>
+      </div>
+      <button class="qa-more" id="sys-more" hidden>Show all</button>
+    </details>
+
+    <details id="explorer" class="qa-section" open>
+      <summary><h2>Augment a system</h2></summary>
+      <div class="qa-explorer-search">
+        <input id="aug-search" type="text" placeholder="Search a library system with suggestions…" autocomplete="off"
+               role="combobox" aria-expanded="false" aria-controls="aug-suggest" />
+        <div id="aug-suggest" class="suggest" role="listbox"></div>
+      </div>
+      <div id="aug-view" hidden></div>
+    </details>
+
+  </main>
+
+  <footer class="qa-foot">
+    Suggestions from the <a href="https://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls" target="_blank" rel="noopener">IMLS Public Libraries Survey</a> (public domain) ·
+    Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> ·
+    <a href="./qa.html">Data QA</a> · <a href="./index.html">Library Passport</a>
+  </footer>
+
+  <script type="module" src="./js/augment.js"></script>
+</body>
+</html>

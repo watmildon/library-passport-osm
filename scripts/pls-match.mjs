@@ -156,6 +156,7 @@ export function classify(plsOutlets, osmLibs, operatorName, nearbyLibs) {
   return {
     plsCount: plsOutlets.length,
     matched: matched.length,
+    matchedPairs: matched.map(c => ({ p: c.p, o: c.o, dist: Math.round(c.dist) })), // PLS outlet ↔ its OSM library
     untagged,      // [{ p, near }]
     missing,       // [ outlet ]
     discrepancies  // [{ p, osmId, dist }]

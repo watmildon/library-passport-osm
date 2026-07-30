@@ -7,7 +7,8 @@
   "scripts": {
     "build:systems": "node scripts/build-systems.mjs",
     "build:qa": "node scripts/build-qa.mjs",
-    "refresh:systems": "node scripts/refresh-systems.mjs"
+    "refresh:systems": "node scripts/refresh-systems.mjs",
+    "test:augment": "node --test scripts/pls-augment.test.mjs scripts/street-expand.test.mjs"
   },
   "license": "CC0-1.0"
 }

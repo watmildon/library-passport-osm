@@ -6,6 +6,7 @@
 import { searchSystems } from './systems.js';
 import { fetchLibraries } from './overpass.js';
 import { TRACKED_TAGS } from './completeness.js';
+import { JOSM, bboxAround, josmSend, webEditObjectUrl, webEditAtUrl } from './josm.js';
 
 const $ = sel => document.querySelector(sel);
 
@@ -57,50 +58,33 @@ const EDITOR_KEY = 'libpass:editor';
 let currentEditor = (() => { try { return localStorage.getItem(EDITOR_KEY) || 'id'; } catch { return 'id'; } })();
 function setEditor(e) { currentEditor = e; try { localStorage.setItem(EDITOR_KEY, e); } catch {} }
 
-// A small bounding box (~40m) around a coordinate, for JOSM load_and_zoom.
-function bboxAround(lat, lon, d = 0.0002) {
-  return { left: (lon - d).toFixed(6), right: (lon + d).toFixed(6), top: (lat + d).toFixed(6), bottom: (lat - d).toFixed(6) };
-}
-
-// JOSM remote control: browsers whitelist http://127.0.0.1 from HTTPS pages, so
-// we call the HTTP endpoint on 8111 (the HTTPS/8112 endpoint is deprecated).
-const JOSM = 'http://127.0.0.1:8111';
-
 // Link to edit an existing object (node/way/relation). lat/lon optional but
-// needed for JOSM (to build a bbox to load and select within).
+// needed for JOSM (to build a bbox to load and select within). JOSM/web builders
+// live in ./josm.js; this picks per the user's editor choice.
 function editObject(type, id, lat, lon) {
   const t = OSM_TYPE[type] || type; // accept 'n'/'node'
-  const obj = `${t[0]}${id}`;       // e.g. w12345
-  if (currentEditor === 'rapid') return `https://rapideditor.org/edit#id=${obj}${lat != null ? `&map=19/${lat}/${lon}` : ''}`;
   if (currentEditor === 'josm') {
     if (lat == null) return `${JOSM}/import?url=https://www.openstreetmap.org/api/0.6/${t}/${id}/full`;
     const b = bboxAround(lat, lon);
-    return `${JOSM}/load_and_zoom?left=${b.left}&right=${b.right}&top=${b.top}&bottom=${b.bottom}&select=${obj}`;
+    return `${JOSM}/load_and_zoom?left=${b.left}&right=${b.right}&top=${b.top}&bottom=${b.bottom}&select=${t[0]}${id}`;
   }
-  return `https://www.openstreetmap.org/edit?editor=id&${t}=${id}`;
+  return webEditObjectUrl(currentEditor, t, id, lat, lon);
 }
 
 // Link to edit at a coordinate (for creating a new node / checking a location).
 function editAt(lat, lon) {
-  if (currentEditor === 'rapid') return `https://rapideditor.org/edit#map=19/${lat}/${lon}`;
   if (currentEditor === 'josm') {
     const b = bboxAround(lat, lon);
     return `${JOSM}/load_and_zoom?left=${b.left}&right=${b.right}&top=${b.top}&bottom=${b.bottom}`;
   }
-  return `https://www.openstreetmap.org/edit?editor=id#map=19/${lat}/${lon}`;
+  return webEditAtUrl(currentEditor, lat, lon);
 }
 
-// Send a JOSM remote-control command in the background (no new tab). JOSM's
-// response has no CORS headers, so a no-cors request can't be read — we can only
-// tell whether it was dispatched vs. the connection was refused (JOSM not
-// running). The opaque response means we can't confirm JOSM actually accepted it.
+// Send a JOSM remote-control command in the background (no new tab), toasting
+// the dispatched/refused result. See ./josm.js for the CORS caveat.
 async function josmRemote(url) {
-  try {
-    await fetch(url, { mode: 'no-cors' });
-    toast('Sent to JOSM');
-  } catch {
-    toast('JOSM didn’t respond — is it running with Remote Control enabled?', true);
-  }
+  if (await josmSend(url)) toast('Sent to JOSM');
+  else toast('JOSM didn’t respond — is it running with Remote Control enabled?', true);
 }
 
 // A brief status toast (bottom-center).

@@ -101,6 +101,10 @@ DuckDB). The Node script normalizes this into one compact file:
   hosting platforms and >2-state spreads (vendor/aggregator domains) are excluded.
 - `pls` — per-system IMLS PLS cross-reference (see below): `{ sysIdx, fscskey,
   plsCount, osmCount, matched, untagged[], missing[], discrepancies[] }`.
+- `augment` — per-system, ready-to-apply PLS tag **suggestions** for the JOSM-first
+  [augmentation page](../augment.html) (see below): `{ sysIdx, fscskey, state, qid,
+  qidConfirmed, branches[] }`, each branch `{ kind:'existing'|'new', osm, lat, lon,
+  plsName, tags }` where `tags` are additive-only OSM tags.
 
 **IMLS PLS matching** ([`pls-match.mjs`](./pls-match.mjs)). Each OSM system with
 ≥3 libraries is crosswalked to a PLS system: name similarity proposes candidates,
@@ -129,6 +133,68 @@ warning when a system's dominant wikidata tag is itself ruled out by a mapper.
 **Limitation:** Layercake's POI layer has no `addr:*` columns, so address
 completion isn't in the weekly stats. The QA page's "Load live details" action
 fills that gap per-system via Overpass (full tag set, incl. addresses).
+
+**IMLS PLS augmentation** ([`pls-augment.mjs`](./pls-augment.mjs)). For each
+crosswalked system, the build compares matched PLS outlets against their EXISTING
+OSM libraries and emits `augment[]` for the JOSM-first
+[augmentation page](../augment.html). It is scoped to improving objects that
+already exist — **creating missing branches is the QA page's job** (the "Missing
+branches" section). Each PLS value is sorted into (deliberately conservative — PLS
+lags ~2 years and this is a mapper assist, never an automated overwrite):
+
+- **`tags`** — an additive fill: OSM *lacks* this key, so it's safe to apply.
+- **`conflicts`** — OSM *has a different value*: `[{ key, osm, pls }]`, surfaced for
+  the mapper to reconcile by hand and **never auto-sent**.
+- A PLS value equal to OSM's (after light normalization — phones compare on digits)
+  is neither.
+
+Fields considered: `phone` (formatted `+1 XXX-XXX-XXXX`, PLS sentinels `-3`/`-4`
+dropped; conflicts flagged), `addr:housenumber`/`addr:street`/`addr:unit`/
+`addr:city`/`addr:postcode` (conflicts flagged), `operator:wikidata` (the system's
+Q-id, withheld when only a domain-derived *suggestion*), and `name` (**fill-only** —
+a differing OSM name is a curated, differently-styled string like
+"Seattle Public Library - X Branch" vs PLS "X Branch Library", so it's never flagged
+as a conflict). No `website` — PLS doesn't collect it.
+
+- **Conservative address split** — PLS ships one `ADDRESS` field; it's split into
+  house number + street (+ `addr:unit` when a suite/`#` designator trails) only
+  when unambiguous (clean leading number, ordinal streets like "12TH AVENUE" left
+  alone, PO boxes skipped), and only when the PLS geocode is precise (`GEOSTATUS=E`
+  and a `POINTADDRESS`/`SUBADDRESS`/`STREETADDRESS` `GEOMTYPE`). Street names are
+  **expanded to OpenStreetMap style** (`MAIN ST.` → `Main Street`, `AVE S` →
+  `Avenue South`) via [`street-expand.mjs`](./street-expand.mjs) — a JS port of the
+  `street_name_utils.py` expander (TIGER-ROAR / OSM-address-parser / josm-validator-rules
+  lineage), conservative about ambiguous abbreviations.
+- **Live tags** — because Layercake omits `addr:*`, the augment builder does **one
+  bounded Overpass request per crosswalked system** (not per library) to read
+  current tags, with a polite delay and a hard cap (`AUGMENT_MAX_SYSTEMS`, default
+  400; `AUGMENT_SLEEP_MS`, default 1100). Any Overpass failure **skips that one
+  system** rather than failing the build — augmentation is additive to the QA data,
+  never a gate on it. (Pure suggestion logic is unit-tested: `npm run test:augment`.)
+
+### `augment-state.mjs` — per-region test data (dev Overpass)
+
+For testing/previewing [`augment.html`](../augment.html) without a full DuckDB
+build, this regenerates the `augment[]` section of `data/qa-data.json` for **one
+or more states**, deriving each state's systems from the committed `libs`/`systems`
+(no DuckDB) and reading current tags from a dev Overpass instance (resolved like
+`refresh-systems.mjs`: `OVERPASS_URL` env, else a gitignored `.overpass-url` file).
+It reuses the exact production suggestion logic, so the emitted shape matches the
+weekly build.
+
+```sh
+node scripts/augment-state.mjs WA           # one state
+node scripts/augment-state.mjs WA OR CA     # several (region rollout)
+node scripts/augment-state.mjs --all        # every state (long-running)
+node scripts/augment-state.mjs WA --replace # drop existing augment[] first
+```
+
+It **accumulates**: systems for the requested states are merged into whatever's
+already in `augment[]` (keyed by `sysIdx`, so re-running a state refreshes just its
+systems and untouched states are preserved). `--replace` starts from an empty
+`augment[]`. Everything outside `augment[]` is preserved, and `meta.plsFiscalYear`
+is stamped. Intended for generating preview / bug-fixing data; re-run `build:qa`
+to regenerate the real national dataset.
 
 ## `build-systems.mjs` — US library-systems list
 
