@@ -141,7 +141,7 @@ export function classify(plsOutlets, osmLibs, operatorName, nearbyLibs) {
   for (const c of namePairs) {
     if (usedP.has(c.p.id) || usedO.has(c.o.id)) continue;
     usedP.add(c.p.id); usedO.add(c.o.id);
-    discrepancies.push({ p: c.p, osmId: c.o.id, dist: Math.round(c.dist) });
+    discrepancies.push({ p: c.p, osmId: c.o.id, osmLat: c.o.lat, osmLon: c.o.lon, dist: Math.round(c.dist) });
   }
 
   // remaining PLS outlets: split untagged (exists in OSM, any operator) vs missing

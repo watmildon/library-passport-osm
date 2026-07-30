@@ -572,7 +572,7 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
     for (let di = -1; di <= 1; di++) for (let dj = -1; dj <= 1; dj++) {
       for (const r of grid.get(`${ci + di}:${cj + dj}`) || []) {
         const d = haversineM(lat, lon, r.lat, r.lon);
-        if (d <= 200 && (!best || d < best.dist)) best = { name: r.name || '', operator: r.operator || '', dist: Math.round(d) };
+        if (d <= 200 && (!best || d < best.dist)) best = { id: r.type[0] + r.id, name: r.name || '', operator: r.operator || '', lat: r.lat, lon: r.lon, dist: Math.round(d) };
       }
     }
     return best;
@@ -627,13 +627,14 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
       matched: cls.matched,
       untagged: cls.untagged.map(u => ({
         name: u.p.name, addr: u.p.addr, city: u.p.city, lat: u.p.lat, lon: u.p.lon,
+        osm: u.near.id, osmLat: u.near.lat, osmLon: u.near.lon,
         osmName: u.near.name, osmHasOperator: !!u.near.operator
       })),
       missing: cls.missing.map(o => ({
         name: o.name, addr: o.addr, city: o.city, zip: o.zip, lat: o.lat, lon: o.lon,
         geo: o.geomtype, structchg: o.structchg
       })),
-      discrepancies: cls.discrepancies.map(d => ({ name: d.p.name, lat: d.p.lat, lon: d.p.lon, osmId: d.osmId, dist: d.dist }))
+      discrepancies: cls.discrepancies.map(d => ({ name: d.p.name, lat: d.p.lat, lon: d.p.lon, osmId: d.osmId, osmLat: d.osmLat, osmLon: d.osmLon, dist: d.dist }))
     });
   }
   // Biggest opportunities first.

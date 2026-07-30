@@ -486,24 +486,29 @@ function renderPls() {
     const sys = data.systems[p.sysIdx];
     // Every row is: name | detail | meta | action — so columns line up across
     // the three row types regardless of what each has to show.
-    const row = (cls, name, detail, meta, lat, lon, title) => `
+    const row = (cls, name, detail, meta, href, title) => `
       <div class="pls-row ${cls}">
         <span class="pls-name">${escapeHtml(name)}</span>
         <span class="pls-detail">${detail}</span>
         <span class="pls-meta">${meta}</span>
-        <a class="qa-icon-link" href="${editAt(lat, lon)}" target="_blank" rel="noopener" title="${title}">✏️</a>
+        <a class="qa-icon-link" href="${href}" target="_blank" rel="noopener" title="${title}">✏️</a>
       </div>`;
+    // Rows with a matched OSM object link to that object; only truly-missing
+    // branches fall back to the (approximate) PLS coordinate. Older qa-data.json
+    // lacks the OSM ref on untagged rows — keep the coordinate fallback for it.
+    const editRef = (osm, lat, lon, fbLat, fbLon) =>
+      osm ? editObject(osm[0], osm.slice(1), lat, lon) : editAt(fbLat, fbLon);
     const missing = p.missing.map(m => row('pls-missing', titleCase(m.name),
       escapeHtml([titleCase(m.addr), titleCase(m.city)].filter(Boolean).join(', ')),
       `<span class="pls-geo" title="IMLS geocode precision">${escapeHtml(m.geo || '')}</span>`,
-      m.lat, m.lon, 'Create in OSM editor')).join('');
+      editAt(m.lat, m.lon), 'Create in OSM editor')).join('');
     const untagged = p.untagged.map(u => row('pls-untagged', titleCase(u.name),
       `↳ OSM: “${escapeHtml(u.osmName)}”`,
       u.osmHasOperator ? '<span class="qa-badge qa-badge-mixed">wrong operator?</span>' : '<span class="qa-badge qa-badge-miss">no operator tag</span>',
-      u.lat, u.lon, 'Fix tags in OSM editor')).join('');
+      editRef(u.osm, u.osmLat, u.osmLon, u.lat, u.lon), 'Fix tags in OSM editor')).join('');
     const disc = p.discrepancies.map(dd => row('pls-disc', titleCase(dd.name),
       `OSM coordinate is ~${fmt(dd.dist)}m from the PLS location — verify`,
-      '', dd.lat, dd.lon, 'Check location in OSM editor')).join('');
+      '', editRef(dd.osmId, dd.osmLat, dd.osmLon, dd.lat, dd.lon), 'Check location in OSM editor')).join('');
 
     // Show the system's operator:wikidata so it's handy to copy when tagging the
     // untagged/missing branches below. Confirmed (.w) is a solid badge; a
