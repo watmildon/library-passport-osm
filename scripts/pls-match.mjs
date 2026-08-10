@@ -65,16 +65,29 @@ export function indexPls(outlets) {
   return { byKey, byState };
 }
 
-// Median pairwise nearest-neighbor distance (m) between a PLS system's outlets
-// and a set of OSM library coordinates. Small = these are the same system.
+// Spatial agreement (m) between a PLS system's outlets and a set of OSM library
+// coordinates: the SMALLER of the two directional median nearest-neighbor
+// distances. Small = these are the same system. Each direction alone has a
+// blind spot that rejects true matches:
+//   outlets → OSM: penalizes incomplete OSM mapping — exactly the systems the
+//     missing-branch report exists to find (Timberland Regional: 14 of 29
+//     outlets mapped pushed this median to 5.7km, past the gate);
+//   OSM → outlets: penalizes OSM operator tags that span more than the PLS
+//     system (federated members tagged with the central system, e.g. Onondaga).
+// Either direction agreeing means the systems overlap; ranking candidates by
+// the same value still lets the true system beat a nearby same-name one
+// (East vs West Baton Rouge), since the true one agrees at ~tens of meters.
 function spatialAgreement(plsOutlets, osmCoords) {
   if (!osmCoords.length || !plsOutlets.length) return Infinity;
-  const dists = plsOutlets.map(p => {
-    let min = Infinity;
-    for (const o of osmCoords) { const d = haversineM(p.lat, p.lon, o.lat, o.lon); if (d < min) min = d; }
-    return min;
-  }).sort((a, b) => a - b);
-  return dists[Math.floor(dists.length / 2)]; // median
+  const medianNearest = (from, to) => {
+    const dists = from.map(a => {
+      let min = Infinity;
+      for (const b of to) { const d = haversineM(a.lat, a.lon, b.lat, b.lon); if (d < min) min = d; }
+      return min;
+    }).sort((x, y) => x - y);
+    return dists[Math.floor(dists.length / 2)];
+  };
+  return Math.min(medianNearest(plsOutlets, osmCoords), medianNearest(osmCoords, plsOutlets));
 }
 
 // Match an OSM system to a PLS FSCSKEY. Name similarity proposes candidates; a

@@ -206,6 +206,7 @@ async function boot() {
   renderAmbiguous();
   renderDomains();
   renderPls();
+  renderPlsUnmatched();
   renderBranchCounts();
   renderCollisions();
   setupExplorer();
@@ -224,6 +225,12 @@ async function boot() {
     renderPls();
   });
   setupPlsStateFilter();
+  $('#plsu-filter').addEventListener('input', e => {
+    plsuFilter = e.target.value;
+    plsuExpanded = false;
+    renderPlsUnmatched();
+  });
+  setupPlsuStateFilter();
   setupEditorPicker();
   openSection(location.hash.slice(1));
 }
@@ -538,6 +545,62 @@ function renderPls() {
   more.textContent = `Show all ${fmt(rows.length)} systems`;
   more.onclick = () => { plsExpanded = true; renderPls(); };
   bindExploreButtons(list);
+}
+
+// ---------------- PLS systems with no OSM match ----------------
+// The catchall for systems the crosswalk can't see: fragmented / missing
+// operator tags, or genuinely unmapped systems. Data is precomputed by
+// build-qa.mjs (multi-outlet PLS systems only).
+const PLSU_PREVIEW = 30;
+let plsuExpanded = false;
+let plsuFilter = '';
+let plsuState = '';
+
+function setupPlsuStateFilter() {
+  const sel = $('#plsu-state');
+  if (!sel || !data.plsUnmatched?.length) return;
+  const states = [...new Set(data.plsUnmatched.map(u => u.state).filter(Boolean))].sort();
+  sel.insertAdjacentHTML('beforeend',
+    states.map(s => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join(''));
+  sel.addEventListener('change', () => { plsuState = sel.value; plsuExpanded = false; renderPlsUnmatched(); });
+}
+
+function renderPlsUnmatched() {
+  const list = $('#plsu-list');
+  if (!list) return;
+  if (!data.plsUnmatched || !data.plsUnmatched.length) {
+    list.innerHTML = '<p class="qa-note">No unmatched PLS systems (dataset predates this report, or every multi-outlet system crosswalked). Regenerated weekly.</p>';
+    $('#plsu-more').hidden = true;
+    return;
+  }
+  const term = plsuFilter.trim().toLowerCase();
+  const rows = data.plsUnmatched
+    .filter(u => !plsuState || u.state === plsuState)
+    .filter(u => !term || u.name.toLowerCase().includes(term));
+
+  if (!rows.length) {
+    list.innerHTML = '<p class="qa-note">No systems match.</p>';
+    $('#plsu-more').hidden = true;
+    return;
+  }
+
+  const shown = plsuExpanded ? rows : rows.slice(0, PLSU_PREVIEW);
+  list.innerHTML = shown.map(u => {
+    const badge = u.near
+      ? `<span class="qa-badge qa-badge-mixed" title="Outlets with some OSM library within 200 m — the buildings are likely mapped but operator tags are missing or inconsistent">${u.near}/${u.outlets} in OSM</span>`
+      : `<span class="qa-badge qa-badge-miss" title="No outlet has an OSM library within 200 m — likely unmapped">0 in OSM</span>`;
+    return `<div class="pls-row">
+      <span class="pls-name">${escapeHtml(titleCase(u.name))}</span>
+      <span class="pls-detail">${escapeHtml(u.state)} · ${u.outlets} outlets · PLS ${escapeHtml(u.fscskey)}</span>
+      <span class="pls-meta">${badge}</span>
+      <a class="qa-icon-link" href="https://www.openstreetmap.org/#map=10/${u.lat}/${u.lon}" target="_blank" rel="noopener" title="View this system's area on OSM">🔍</a>
+    </div>`;
+  }).join('');
+
+  const more = $('#plsu-more');
+  more.hidden = plsuExpanded || rows.length <= PLSU_PREVIEW;
+  more.textContent = `Show all ${fmt(rows.length)} systems`;
+  more.onclick = () => { plsuExpanded = true; renderPlsUnmatched(); };
 }
 
 // ---------------- Branch counts vs Wikidata ----------------

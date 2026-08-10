@@ -351,6 +351,7 @@ async function main() {
     ambiguous,
     domains,
     pls: pls?.results ?? [],
+    plsUnmatched: pls?.unmatched ?? [],
     augment
   };
 
@@ -639,8 +640,34 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
   }
   // Biggest opportunities first.
   results.sort((a, b) => (b.missing.length + b.untagged.length) - (a.missing.length + a.untagged.length));
-  console.log(`  PLS: ${checked} systems checked, ${crosswalked} crosswalked, ${results.length} with findings`);
-  return { meta: plsData.meta, results, crosswalks, plsIndex };
+
+  // PLS systems that crosswalked to NOTHING in OSM — the catchall for systems
+  // the matcher can't see at all: operator tags fragmented across spellings
+  // (each fragment below MIN_LIBS_FOR_PLS), operator-less branches, or genuinely
+  // unmapped systems. `near` counts outlets that already have SOME OSM library
+  // (any operator) within 200m: high near/outlets means the buildings are mapped
+  // but the tags need work; zero means unmapped territory. Single-outlet systems
+  // are excluded — they're most of PLS (~7.7k) and mostly noise at this scale.
+  const crosswalkedKeys = new Set(crosswalks.map(c => c.fscskey));
+  const unmatched = [];
+  for (const ps of plsIndex.byKey.values()) {
+    if (ps.outlets.length < 2 || crosswalkedKeys.has(ps.fscskey)) continue;
+    let near = 0, latSum = 0, lonSum = 0;
+    for (const o of ps.outlets) {
+      if (nearbyLib(o.lat, o.lon)) near++;
+      latSum += o.lat; lonSum += o.lon;
+    }
+    unmatched.push({
+      name: ps.name, fscskey: ps.fscskey, state: ps.state,
+      outlets: ps.outlets.length, near,
+      lat: Math.round(latSum / ps.outlets.length * 1e4) / 1e4,
+      lon: Math.round(lonSum / ps.outlets.length * 1e4) / 1e4
+    });
+  }
+  unmatched.sort((a, b) => b.outlets - a.outlets || a.name.localeCompare(b.name));
+
+  console.log(`  PLS: ${checked} systems checked, ${crosswalked} crosswalked, ${results.length} with findings, ${unmatched.length} multi-outlet PLS systems unmatched`);
+  return { meta: plsData.meta, results, crosswalks, plsIndex, unmatched };
 }
 
 // ---- IMLS PLS augmentation ------------------------------------------------
@@ -785,6 +812,7 @@ export function serializeLinewise(out) {
     `"ambiguous": ${arr(out.ambiguous)},\n` +
     `"domains": ${arr(out.domains)},\n` +
     `"pls": ${arr(out.pls)},\n` +
+    `"plsUnmatched": ${arr(out.plsUnmatched ?? [])},\n` +
     `"augment": ${arr(out.augment)}\n` +
     '}\n';
 }

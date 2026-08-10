@@ -34,6 +34,7 @@
         <a href="#ambiguous">Shared operators</a>
         <a href="#domains">Website domains</a>
         <a href="#pls">Missing branches</a>
+        <a href="#pls-unmatched">Unmatched systems</a>
         <a href="./augment.html">🧩 Augment (JOSM)</a>
         <a href="#branches">Branch counts</a>
         <a href="#typos">Possible typos</a>
@@ -116,6 +117,24 @@
       </div>
       <div id="pls-list"></div>
       <button class="qa-more" id="pls-more" hidden>Show all</button>
+    </details>
+
+    <details id="pls-unmatched" class="qa-section" open>
+      <summary><h2>PLS systems not found in OSM</h2></summary>
+      <p class="qa-note">Multi-outlet library systems from the IMLS census that matched <strong>no OSM
+        system</strong> — usually because their branches' <code>operator</code> tags are missing or split
+        across inconsistent spellings (so no one system reaches the crosswalk's 3-library minimum), or the
+        branches aren't mapped at all. <em>“in OSM”</em> counts outlets with <em>some</em> library mapped
+        within 200&nbsp;m, whatever its tags: a high count means the buildings exist and the operator tags
+        need fixing; zero means likely unmapped territory.</p>
+      <div class="qa-filter-row">
+        <input id="plsu-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
+        <select id="plsu-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
+      <div id="plsu-list"></div>
+      <button class="qa-more" id="plsu-more" hidden>Show all</button>
     </details>
 
     <details id="branches" class="qa-section" open>
