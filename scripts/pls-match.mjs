@@ -96,12 +96,17 @@ function spatialAgreement(plsOutlets, osmCoords) {
 // name score on a geographically distant system is rejected. Returns
 // { fscskey, plsName, sim, spatialM } or null.
 //
+// osmSystemName: one name or an array of candidate names — the OSM operator
+//   name plus any Wikidata label/aliases (PLS often uses an official name OSM
+//   doesn't, e.g. "NCW Libraries" vs "North Central Regional Library"); a PLS
+//   candidate scores on its best-matching name.
 // osmCoords: this OSM system's library coordinates [{lat,lon}] (for confirmation).
 export function crosswalk(plsIndex, osmSystemName, stateAbbr, osmCoords, opts = {}) {
   const { minSim = 0.55, maxSpatialM = 3000 } = opts;
+  const names = Array.isArray(osmSystemName) ? osmSystemName : [osmSystemName];
   const candidates = plsIndex.byState.get(stateAbbr) || [];
   const scored = candidates
-    .map(c => ({ c, sim: systemSim(osmSystemName, c.name) }))
+    .map(c => ({ c, sim: Math.max(...names.map(n => systemSim(n, c.name))) }))
     .filter(x => x.sim >= minSim)
     .sort((a, b) => b.sim - a.sim);
   if (!scored.length) return null;

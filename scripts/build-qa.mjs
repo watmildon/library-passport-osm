@@ -163,6 +163,55 @@ async function fetchWikidataBranchCounts() {
   return new Map();
 }
 
+// ---- Wikidata alias names -------------------------------------------------
+//
+// OSM operator names sometimes differ from the official name PLS uses (e.g.
+// operator=NCW Libraries vs PLS "NORTH CENTRAL REGIONAL LIBRARY") — sinking the
+// name-similarity crosswalk even though operator:wikidata identifies the system
+// exactly. Wikidata's English label + aliases bridge the gap: fetched for every
+// confirmed QID and offered as extra name candidates to the crosswalk (the
+// spatial gate still confirms every match). Fails soft to an empty map.
+async function fetchWikidataAliases(qids) {
+  // Tag values aren't always clean QIDs (semicolon lists, literal names typed
+  // into operator:wikidata) — a malformed value in VALUES 400s the whole query.
+  qids = qids.filter(q => /^Q\d+$/.test(q));
+  if (!qids.length) return new Map();
+  const query = `SELECT ?item ?name WHERE {
+  VALUES ?item { ${qids.map(q => 'wd:' + q).join(' ')} }
+  { ?item rdfs:label ?name . FILTER(LANG(?name) = "en") }
+  UNION
+  { ?item skos:altLabel ?name . FILTER(LANG(?name) = "en") }
+}`;
+
+  for (let i = 0; i < 3; i++) {
+    try {
+      const res = await fetch('https://query.wikidata.org/sparql', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Accept': 'application/sparql-results+json',
+          'User-Agent': USER_AGENT
+        },
+        body: 'query=' + encodeURIComponent(query)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const rows = (await res.json()).results.bindings;
+      const out = new Map();
+      for (const r of rows) {
+        const qid = r.item.value.split('/').pop();
+        if (!out.has(qid)) out.set(qid, []);
+        out.get(qid).push(r.name.value);
+      }
+      return out;
+    } catch (e) {
+      console.warn(`  Wikidata alias fetch failed (${e.message})${i < 2 ? ' — retrying…' : ''}`);
+      if (i < 2) await sleep(5000 * (i + 1));
+    }
+  }
+  console.warn('  proceeding without Wikidata aliases');
+  return new Map();
+}
+
 async function main() {
   // Layercake's snapshot timestamp gates the whole rebuild: skip if the committed
   // QA dataset already comes from an equal-or-newer source.
@@ -327,8 +376,14 @@ async function main() {
   const domains = findDomainClusters(rawLibs, stateIdx, notAssert);
   console.log(`  ${domains.length} website domains with operator-less libraries`);
 
+  // ---- Wikidata labels/aliases for tagged systems: extra crosswalk name
+  // candidates when the OSM operator name differs from PLS's official name.
+  const wdAliases = await fetchWikidataAliases([...new Set(
+    systems.filter(s => s.w).flatMap(s => s.w.split(';').map(q => q.trim())))]);
+  console.log(`  ${wdAliases.size} tagged systems have Wikidata labels/aliases`);
+
   // ---- IMLS PLS matching: find branches missing / untagged vs the federal census.
-  const pls = matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames);
+  const pls = matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAliases);
 
   // ---- IMLS PLS augmentation: per-crosswalked-system live tag fetch + suggestions.
   const augment = await buildAugment(pls, systems);
@@ -546,7 +601,7 @@ function findDomainClusters(rawLibs, stateIdx, notAssert) {
 // are checked, to keep the crosswalk reliable and the output focused.
 const MIN_LIBS_FOR_PLS = 3;
 
-function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
+function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAliases = new Map()) {
   let plsData;
   try {
     plsData = JSON.parse(readFileSync(PLS_FILE, 'utf8'));
@@ -606,7 +661,11 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
     // guessing) and cheap via the same spatial grid.
     const st = plsStateForCoords(osmCoords, plsGrid);
     if (!st) continue;
-    const cw = crosswalk(plsIndex, s.n, st, osmCoords);
+    // Crosswalk on the OSM name plus any Wikidata label/aliases for the
+    // system's confirmed QID — PLS often uses an official name OSM doesn't.
+    const names = [s.n, ...(systems[i].w ?? '').split(';')
+      .flatMap(q => wdAliases.get(q.trim()) ?? [])];
+    const cw = crosswalk(plsIndex, names, st, osmCoords);
     if (!cw) continue;
     crosswalked++;
 
@@ -650,18 +709,22 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames) {
   // are excluded — they're most of PLS (~7.7k) and mostly noise at this scale.
   const crosswalkedKeys = new Set(crosswalks.map(c => c.fscskey));
   const unmatched = [];
+  const r3 = x => Math.round(x * 1e3) / 1e3;
   for (const ps of plsIndex.byKey.values()) {
     if (ps.outlets.length < 2 || crosswalkedKeys.has(ps.fscskey)) continue;
-    let near = 0, latSum = 0, lonSum = 0;
+    let near = 0;
+    let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
     for (const o of ps.outlets) {
       if (nearbyLib(o.lat, o.lon)) near++;
-      latSum += o.lat; lonSum += o.lon;
+      if (o.lon < w) w = o.lon; if (o.lon > e) e = o.lon;
+      if (o.lat < s) s = o.lat; if (o.lat > n) n = o.lat;
     }
     unmatched.push({
       name: ps.name, fscskey: ps.fscskey, state: ps.state,
       outlets: ps.outlets.length, near,
-      lat: Math.round(latSum / ps.outlets.length * 1e4) / 1e4,
-      lon: Math.round(lonSum / ps.outlets.length * 1e4) / 1e4
+      // padded outlet bbox [west, south, east, north] for an area-scoped
+      // Overpass query (~5km margin so 2-outlet systems still show an area)
+      bb: [r3(w - 0.05), r3(s - 0.05), r3(e + 0.05), r3(n + 0.05)]
     });
   }
   unmatched.sort((a, b) => b.outlets - a.outlets || a.name.localeCompare(b.name));

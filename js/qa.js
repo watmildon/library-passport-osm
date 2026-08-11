@@ -84,7 +84,7 @@ function editAt(lat, lon) {
 // the dispatched/refused result. See ./josm.js for the CORS caveat.
 async function josmRemote(url) {
   if (await josmSend(url)) toast('Sent to JOSM');
-  else toast('JOSM didn’t respond — is it running with Remote Control enabled?', true);
+  else toast('JOSM didn’t respond – is it running with Remote Control enabled?', true);
 }
 
 // A brief status toast (bottom-center).
@@ -257,7 +257,7 @@ function renderTiles() {
     tile('Have operator:wikidata', pct(withWd, total) + '%', `${fmt(withWd)} of ${fmt(total)}`) +
     (data.pls && data.pls.length ? (
       tile('Branches missing from OSM', `<span class="qa-delta-miss">${fmt(plsMissing)}</span>`,
-        'IMLS PLS branches with no OSM library nearby — likely need creating', '#pls') +
+        'IMLS PLS branches with no OSM library nearby – likely need creating', '#pls') +
       tile('Branches untagged in OSM', `<span class="pls-untagged-n">${fmt(plsUntagged)}</span>`,
         'IMLS PLS branches present in OSM but missing the operator tag', '#pls')
     ) : '');
@@ -367,9 +367,9 @@ function renderWikidataGaps() {
       <td>${escapeHtml(s.n)}</td>
       <td class="num">${fmt(s.c)}</td>
       <td>${s.sw
-        ? `<span class="qa-badge qa-badge-mixed" title="Suggested via a shared website domain with wikidata-tagged libraries — verify before applying"><a href="https://www.wikidata.org/wiki/${escapeHtml(s.sw)}" target="_blank" rel="noopener">${escapeHtml(s.sw)}</a> ?</span>`
+        ? `<span class="qa-badge qa-badge-mixed" title="Suggested via a shared website domain with wikidata-tagged libraries – verify before applying"><a href="https://www.wikidata.org/wiki/${escapeHtml(s.sw)}" target="_blank" rel="noopener">${escapeHtml(s.sw)}</a> ?</span>`
         : ''}${(s.nw || []).map(q =>
-          `<span class="qa-badge qa-badge-not" title="Mappers ruled this item out (not:operator:wikidata) — no need to re-research it"><a href="https://www.wikidata.org/wiki/${escapeHtml(q)}" target="_blank" rel="noopener">not ${escapeHtml(q)}</a></span>`).join(' ')}</td>
+          `<span class="qa-badge qa-badge-not" title="Mappers ruled this item out (not:operator:wikidata) – no need to re-research it"><a href="https://www.wikidata.org/wiki/${escapeHtml(q)}" target="_blank" rel="noopener">not ${escapeHtml(q)}</a></span>`).join(' ')}</td>
       <td class="qa-actions">
         ${wdSearchLink(s.n)}
         ${turboLink(turboUrl('operator', s.n))}
@@ -398,6 +398,14 @@ function bindExploreButtons(root) {
     openSection('explorer');
     document.getElementById('explorer').scrollIntoView({ behavior: 'smooth' });
   }));
+}
+
+// Turbo link for ALL libraries in a bbox, regardless of tags — for surveying an
+// area where operator tags can't be trusted (the unmatched-PLS pane).
+// bb is [west, south, east, north]; Overpass bbox order is (s,w,n,e).
+function turboLibsBboxUrl(bb) {
+  const q = `[out:json][timeout:60];\nnwr[amenity=library](${bb[1]},${bb[0]},${bb[3]},${bb[2]});\nout center tags;`;
+  return 'https://overpass-turbo.eu/?Q=' + encodeURIComponent(q) + '&R';
 }
 
 // ---------------- Ambiguous names (shared across regions) ----------------
@@ -514,16 +522,16 @@ function renderPls() {
       u.osmHasOperator ? '<span class="qa-badge qa-badge-mixed">wrong operator?</span>' : '<span class="qa-badge qa-badge-miss">no operator tag</span>',
       editRef(u.osm, u.osmLat, u.osmLon, u.lat, u.lon), 'Fix tags in OSM editor')).join('');
     const disc = p.discrepancies.map(dd => row('pls-disc', titleCase(dd.name),
-      `OSM coordinate is ~${fmt(dd.dist)}m from the PLS location — verify`,
+      `OSM coordinate is ~${fmt(dd.dist)}m from the PLS location – verify`,
       '', editRef(dd.osmId, dd.osmLat, dd.osmLon, dd.lat, dd.lon), 'Check location in OSM editor')).join('');
 
     // Show the system's operator:wikidata so it's handy to copy when tagging the
     // untagged/missing branches below. Confirmed (.w) is a solid badge; a
     // domain-derived suggestion (.sw) is shown as an unconfirmed hint.
     const qidNote = sys.w
-      ? `<span class="pls-qid" title="operator:wikidata for this system — apply to the branches below">operator:wikidata = <a href="https://www.wikidata.org/wiki/${escapeHtml(sys.w)}" target="_blank" rel="noopener">${escapeHtml(sys.w)}</a></span>`
+      ? `<span class="pls-qid" title="operator:wikidata for this system – apply to the branches below">operator:wikidata = <a href="https://www.wikidata.org/wiki/${escapeHtml(sys.w)}" target="_blank" rel="noopener">${escapeHtml(sys.w)}</a></span>`
       : sys.sw
-        ? `<span class="pls-qid pls-qid-suggested" title="Suggested via a shared website domain — verify before applying">operator:wikidata ≈ <a href="https://www.wikidata.org/wiki/${escapeHtml(sys.sw)}" target="_blank" rel="noopener">${escapeHtml(sys.sw)}</a> ?</span>`
+        ? `<span class="pls-qid pls-qid-suggested" title="Suggested via a shared website domain – verify before applying">operator:wikidata ≈ <a href="https://www.wikidata.org/wiki/${escapeHtml(sys.sw)}" target="_blank" rel="noopener">${escapeHtml(sys.sw)}</a> ?</span>`
         : '';
 
     return `<div class="pls-sys">
@@ -587,13 +595,19 @@ function renderPlsUnmatched() {
   const shown = plsuExpanded ? rows : rows.slice(0, PLSU_PREVIEW);
   list.innerHTML = shown.map(u => {
     const badge = u.near
-      ? `<span class="qa-badge qa-badge-mixed" title="Outlets with some OSM library within 200 m — the buildings are likely mapped but operator tags are missing or inconsistent">${u.near}/${u.outlets} in OSM</span>`
-      : `<span class="qa-badge qa-badge-miss" title="No outlet has an OSM library within 200 m — likely unmapped">0 in OSM</span>`;
+      ? `<span class="qa-badge qa-badge-mixed" title="Outlets with some OSM library within 200 m – the buildings are likely mapped but operator tags are missing or inconsistent">${u.near}/${u.outlets} in OSM</span>`
+      : `<span class="qa-badge qa-badge-miss" title="No outlet has an OSM library within 200 m – likely unmapped">0 in OSM</span>`;
+    // ALL libraries in the outlets' bbox, unfiltered by operator — the point is
+    // to eyeball what's there when the operator tags are broken or absent.
+    // Older qa-data has a centroid instead of a bbox; keep the map fallback.
+    const link = u.bb
+      ? turboLink(turboLibsBboxUrl(u.bb))
+      : `<a class="qa-icon-link" href="https://www.openstreetmap.org/#map=10/${u.lat}/${u.lon}" target="_blank" rel="noopener" title="View this system's area on OSM">🔍</a>`;
     return `<div class="pls-row">
       <span class="pls-name">${escapeHtml(titleCase(u.name))}</span>
       <span class="pls-detail">${escapeHtml(u.state)} · ${u.outlets} outlets · PLS ${escapeHtml(u.fscskey)}</span>
       <span class="pls-meta">${badge}</span>
-      <a class="qa-icon-link" href="https://www.openstreetmap.org/#map=10/${u.lat}/${u.lon}" target="_blank" rel="noopener" title="View this system's area on OSM">🔍</a>
+      ${link}
     </div>`;
   }).join('');
 
@@ -644,8 +658,8 @@ function renderBranchCounts() {
         : d === 0
           ? '<span class="qa-yes" title="OSM and Wikidata agree">✓</span>'
           : `<span class="${d < 0 ? 'qa-delta-miss' : 'qa-delta-extra'}" title="${d < 0
-              ? Math.abs(d) + ' branch(es) on Wikidata not found in OSM — possibly unmapped'
-              : d + ' more branch(es) in OSM than Wikidata lists — duplicates, non-branches, or stale Wikidata'}">${d > 0 ? '+' + d : d}</span>`;
+              ? Math.abs(d) + ' branch(es) on Wikidata not found in OSM – possibly unmapped'
+              : d + ' more branch(es) in OSM than Wikidata lists – duplicates, non-branches, or stale Wikidata'}">${d > 0 ? '+' + d : d}</span>`;
       // PLS cell: colored when it exceeds OSM (undermapped) — the actionable case.
       const plsCell = s.pls == null ? '<span class="qa-no">—</span>'
         : s.pls > s.c ? `<span class="qa-delta-miss" title="${s.pls - s.c} more in PLS than OSM has tagged">${fmt(s.pls)}</span>`
@@ -705,7 +719,7 @@ function renderDomains() {
       const states = x.st.map(i => data.states[i] ?? 'Unknown').join(' / ');
       const suggestion = x.op
         ? `${escapeHtml(x.op)}${x.wd ? ` <span class="qa-badge qa-badge-wd"><a href="https://www.wikidata.org/wiki/${escapeHtml(x.wd)}" target="_blank" rel="noopener">${escapeHtml(x.wd)}</a> ✓</span>` : ''}`
-        : '<span class="qa-badge qa-badge-miss">unknown — research once, tag all</span>';
+        : '<span class="qa-badge qa-badge-miss">unknown – research once, tag all</span>';
       return `<tr>
         <td><a href="https://${escapeHtml(x.d)}" target="_blank" rel="noopener">${escapeHtml(x.d)}</a></td>
         <td>${escapeHtml(states)}</td>
@@ -734,11 +748,11 @@ function renderCollisions() {
     // established system, or only one side having wikidata → likely fix direction.
     // `a` is always the more numerous side (normalized at build time).
     let hint = '';
-    if (c.lev === 0) hint = 'Same name, different capitalization — almost certainly a typo.';
+    if (c.lev === 0) hint = 'Same name, different capitalization – almost certainly a typo.';
     // Only claim a direction for single-edit differences: at distance 2 the pair
     // may be two genuinely different systems.
     else if (c.lev === 1 && c.ca >= 5 * c.cb && c.cb <= 2) hint = `Likely typo of “${escapeHtml(c.a)}”.`;
-    else if (c.aw !== c.bw) hint = `Only one side has operator:wikidata — if these are the same system, align the other.`;
+    else if (c.aw !== c.bw) hint = `Only one side has operator:wikidata – if these are the same system, align the other.`;
     const side = (name, cnt, hasWd) => {
       // Direct link to the tagged operator:wikidata item, when there is one.
       const wd = hasWd ? data.systems[sysByName.get(name)]?.w : null;
@@ -815,12 +829,12 @@ function showSystem(idx) {
   const notBadges = (s.nw || []).map(q =>
     `<span class="qa-badge qa-badge-not" title="Mappers ruled this item out (not:operator:wikidata)"><a href="https://www.wikidata.org/wiki/${escapeHtml(q)}" target="_blank" rel="noopener">not ${escapeHtml(q)}</a></span>`).join(' ');
   const conflict = s.w && (s.nw || []).includes(s.w)
-    ? ' <span class="qa-badge qa-badge-miss" title="Some libraries tag this item as operator:wikidata while others rule it out with not:operator:wikidata — mappers disagree; worth resolving">⚠ conflicting tags</span>'
+    ? ' <span class="qa-badge qa-badge-miss" title="Some libraries tag this item as operator:wikidata while others rule it out with not:operator:wikidata – mappers disagree; worth resolving">⚠ conflicting tags</span>'
     : '';
   const wbNote = s.wb != null
     ? (s.wb === s.c
         ? ` · <span class="qa-yes" title="Wikidata lists the same number of branches">Wikidata: ${fmt(s.wb)} ✓</span>`
-        : ` · <span class="qa-badge qa-badge-mixed" title="Wikidata's branch list (P527) disagrees with the OSM count — unmapped branches, duplicates, or a stale list">Wikidata: ${fmt(s.wb)} branches</span>`)
+        : ` · <span class="qa-badge qa-badge-mixed" title="Wikidata's branch list (P527) disagrees with the OSM count – unmapped branches, duplicates, or a stale list">Wikidata: ${fmt(s.wb)} branches</span>`)
     : '';
   $('#sys-meta').innerHTML =
     `${fmt(s.c)} branches` +
@@ -863,7 +877,7 @@ async function loadLive() {
     const feats = await fetchLibraries(s.w ? 'wikidata' : 'operator', s.w || s.n);
     if (!feats.length) throw new Error('no results');
     $('#live-note').textContent =
-      `Live from Overpass just now — ${feats.length} libraries, all ${TRACKED_TAGS.length} tracked tags.`;
+      `Live from Overpass just now – ${feats.length} libraries, all ${TRACKED_TAGS.length} tracked tags.`;
     $('#sys-table').innerHTML = `
       <thead><tr><th>Library</th><th>City</th>
         ${TRACKED_TAGS.map(t => `<th class="num"><code>${escapeHtml(t.label)}</code></th>`).join('')}

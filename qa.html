@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Library Passport · Data QA</title>
-  <meta name="description" content="Data-quality dashboard for US library data in OpenStreetMap — find missing tags, wikidata gaps, and likely typos." />
+  <meta name="description" content="Data-quality dashboard for US library data in OpenStreetMap – find missing tags, wikidata gaps, and likely typos." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>" />
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
@@ -17,7 +17,7 @@
         <a class="qa-back" href="./index.html">← Library Passport</a>
       </div>
       <p class="qa-sub">Help improve US library data in <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap</a>.
-        Find missing tags, wikidata gaps, and likely typos — then fix them in the editor.</p>
+        Find missing tags, wikidata gaps, and likely typos – then fix them in the editor.</p>
       <div class="qa-editor-pick">
         <label for="editor-select">Open edit links in:</label>
         <select id="editor-select">
@@ -49,13 +49,10 @@
       <summary><h2>Overview</h2></summary>
       <div class="qa-tiles" id="tiles"></div>
 
-      <h3>Tag completion — all US libraries</h3>
+      <h3>Tag completion – all US libraries</h3>
       <div class="qa-meters" id="us-meters"></div>
-      <p class="qa-note">Address-tag completion isn't tracked here (not present in the weekly extract) —
-        use <a href="#explorer">System explorer → Load live details</a> to check addresses for a system.</p>
-
-      <h3>By state</h3>
-      <p class="qa-note">Click a column header to sort.</p>
+      <p class="qa-note">Addresses aren't in the weekly extract – use
+        <a href="#explorer">System explorer → Load live details</a> to check them for a system.</p>
       <div class="qa-table-wrap">
         <table class="qa-table" id="state-table"></table>
       </div>
@@ -65,7 +62,7 @@
       <summary><h2>Wikidata gaps</h2></summary>
       <p class="qa-note">Library systems with no <code>operator:wikidata</code> tag, biggest first.
         Adding one makes the system unambiguous across name variations. Amber <em>Suggested</em>
-        badges come from wikidata-tagged libraries sharing the same website domain — verify, then apply.
+        badges come from wikidata-tagged libraries sharing the same website domain – verify, then apply.
         Grey <em>not Qxxx</em> badges are items mappers already ruled out (<code>not:operator:wikidata</code>).</p>
       <input id="wd-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
       <div class="qa-table-wrap">
@@ -76,21 +73,20 @@
 
     <details id="ambiguous" class="qa-section" open>
       <summary><h2>Shared operators, different places</h2></summary>
-      <p class="qa-note"><code>operator</code> values whose libraries form well-separated geographic groups — likely
-        <em>distinct systems sharing an operator name</em>. These are the highest-value <code>operator:wikidata</code>
-        targets: a shared operator value is ambiguous exactly here, and a wikidata tag per group resolves it.
-        (Groups are split when branches sit more than ~120&nbsp;km apart; a few may be genuine
-        multi-region operators — judge each.)</p>
+      <p class="qa-note"><code>operator</code> values whose libraries form well-separated geographic groups – likely
+        <em>distinct systems sharing an operator name</em>, making them the highest-value
+        <code>operator:wikidata</code> targets. (Groups are split when branches sit more than ~120&nbsp;km apart;
+        a few may be genuine multi-region operators – judge each.)</p>
       <div id="ambiguous-list"></div>
     </details>
 
     <details id="domains" class="qa-section" open>
       <summary><h2>Website domain clusters</h2></summary>
       <p class="qa-note">Libraries with no <code>operator</code> tag, grouped by the domain of their
-        <code>website</code> tag — it's very unlikely two different systems share a domain. When tagged
+        <code>website</code> tag – it's very unlikely two different systems share a domain. When tagged
         siblings share the domain, their operator is a near-certain suggestion for the rest; otherwise
         the group is a research-once, tag-all work set. (Vendor/platform hosts are excluded, but a few
-        state-portal domains hosting independent libraries may appear — judge each.)</p>
+        state-portal domains hosting independent libraries may appear – judge each.)</p>
       <input id="dom-filter" class="qa-filter" type="text" placeholder="Filter domains or operators…" autocomplete="off" />
       <div class="qa-table-wrap">
         <table class="qa-table" id="dom-table"></table>
@@ -103,10 +99,10 @@
       <p class="qa-note">Cross-referenced against the <a href="https://www.imls.gov/research-evaluation/surveys/public-libraries-survey-pls" target="_blank" rel="noopener">IMLS Public Libraries Survey</a>,
         a federal census of US public libraries (public domain). For systems that match, PLS reveals branches
         that are <strong>missing from OSM entirely</strong> (create them) or <strong>present but not tagged
-        with the operator</strong> (add the tag). Coordinates are IMLS-geocoded — <em>verify on the ground or
+        with the operator</strong> (add the tag). Coordinates are IMLS-geocoded – <em>verify on the ground or
         against imagery before adding</em>; the survey data lags ~2 years and a listed address may be an
         administrative office or a since-closed branch.</p>
-      <p class="qa-note">→ <a href="./augment.html"><strong>Augment these branches in JOSM</strong></a> —
+      <p class="qa-note">→ <a href="./augment.html"><strong>Augment these branches in JOSM</strong></a> –
         deliver PLS phone, address, <code>operator:wikidata</code>, and name as pre-filled suggestions
         into JOSM review layers.</p>
       <div class="qa-filter-row">
@@ -122,7 +118,7 @@
     <details id="pls-unmatched" class="qa-section" open>
       <summary><h2>PLS systems not found in OSM</h2></summary>
       <p class="qa-note">Multi-outlet library systems from the IMLS census that matched <strong>no OSM
-        system</strong> — usually because their branches' <code>operator</code> tags are missing or split
+        system</strong> – usually because their branches' <code>operator</code> tags are missing or split
         across inconsistent spellings (so no one system reaches the crosswalk's 3-library minimum), or the
         branches aren't mapped at all. <em>“in OSM”</em> counts outlets with <em>some</em> library mapped
         within 200&nbsp;m, whatever its tags: a high count means the buildings exist and the operator tags
@@ -141,7 +137,7 @@
       <summary><h2>Branch counts vs Wikidata &amp; PLS</h2></summary>
       <p class="qa-note">Systems whose Wikidata item lists its branches (<code>P527</code>), compared with the
         branch count in OSM. <em>Fewer in OSM</em> usually means unmapped branches; <em>more in OSM</em> can
-        mean duplicates, mis-tagged non-branches, or a stale Wikidata list — either way, worth a look.</p>
+        mean duplicates, mis-tagged non-branches, or a stale Wikidata list – either way, worth a look.</p>
       <div class="qa-table-wrap">
         <table class="qa-table" id="br-table"></table>
       </div>
@@ -151,7 +147,7 @@
     <details id="typos" class="qa-section" open>
       <summary><h2>Possible typos &amp; operator collisions</h2></summary>
       <p class="qa-note"><code>operator</code> values within an edit or two of each other. Some are genuine typos
-        (fix the smaller one to match), others are different systems with similar operator names — judge each pair.</p>
+        (fix the smaller one to match), others are different systems with similar operator names – judge each pair.</p>
       <div id="collisions"></div>
     </details>
 
