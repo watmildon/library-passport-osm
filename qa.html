@@ -64,7 +64,12 @@
         Adding one makes the system unambiguous across name variations. Amber <em>Suggested</em>
         badges come from wikidata-tagged libraries sharing the same website domain – verify, then apply.
         Grey <em>not Qxxx</em> badges are items mappers already ruled out (<code>not:operator:wikidata</code>).</p>
-      <input id="wd-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
+      <div class="qa-filter-row">
+        <input id="wd-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
+        <select id="wd-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
       <div class="qa-table-wrap">
         <table class="qa-table" id="wd-table"></table>
       </div>
@@ -87,7 +92,12 @@
         siblings share the domain, their operator is a near-certain suggestion for the rest; otherwise
         the group is a research-once, tag-all work set. (Vendor/platform hosts are excluded, but a few
         state-portal domains hosting independent libraries may appear – judge each.)</p>
-      <input id="dom-filter" class="qa-filter" type="text" placeholder="Filter domains or operators…" autocomplete="off" />
+      <div class="qa-filter-row">
+        <input id="dom-filter" class="qa-filter" type="text" placeholder="Filter domains or operators…" autocomplete="off" />
+        <select id="dom-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
       <div class="qa-table-wrap">
         <table class="qa-table" id="dom-table"></table>
       </div>
@@ -119,7 +129,7 @@
       <summary><h2>PLS systems not found in OSM</h2></summary>
       <p class="qa-note">Multi-outlet library systems from the IMLS census that matched <strong>no OSM
         system</strong> – usually because their branches' <code>operator</code> tags are missing or split
-        across inconsistent spellings (so no one system reaches the crosswalk's 3-library minimum), or the
+        across inconsistent spellings (so no one system reaches the crosswalk's 2-library minimum), or the
         branches aren't mapped at all. <em>“in OSM”</em> counts outlets with <em>some</em> library mapped
         within 200&nbsp;m, whatever its tags: a high count means the buildings exist and the operator tags
         need fixing; zero means likely unmapped territory.</p>
@@ -138,6 +148,11 @@
       <p class="qa-note">Systems whose Wikidata item lists its branches (<code>P527</code>), compared with the
         branch count in OSM. <em>Fewer in OSM</em> usually means unmapped branches; <em>more in OSM</em> can
         mean duplicates, mis-tagged non-branches, or a stale Wikidata list – either way, worth a look.</p>
+      <div class="qa-filter-row">
+        <select id="br-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
       <div class="qa-table-wrap">
         <table class="qa-table" id="br-table"></table>
       </div>

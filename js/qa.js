@@ -225,6 +225,9 @@ async function boot() {
     renderPls();
   });
   setupPlsStateFilter();
+  setupWdStateFilter();
+  setupDomStateFilter();
+  setupBrStateFilter();
   $('#plsu-filter').addEventListener('input', e => {
     plsuFilter = e.target.value;
     plsuExpanded = false;
@@ -331,7 +334,58 @@ function renderStateTable() {
 const WD_PREVIEW = 30;
 let wdExpanded = false;
 let wdFilter = '';
+let wdState = '';                 // stateIdx as a string, '' = all
 let wdSort = { col: 'c', dir: -1 };
+
+// Full state name (as Layercake spells it) -> USPS code, so every state
+// dropdown shows the same two-letter codes the PLS panes use.
+const STATE_ABBR = {
+  Alabama: 'AL', Alaska: 'AK', Arizona: 'AZ', Arkansas: 'AR', California: 'CA',
+  Colorado: 'CO', Connecticut: 'CT', Delaware: 'DE', 'District of Columbia': 'DC',
+  Florida: 'FL', Georgia: 'GA', Hawaii: 'HI', Idaho: 'ID', Illinois: 'IL',
+  Indiana: 'IN', Iowa: 'IA', Kansas: 'KS', Kentucky: 'KY', Louisiana: 'LA',
+  Maine: 'ME', Maryland: 'MD', Massachusetts: 'MA', Michigan: 'MI', Minnesota: 'MN',
+  Mississippi: 'MS', Missouri: 'MO', Montana: 'MT', Nebraska: 'NE', Nevada: 'NV',
+  'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+  'North Carolina': 'NC', 'North Dakota': 'ND', Ohio: 'OH', Oklahoma: 'OK',
+  Oregon: 'OR', Pennsylvania: 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
+  'South Dakota': 'SD', Tennessee: 'TN', Texas: 'TX', Utah: 'UT', Vermont: 'VT',
+  Virginia: 'VA', Washington: 'WA', 'West Virginia': 'WV', Wisconsin: 'WI',
+  Wyoming: 'WY', 'Puerto Rico': 'PR', Guam: 'GU', 'American Samoa': 'AS',
+  'United States Virgin Islands': 'VI', 'Northern Mariana Islands': 'MP'
+};
+const stateAbbr = name => STATE_ABBR[name] || name;
+
+// sysIdx -> Set(stateIdx), derived from the library rows (systems carry no
+// state of their own; a multi-state system matches each of its states).
+let sysStates = null;
+function getSysStates() {
+  if (!sysStates) {
+    sysStates = new Map();
+    for (const l of data.libs) {
+      if (l[L.sys] < 0 || l[L.state] < 0) continue;
+      if (!sysStates.has(l[L.sys])) sysStates.set(l[L.sys], new Set());
+      sysStates.get(l[L.sys]).add(l[L.state]);
+    }
+  }
+  return sysStates;
+}
+
+// Populate the state <select> with states that actually have gap systems.
+function setupWdStateFilter() {
+  const sel = $('#wd-state');
+  if (!sel) return;
+  const states = new Set();
+  data.systems.forEach((s, i) => {
+    if (!s.w) for (const st of getSysStates().get(i) ?? []) states.add(st);
+  });
+  const opts = [...states]
+    .map(st => ({ st, abbr: stateAbbr(data.states[st]) }))
+    .sort((a, b) => a.abbr.localeCompare(b.abbr))
+    .map(x => `<option value="${x.st}" title="${escapeHtml(data.states[x.st])}">${escapeHtml(x.abbr)}</option>`);
+  sel.insertAdjacentHTML('beforeend', opts.join(''));
+  sel.addEventListener('change', () => { wdState = sel.value; wdExpanded = false; renderWikidataGaps(); });
+}
 
 const WD_COLS = [
   { id: 'n',  label: 'System' },
@@ -345,6 +399,7 @@ function renderWikidataGaps() {
   const gaps = data.systems
     .map((s, i) => ({ ...s, idx: i }))
     .filter(s => !s.w)
+    .filter(s => !wdState || getSysStates().get(s.idx)?.has(+wdState))
     .filter(s => !term || s.n.toLowerCase().includes(term))
     .sort((a, b) => {
       let cmp;
@@ -620,7 +675,25 @@ function renderPlsUnmatched() {
 // ---------------- Branch counts vs Wikidata ----------------
 const BR_PREVIEW = 30;
 let brExpanded = false;
+let brState = '';                 // stateIdx as a string, '' = all
 let brSort = { col: 'delta', dir: -1 };
+
+// Populate the state <select> with states that have branch-count rows.
+function setupBrStateFilter() {
+  const sel = $('#br-state');
+  if (!sel) return;
+  const states = new Set();
+  data.systems.forEach((s, i) => {
+    if (s.wb != null || plsBySys.has(i))
+      for (const st of getSysStates().get(i) ?? []) states.add(st);
+  });
+  const opts = [...states]
+    .map(st => ({ st, abbr: stateAbbr(data.states[st]) }))
+    .sort((a, b) => a.abbr.localeCompare(b.abbr))
+    .map(x => `<option value="${x.st}" title="${escapeHtml(data.states[x.st])}">${escapeHtml(x.abbr)}</option>`);
+  sel.insertAdjacentHTML('beforeend', opts.join(''));
+  sel.addEventListener('change', () => { brState = sel.value; brExpanded = false; renderBranchCounts(); });
+}
 
 const BR_COLS = [
   { id: 'n',     label: 'System' },
@@ -637,6 +710,7 @@ function renderBranchCounts() {
   const rows = data.systems
     .map((s, i) => ({ ...s, idx: i, delta: s.c - (s.wb ?? 0), pls: plsCountOf(i) }))
     .filter(s => s.wb != null || s.pls != null)   // show if either external source has a count
+    .filter(s => !brState || getSysStates().get(s.idx)?.has(+brState))
     .sort((a, b) => {
       let cmp;
       if (col === 'n') cmp = a.n.localeCompare(b.n);
@@ -706,10 +780,25 @@ function turboDomainUrl(domain) {
 const DOM_PREVIEW = 30;
 let domExpanded = false;
 let domFilter = '';
+let domState = '';                // stateIdx as a string, '' = all
+
+// Populate the state <select> with states that actually have domain clusters.
+function setupDomStateFilter() {
+  const sel = $('#dom-state');
+  if (!sel || !data.domains?.length) return;
+  const states = new Set(data.domains.flatMap(x => x.st).filter(i => i >= 0));
+  const opts = [...states]
+    .map(st => ({ st, abbr: stateAbbr(data.states[st]) }))
+    .sort((a, b) => a.abbr.localeCompare(b.abbr))
+    .map(x => `<option value="${x.st}" title="${escapeHtml(data.states[x.st])}">${escapeHtml(x.abbr)}</option>`);
+  sel.insertAdjacentHTML('beforeend', opts.join(''));
+  sel.addEventListener('change', () => { domState = sel.value; domExpanded = false; renderDomains(); });
+}
 
 function renderDomains() {
   const term = domFilter.trim().toLowerCase();
   const rows = (data.domains || [])
+    .filter(x => !domState || x.st.includes(+domState))
     .filter(x => !term || x.d.toLowerCase().includes(term) || (x.op || '').toLowerCase().includes(term));
 
   const shown = domExpanded ? rows : rows.slice(0, DOM_PREVIEW);

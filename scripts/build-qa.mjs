@@ -170,17 +170,22 @@ async function fetchWikidataBranchCounts() {
 // name-similarity crosswalk even though operator:wikidata identifies the system
 // exactly. Wikidata's English label + aliases bridge the gap: fetched for every
 // confirmed QID and offered as extra name candidates to the crosswalk (the
-// spatial gate still confirms every match). Fails soft to an empty map.
+// spatial gate still confirms every match). Also flags academic institutions
+// (instance of a higher-education institution, transitively): PLS is a census
+// of PUBLIC libraries, and university systems carry dangerously generic aliases
+// (UW–Milwaukee's include plain "Milwaukee") — the crosswalk skips them.
+// Returns Map(qid -> { names: [..], academic: bool }); fails soft to empty.
 async function fetchWikidataAliases(qids) {
   // Tag values aren't always clean QIDs (semicolon lists, literal names typed
   // into operator:wikidata) — a malformed value in VALUES 400s the whole query.
   qids = qids.filter(q => /^Q\d+$/.test(q));
   if (!qids.length) return new Map();
-  const query = `SELECT ?item ?name WHERE {
+  const query = `SELECT ?item ?name ?academic WHERE {
   VALUES ?item { ${qids.map(q => 'wd:' + q).join(' ')} }
   { ?item rdfs:label ?name . FILTER(LANG(?name) = "en") }
   UNION
   { ?item skos:altLabel ?name . FILTER(LANG(?name) = "en") }
+  BIND(EXISTS { ?item wdt:P31/wdt:P279* wd:Q38723 } AS ?academic)
 }`;
 
   for (let i = 0; i < 3; i++) {
@@ -199,8 +204,10 @@ async function fetchWikidataAliases(qids) {
       const out = new Map();
       for (const r of rows) {
         const qid = r.item.value.split('/').pop();
-        if (!out.has(qid)) out.set(qid, []);
-        out.get(qid).push(r.name.value);
+        if (!out.has(qid)) out.set(qid, { names: [], academic: false });
+        const e = out.get(qid);
+        e.names.push(r.name.value);
+        if (r.academic?.value === 'true') e.academic = true;
       }
       return out;
     } catch (e) {
@@ -598,8 +605,11 @@ function findDomainClusters(rawLibs, stateIdx, notAssert) {
 // isn't tagged with this operator — add the tag), missing (no OSM library there
 // — likely needs creating), and discrepancy (matched by name but far from the
 // OSM coordinate — verify location). Only systems with >= MIN_LIBS OSM libraries
-// are checked, to keep the crosswalk reliable and the output focused.
-const MIN_LIBS_FOR_PLS = 3;
+// are checked, to keep the crosswalk reliable and the output focused. 2 matches
+// the unmatched-report floor: a complete, correctly tagged 2-branch system
+// (the smallest the report can show) counts as found rather than sitting in
+// "not found in OSM" forever.
+const MIN_LIBS_FOR_PLS = 2;
 
 function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAliases = new Map()) {
   let plsData;
@@ -663,8 +673,12 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAlias
     if (!st) continue;
     // Crosswalk on the OSM name plus any Wikidata label/aliases for the
     // system's confirmed QID — PLS often uses an official name OSM doesn't.
-    const names = [s.n, ...(systems[i].w ?? '').split(';')
-      .flatMap(q => wdAliases.get(q.trim()) ?? [])];
+    // Academic operators are skipped outright: PLS covers public libraries,
+    // and university items' generic aliases invite false matches.
+    const aliasInfo = (systems[i].w ?? '').split(';')
+      .map(q => wdAliases.get(q.trim())).filter(Boolean);
+    if (aliasInfo.some(a => a.academic)) continue;
+    const names = [s.n, ...aliasInfo.flatMap(a => a.names)];
     const cw = crosswalk(plsIndex, names, st, osmCoords);
     if (!cw) continue;
     crosswalked++;
