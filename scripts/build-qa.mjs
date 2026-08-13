@@ -1,24 +1,32 @@
 #!/usr/bin/env node
 // build-qa.mjs — regenerate data/qa-data.json for the Data QA page.
 //
-// Runs scripts/qa-libraries.sql against OpenStreetMap US's Layercake extract
-// (via the DuckDB CLI, remote GeoParquet over HTTP) and normalizes the result
-// into one compact file the QA page loads client-side:
+// PRIMARY source: an Overpass instance (OVERPASS_URL env var or a gitignored
+// .overpass-url file — see overpass-source.mjs). Two queries fetch every US
+// library with full tags plus a per-state assignment; collisions are computed
+// here in JS. Overpass carries addr:* (absent from Layercake's POI layer), so
+// the address flags below only exist on this path.
 //
-//   meta        generated date, Layercake freshness, totals
+// FALLBACK source (no endpoint configured, or --layercake): OpenStreetMap US's
+// Layercake extract via scripts/qa-libraries.sql and the DuckDB CLI (remote
+// GeoParquet over HTTP; requires DuckDB on PATH or the DUCKDB env var). No
+// addr:* flags — meta.tags records which flags a build actually tracked.
+//
+// Output, one compact file the QA page loads client-side:
+//
+//   meta        generated date, source + snapshot date, totals
 //   tags        the tag names behind each bit of a library's flags bitmask
 //   states      state names (libs reference them by index)
 //   systems     { n: name, w: wikidata|null, c: count } (libs reference by index)
 //   libs        [sysIdx, type, id, name, stateIdx, flags, lon, lat]
-//   collisions  likely-typo operator name pairs (computed in SQL via levenshtein)
+//   collisions  likely-typo operator name pairs (small Levenshtein distance)
 //
 // Flags bitmask: 1 phone, 2 website, 4 opening_hours, 8 operator,
-//                16 operator:wikidata. Only tags the app itself uses are
-//                tracked (addresses would be too, but they're absent from
-//                Layercake's POI layer — the QA page's live view covers them).
+//                16 operator:wikidata, and (Overpass builds only)
+//                32 addr:housenumber, 64 addr:street, 128 addr:city,
+//                256 addr:postcode.
 //
-// Requirements: DuckDB CLI on PATH (or DUCKDB env var), Node 18+.
-// Usage:  node scripts/build-qa.mjs
+// Usage:  node scripts/build-qa.mjs [--force] [--layercake]
 
 import { writeFileSync, readFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -26,6 +34,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { layercakeModified, toISODate, committedSourceDate } from './systems-core.mjs';
+import { overpassEndpoint, overpassTimestamp, fetchUsLibraryElements, fetchStateAssignments } from './overpass-source.mjs';
 import { indexPls, crosswalk, classify, haversineM } from './pls-match.mjs';
 import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment.mjs';
 
@@ -36,13 +45,28 @@ const DEST = join(ROOT, 'data', 'qa-data.json');
 const PLS_FILE = join(ROOT, 'data', 'pls-outlets.json');
 const DUCKDB = process.env.DUCKDB || 'duckdb';
 const FORCE = process.argv.includes('--force');
+const USE_LAYERCAKE = process.argv.includes('--layercake');
 const USER_AGENT = process.env.USER_AGENT ||
-  'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; weekly QA build)';
+  'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; QA build)';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// Bit positions must match the `tags` array written to meta below.
-const FLAG_BITS = ['phone', 'website', 'opening_hours', 'operator', 'operator:wikidata'];
+// One entry per bit of a library's flags bitmask (bit = 1 << index); meta.tags
+// records the keys so the QA page derives its columns from the data, not from
+// hardcoded bit positions. The addr:* entries are only populated (and only
+// listed in meta.tags) on the Overpass path — Layercake has no addr columns.
+const FLAG_DEFS = [
+  { key: 'phone',             has: r => !!r.has_phone },
+  { key: 'website',           has: r => !!r.has_website },
+  { key: 'opening_hours',     has: r => !!r.has_hours },
+  { key: 'operator',          has: r => !!r.operator },
+  { key: 'operator:wikidata', has: r => !!r.wikidata },
+  { key: 'addr:housenumber',  has: r => !!r.has_housenumber },
+  { key: 'addr:street',       has: r => !!r.has_street },
+  { key: 'addr:city',         has: r => !!r.has_city },
+  { key: 'addr:postcode',     has: r => !!r.has_postcode }
+];
+const LAYERCAKE_FLAG_COUNT = 5;   // first N FLAG_DEFS the Layercake path can fill
 
 function queryLayercake() {
   const tmp = mkdtempSync(join(tmpdir(), 'libpass-qa-'));
@@ -72,6 +96,116 @@ function queryLayercake() {
   }
 }
 
+// ---- Overpass primary source ----------------------------------------------
+//
+// Same row shape as the Layercake SQL emits, so everything downstream is
+// source-agnostic. Two deltas, both intentional: phone/website presence also
+// count the contact:* variants (matching the QA page's live view), and the
+// addr:* presence fields exist at all (Layercake's POI layer has no addr
+// columns).
+async function queryOverpass(endpoint) {
+  console.log('Querying Overpass for per-library QA data…');
+  const { elements } = await fetchUsLibraryElements(endpoint);
+  console.log(`  ${elements.length} US libraries; assigning states…`);
+  const stateOf = await fetchStateAssignments(endpoint);
+  const libs = [];
+  for (const el of elements) {
+    const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
+    if (lat == null || lon == null) continue;
+    const t = el.tags || {};
+    libs.push({
+      type: el.type,
+      id: el.id,
+      name: t.name ?? null,
+      state: stateOf.get(el.type[0] + el.id) ?? null,
+      operator: t.operator ?? null,
+      wikidata: t['operator:wikidata'] ?? null,
+      website: t.website ?? t['contact:website'] ?? null,
+      has_phone: !!(t.phone || t['contact:phone']),
+      has_website: !!(t.website || t['contact:website']),
+      has_hours: !!t.opening_hours,
+      has_housenumber: !!t['addr:housenumber'],
+      has_street: !!t['addr:street'],
+      has_city: !!t['addr:city'],
+      has_postcode: !!t['addr:postcode'],
+      lon, lat
+    });
+  }
+  return { libs, collisions: computeCollisions(libs) };
+}
+
+// Levenshtein distance with a cap: bails out (returning cap + 1) as soon as no
+// path can come in under the cap. Distances here are tiny (cap 2), so the DP
+// stays fast across the ~half-million candidate pairs.
+function levenshteinCapped(a, b, cap) {
+  if (Math.abs(a.length - b.length) > cap) return cap + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    let rowMin = i;
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(
+        prev[j] + 1,
+        cur[j - 1] + 1,
+        prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+      );
+      if (cur[j] < rowMin) rowMin = cur[j];
+    }
+    if (rowMin > cap) return cap + 1;
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+// Likely-typo operator pairs — a straight port of the second half of
+// qa-libraries.sql so both source paths emit identical collision rows:
+// case-insensitive Levenshtein ≤ 2 (≤ 1 for names under 12 chars), lengths
+// within 1, and pairs where both sides carry a *different* dominant
+// operator:wikidata dropped (deliberately distinct systems, not typos).
+function computeCollisions(rawLibs) {
+  // Per operator name: count, any-wikidata flag, dominant wikidata (most
+  // frequent; ties broken by Q-id string order, matching the SQL's ROW_NUMBER).
+  const ops = new Map();
+  for (const r of rawLibs) {
+    if (!r.operator) continue;
+    let o = ops.get(r.operator);
+    if (!o) { o = { name: r.operator, cnt: 0, has_wd: false, wdVotes: new Map() }; ops.set(r.operator, o); }
+    o.cnt++;
+    if (r.wikidata) {
+      o.has_wd = true;
+      o.wdVotes.set(r.wikidata, (o.wdVotes.get(r.wikidata) || 0) + 1);
+    }
+  }
+  const list = [...ops.values()].map(o => ({
+    ...o,
+    wd: [...o.wdVotes.entries()].sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1))[0]?.[0] ?? null
+  })).sort((a, b) => (a.name < b.name ? -1 : 1));
+
+  // Bucket by name length so each name only meets candidates within ±1 char.
+  const byLen = new Map();
+  for (const o of list) {
+    if (!byLen.has(o.name.length)) byLen.set(o.name.length, []);
+    byLen.get(o.name.length).push(o);
+  }
+
+  const out = [];
+  for (const a of list) {
+    const cap = a.name.length >= 12 ? 2 : 1;
+    const al = a.name.toLowerCase();
+    for (let len = a.name.length - 1; len <= a.name.length + 1; len++) {
+      for (const b of byLen.get(len) || []) {
+        if (!(a.name < b.name)) continue;                       // each pair once
+        if (a.wd && b.wd && a.wd !== b.wd) continue;            // distinct systems
+        const lev = levenshteinCapped(al, b.name.toLowerCase(), cap);
+        if (lev > cap) continue;
+        out.push({ a: a.name, b: b.name, count_a: a.cnt, count_b: b.cnt,
+                   a_has_wd: a.has_wd, b_has_wd: b.has_wd, lev });
+      }
+    }
+  }
+  return out;
+}
+
 // ---- not:operator / not:operator:wikidata assertions ----------------------
 //
 // OSM's `not:` prefix records verified negatives: not:operator:wikidata=Q123
@@ -80,9 +214,9 @@ function queryLayercake() {
 // similarly-named system). These tags aren't in Layercake's POI columns, so
 // they're fetched with one tiny Overpass query. They must never be grouped as
 // real values, and suggestions must never re-propose a ruled-out item.
-// A custom instance (OVERPASS_URL env var) is tried first when set.
+// The configured instance (OVERPASS_URL / .overpass-url) is tried first.
 const OVERPASS_ENDPOINTS = [
-  ...(process.env.OVERPASS_URL ? [process.env.OVERPASS_URL] : []),
+  ...(overpassEndpoint() ? [overpassEndpoint()] : []),
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter'
 ];
@@ -220,25 +354,39 @@ async function fetchWikidataAliases(qids) {
 }
 
 async function main() {
-  // Layercake's snapshot timestamp gates the whole rebuild: skip if the committed
+  // Source selection: the configured Overpass instance is primary; Layercake/
+  // DuckDB is the fallback (no endpoint, or --layercake). Either way the
+  // source's snapshot timestamp gates the whole rebuild: skip if the committed
   // QA dataset already comes from an equal-or-newer source.
-  const sourceModified = await layercakeModified();
+  const endpoint = USE_LAYERCAKE ? null : overpassEndpoint();
+  const sourceName = endpoint ? 'Overpass' : 'Layercake';
+  const sourceModified = endpoint ? await overpassTimestamp(endpoint) : await layercakeModified();
   const sourceDate = toISODate(sourceModified);
-  if (!sourceDate) throw new Error('Could not read Layercake Last-Modified — aborting.');
+  if (!sourceDate) throw new Error(`Could not read the ${sourceName} data timestamp — aborting.`);
 
   const committed = committedSourceDate(DEST);
   if (!FORCE && committed && committed >= sourceDate) {
-    console.log(`Committed QA data source ${committed} is not older than Layercake ${sourceDate} — nothing to do. (Use --force to override.)`);
+    console.log(`Committed QA data source ${committed} is not older than ${sourceName} ${sourceDate} — nothing to do. (Use --force to override.)`);
     return;
   }
 
-  console.log('Querying Layercake (via DuckDB) for per-library QA data…');
-  const { libs: rawLibs, collisions: rawColl } = queryLayercake();
+  let rawLibs, rawColl;
+  if (endpoint) {
+    ({ libs: rawLibs, collisions: rawColl } = await queryOverpass(endpoint));
+  } else {
+    console.log('Querying Layercake (via DuckDB) for per-library QA data…');
+    ({ libs: rawLibs, collisions: rawColl } = queryLayercake());
+  }
   console.log(`  ${rawLibs.length} US libraries, ${rawColl.length} possible name collisions`);
 
-  // Deterministic order: DuckDB's parallel GROUP BY output order varies between
-  // runs, which would rewrite the whole committed file every week even with no
-  // data change. Sorting here keeps weekly git diffs limited to real changes.
+  // The addr:* flags only exist on the Overpass path; meta.tags records which
+  // flags this build actually tracked so the QA page derives columns from data.
+  const flagDefs = endpoint ? FLAG_DEFS : FLAG_DEFS.slice(0, LAYERCAKE_FLAG_COUNT);
+
+  // Deterministic order: source output order varies between runs (DuckDB's
+  // parallel GROUP BY, Overpass's block order), which would rewrite the whole
+  // committed file every run even with no data change. Sorting here keeps git
+  // diffs limited to real changes.
   rawLibs.sort((a, b) => a.type.localeCompare(b.type) || a.id - b.id);
 
   console.log('Fetching not:operator assertions from Overpass…');
@@ -347,11 +495,7 @@ async function main() {
   // Compact per-library rows.
   const libs = rawLibs.map(r => {
     let flags = 0;
-    if (r.has_phone) flags |= 1;
-    if (r.has_website) flags |= 2;
-    if (r.has_hours) flags |= 4;
-    if (r.operator) flags |= 8;
-    if (r.wikidata) flags |= 16;
+    flagDefs.forEach((d, i) => { if (d.has(r)) flags |= 1 << i; });
     return [
       sysIdx.get(sysKey(r)) ?? -1,
       r.type[0],                                // n / w / r
@@ -397,15 +541,18 @@ async function main() {
 
   const out = {
     meta: {
-      source: 'Layercake (OpenStreetMap US), US boundary relation 148838',
+      // Deliberately generic — never record the (private) Overpass instance URL.
+      source: endpoint
+        ? 'Overpass, US boundary relation 148838'
+        : 'Layercake (OpenStreetMap US), US boundary relation 148838',
       generated: new Date().toISOString().slice(0, 10),
       sourceDate,
-      layercakeModified: sourceModified,
+      sourceModified,
       totalLibraries: libs.length,
       totalSystems: systems.length,
       ...(pls?.meta ? { plsFiscalYear: pls.meta.fiscalYear } : {})
     },
-    tags: FLAG_BITS,
+    tags: flagDefs.map(d => d.key),
     states: stateNames,
     systems,
     libs,
@@ -759,7 +906,9 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAlias
 // skips that one system rather than failing the build — augmentation is additive
 // to the QA data, never a gate on it.
 const AUGMENT_MAX_SYSTEMS = Number(process.env.AUGMENT_MAX_SYSTEMS || 400);
-const AUGMENT_SLEEP_MS = Number(process.env.AUGMENT_SLEEP_MS || 1100);
+// The polite delay protects the public mirrors; a configured private instance
+// needs far less. Both defaults are env-overridable.
+const AUGMENT_SLEEP_MS = Number(process.env.AUGMENT_SLEEP_MS || (overpassEndpoint() ? 250 : 1100));
 
 // Full-tag Overpass fetch for one system (by operator:wikidata or operator name),
 // US-scoped. Returns [{ id, name, lat, lon, tags }] or null on failure.
@@ -874,7 +1023,7 @@ function plsStateForCoords(coords, plsGrid) {
   return winner?.st ?? null;
 }
 
-// One record per line (still valid JSON): weekly git diffs then touch only the
+// One record per line (still valid JSON): daily git diffs then touch only the
 // lines that actually changed, instead of rewriting one giant line. Exported so
 // augment-state.mjs writes qa-data.json in the exact same reviewable format.
 export function serializeLinewise(out) {

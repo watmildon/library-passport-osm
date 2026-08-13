@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // augment-state.mjs — generate IMLS PLS augmentation data for one or more states
 // and inject it into data/qa-data.json's `augment[]`, for testing/previewing the
-// augmentation page without a full weekly build.
+// augmentation page without a full national build.
 //
 // Unlike build-qa.mjs (which reads OSM from Layercake via DuckDB), this derives
 // each state's systems straight from the committed qa-data.json `libs`/`systems`
@@ -9,7 +9,7 @@
 // resolved like refresh-systems.mjs: OVERPASS_URL env, else a .overpass-url file.
 //
 // It reuses the exact production suggestion logic (pls-match + pls-augment), so
-// the emitted shape matches what the weekly build produces.
+// the emitted shape matches what the full build produces.
 //
 // Usage:
 //   node scripts/augment-state.mjs WA              # one state
@@ -32,6 +32,7 @@ import { fileURLToPath } from 'node:url';
 import { indexPls, classify } from './pls-match.mjs';
 import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment.mjs';
 import { serializeLinewise } from './build-qa.mjs';
+import { overpassEndpoint } from './overpass-source.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -57,17 +58,6 @@ const STATE_NAME = {
   TN: 'Tennessee', TX: 'Texas', UT: 'Utah', VT: 'Vermont', VA: 'Virginia',
   WA: 'Washington', WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming'
 };
-
-function overpassEndpoint() {
-  if (process.env.OVERPASS_URL) return process.env.OVERPASS_URL.trim();
-  try {
-    const f = readFileSync(join(ROOT, '.overpass-url'), 'utf8').trim();
-    if (f) return f;
-  } catch { /* fall through */ }
-  console.error('No Overpass endpoint configured. Set OVERPASS_URL or create a');
-  console.error('.overpass-url file in the repo root (it is gitignored).');
-  process.exit(1);
-}
 
 const MIN_LIBS_FOR_PLS = 3;   // same threshold as build-qa.mjs's PLS matching
 
@@ -188,15 +178,15 @@ async function main() {
   const bad = codes.filter(c => !STATE_NAME[c]);
   if (bad.length) { console.error(`Unknown state code(s): ${bad.join(', ')}`); process.exit(1); }
 
-  const endpoint = overpassEndpoint();
+  const endpoint = overpassEndpoint({ required: true });
   const qa = JSON.parse(readFileSync(QA_FILE, 'utf8'));
   const plsData = JSON.parse(readFileSync(PLS_FILE, 'utf8'));
   const plsIndex = indexPls(plsData.outlets);
   const { crosswalk } = await import('./pls-match.mjs');
   const ctx = { qa, plsIndex, plsData, endpoint, crosswalk };
 
-  console.log(`Augmenting ${codes.length} state(s): ${codes.join(', ')}`);
-  console.log(`Overpass: ${endpoint}${replace ? '  (--replace: dropping existing augment[])' : ''}`);
+  // Never print the endpoint — it may be a private (secret) instance URL.
+  console.log(`Augmenting ${codes.length} state(s): ${codes.join(', ')}${replace ? '  (--replace: dropping existing augment[])' : ''}`);
 
   // Start from committed augment[] (accumulate) unless --replace. Keyed by sysIdx
   // so re-running a state refreshes just its systems, and states not touched this
@@ -220,7 +210,7 @@ async function main() {
 
   qa.augment = augment;
   if (!qa.meta.plsFiscalYear && plsData.meta?.fiscalYear) qa.meta.plsFiscalYear = plsData.meta.fiscalYear;
-  // Same one-record-per-line format as the weekly build, so diffs stay reviewable.
+  // Same one-record-per-line format as the full build, so diffs stay reviewable.
   writeFileSync(QA_FILE, serializeLinewise(qa));
 
   console.log(`\n──────────`);

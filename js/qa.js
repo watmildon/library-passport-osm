@@ -1,10 +1,10 @@
-// qa.js — Data QA page: loads the weekly qa-data.json and renders
+// qa.js — Data QA page: loads the daily qa-data.json and renders
 // completion stats, wikidata gaps, likely typos, and a per-system explorer.
 // The explorer's "Load live details" fetches one system from Overpass to show
-// the full tag set (including addresses, absent from the weekly extract).
+// the current tag values (the snapshot only carries presence flags).
 
 import { searchSystems } from './systems.js';
-import { fetchLibraries } from './overpass.js';
+import { fetchLibrariesMeta } from './overpass.js';
 import { TRACKED_TAGS } from './completeness.js';
 import { JOSM, bboxAround, josmSend, webEditObjectUrl, webEditAtUrl } from './josm.js';
 
@@ -33,15 +33,37 @@ function titleCase(s) {
   }).join(' ');
 }
 
-// Column meaning of each bit in a library row's flags (matches build-qa.mjs).
-// Only the tags the app itself uses are tracked.
-const TAG_DEFS = [
+// Column meaning of each bit in a library row's flags. The authoritative list
+// is the data's own meta.tags (bit = 1 << index) — derived in boot() so the
+// page renders whatever the build tracked (Overpass builds add addr:* flags;
+// older Layercake builds only have the first five). This literal is just the
+// fallback for data predating meta.tags.
+let TAG_DEFS = [
   { bit: 8,  key: 'operator' },
   { bit: 16, key: 'operator:wikidata' },
   { bit: 1,  key: 'phone' },
   { bit: 2,  key: 'website' },
   { bit: 4,  key: 'opening_hours' }
 ];
+let ADDR_MASK = 0;   // addr:housenumber|addr:street bits, when the data has them
+
+// Stable display order for derived tag defs.
+const TAG_ORDER = ['operator', 'operator:wikidata', 'phone', 'website', 'opening_hours',
+                   'addr:housenumber', 'addr:street', 'addr:city', 'addr:postcode'];
+function deriveTagDefs(tags) {
+  if (!Array.isArray(tags) || !tags.length) return;
+  TAG_DEFS = tags.map((key, i) => ({ bit: 1 << i, key }))
+    .sort((a, b) => {
+      const ai = TAG_ORDER.indexOf(a.key), bi = TAG_ORDER.indexOf(b.key);
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
+  const hn = TAG_DEFS.find(t => t.key === 'addr:housenumber');
+  const st = TAG_DEFS.find(t => t.key === 'addr:street');
+  ADDR_MASK = hn && st ? (hn.bit | st.bit) : 0;
+}
+
+// Compact column label for a tag key.
+const tagLabel = k => k === 'operator:wikidata' ? 'wikidata' : k.replace(/^addr:/, '');
 
 // Library row accessors ([sysIdx, type, id, name, stateIdx, flags, lon, lat]).
 const L = { sys: 0, type: 1, id: 2, name: 3, state: 4, flags: 5, lon: 6, lat: 7 };
@@ -195,10 +217,13 @@ async function boot() {
     return;
   }
 
+  deriveTagDefs(data.tags);
+
   const m = data.meta;
+  const src = m.sourceModified || m.layercakeModified;
   $('#qa-meta').textContent =
     `${fmt(m.totalLibraries)} US libraries · ${fmt(m.totalSystems)} systems · data as of ` +
-    `${m.layercakeModified ? new Date(m.layercakeModified).toLocaleDateString() : m.generated} (updated weekly)`;
+    `${src ? new Date(src).toLocaleDateString() : m.generated} (updated daily)`;
 
   searchable = data.systems.map((s, i) => ({
     name: s.n,
@@ -302,6 +327,8 @@ function stateRows() {
     const libs = data.libs.filter(l => l[L.state] === i);
     const row = { name, libs: libs.length };
     for (const t of TAG_DEFS) row[t.key] = pct(libs.filter(l => l[L.flags] & t.bit).length, libs.length);
+    // One combined address column (housenumber AND street) keeps the table narrow.
+    if (ADDR_MASK) row.address = pct(libs.filter(l => (l[L.flags] & ADDR_MASK) === ADDR_MASK).length, libs.length);
     return row;
   });
   const { col, dir } = stateSort;
@@ -311,27 +338,30 @@ function stateRows() {
   return rows;
 }
 
-const STATE_COLS = [
+// The addr column only exists when the data tracks the addr:* flags.
+const stateCols = () => [
   { id: 'name', label: 'State' },
   { id: 'libs', label: 'Libraries' },
   { id: 'operator', label: 'operator' },
   { id: 'operator:wikidata', label: 'wikidata' },
   { id: 'phone', label: 'phone' },
   { id: 'website', label: 'website' },
-  { id: 'opening_hours', label: 'hours' }
+  { id: 'opening_hours', label: 'hours' },
+  ...(ADDR_MASK ? [{ id: 'address', label: 'address' }] : [])
 ];
 
 function renderStateTable() {
+  const cols = stateCols();
   const rows = stateRows();
   const arrow = c => stateSort.col === c ? (stateSort.dir === -1 ? ' ▾' : ' ▴') : '';
   $('#state-table').innerHTML = `
-    <thead><tr>${STATE_COLS.map(c =>
+    <thead><tr>${cols.map(c =>
       `<th data-col="${c.id}" class="${c.id === 'name' ? '' : 'num'}">${escapeHtml(c.label)}${arrow(c.id)}</th>`).join('')}
     </tr></thead>
     <tbody>${rows.map(r => `<tr>
       <td>${escapeHtml(r.name)}</td>
       <td class="num">${fmt(r.libs)}</td>
-      ${STATE_COLS.slice(2).map(c => `<td class="num">${r[c.id]}%</td>`).join('')}
+      ${cols.slice(2).map(c => `<td class="num">${r[c.id]}%</td>`).join('')}
     </tr>`).join('')}</tbody>`;
 
   $('#state-table').querySelectorAll('th').forEach(th => th.addEventListener('click', () => {
@@ -644,7 +674,7 @@ function renderPlsUnmatched() {
   const list = $('#plsu-list');
   if (!list) return;
   if (!data.plsUnmatched || !data.plsUnmatched.length) {
-    list.innerHTML = '<p class="qa-note">No unmatched PLS systems (dataset predates this report, or every multi-outlet system crosswalked). Regenerated weekly.</p>';
+    list.innerHTML = '<p class="qa-note">No unmatched PLS systems (dataset predates this report, or every multi-outlet system crosswalked). Regenerated daily.</p>';
     $('#plsu-more').hidden = true;
     return;
   }
@@ -952,10 +982,10 @@ function showSystem(idx) {
   $('#live-note').textContent = '';
   $('#btn-live').disabled = false;
 
-  // Weekly-snapshot table.
+  // Snapshot table (from the committed daily data).
   $('#sys-table').innerHTML = `
     <thead><tr><th>Library</th><th>State</th>
-      ${TAG_DEFS.map(t => `<th class="num"><code>${escapeHtml(t.key.replace('operator:wikidata', 'wikidata'))}</code></th>`).join('')}
+      ${TAG_DEFS.map(t => `<th class="num"><code>${escapeHtml(tagLabel(t.key))}</code></th>`).join('')}
       <th></th></tr></thead>
     <tbody>${libs.map(l => `<tr>
       <td>${escapeHtml(l[L.name] || '(unnamed)')}</td>
@@ -966,7 +996,7 @@ function showSystem(idx) {
 }
 
 // Live details: fetch this system from Overpass and show the full tracked-tag
-// set (including addr:*), replacing the weekly table.
+// set, replacing the snapshot table.
 async function loadLive() {
   if (currentSys < 0) return;
   const s = data.systems[currentSys];
@@ -975,10 +1005,12 @@ async function loadLive() {
   $('#live-note').textContent = 'Fetching live data from Overpass…';
 
   try {
-    const feats = await fetchLibraries(s.w ? 'wikidata' : 'operator', s.w || s.n);
+    const { features: feats, osmBase } = await fetchLibrariesMeta(s.w ? 'wikidata' : 'operator', s.w || s.n);
     if (!feats.length) throw new Error('no results');
+    // Public mirrors can lag OSM by weeks — always say how old the data is.
     $('#live-note').textContent =
-      `Live from Overpass just now – ${feats.length} libraries, all ${TRACKED_TAGS.length} tracked tags.`;
+      `From Overpass (data as of ${osmBase ? new Date(osmBase).toLocaleString() : 'unknown'}) – ` +
+      `${feats.length} libraries, all ${TRACKED_TAGS.length} tracked tags.`;
     $('#sys-table').innerHTML = `
       <thead><tr><th>Library</th><th>City</th>
         ${TRACKED_TAGS.map(t => `<th class="num"><code>${escapeHtml(t.label)}</code></th>`).join('')}

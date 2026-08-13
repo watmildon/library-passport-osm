@@ -1,4 +1,4 @@
-// augment.js — Augment page: loads the weekly qa-data.json `augment` section and
+// augment.js — Augment page: loads the daily qa-data.json `augment` section and
 // delivers per-branch / per-system PLS-derived tag suggestions into JOSM review
 // layers via Remote Control. Additive-only; the mapper reviews before uploading.
 
@@ -125,7 +125,7 @@ async function boot() {
   const fy = m.plsFiscalYear ? `IMLS PLS FY${m.plsFiscalYear} · ` : '';
   $('#qa-meta').textContent =
     `${fy}${fmt(aug.length)} systems with suggestions · data as of ` +
-    `${m.layercakeModified ? new Date(m.layercakeModified).toLocaleDateString() : m.generated}`;
+    `${(m.sourceModified || m.layercakeModified) ? new Date(m.sourceModified || m.layercakeModified).toLocaleDateString() : m.generated}`;
 
   if (!aug.length) {
     $('#tiles').innerHTML = '<p class="qa-note">No augmentation suggestions in this dataset. 🎉</p>';

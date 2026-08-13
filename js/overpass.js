@@ -2,28 +2,50 @@
 
 import { overpassEndpoints } from './config.js';
 
-// Overpass area id for the United States boundary (OSM relation 148838).
-// Overpass derives area ids from relations by adding 3600000000.
-const US_AREA_ID = 3600148838;
+// The public Overpass servers are busy: expensive queries routinely 504 or get
+// their connection dropped (which browsers report as a CORS failure). The
+// biggest lever is keeping the query cheap — evaluating the US boundary area
+// (relation 148838) costs the server ~10-15s alone, so it's avoided entirely:
+//
+//  - operator:wikidata is globally unique to one operator, so that mode needs
+//    no US scoping at all;
+//  - operator names are US-scoped with cheap bounding boxes instead of the
+//    boundary polygon. Four boxes cover the states + territories (CONUS/AK/HI/
+//    PR/VI, the western Aleutians across the antimeridian, GU/MP, AS).
+//
+// Overpass bbox order is (south, west, north, east).
+const US_BBOXES = [
+  '(17.5,-180,71.5,-64)',        // CONUS + Alaska + Hawaii + Puerto Rico + USVI
+  '(51,170,73,180)',             // western Aleutians (across the antimeridian)
+  '(12,140,21,147)',             // Guam + Northern Mariana Islands
+  '(-14.7,-171.2,-13.8,-169.2)'  // American Samoa
+];
+
+// How long to wait on one endpoint before failing over to the next. Slightly
+// above the query's own [timeout:30] so the server gets to answer first.
+const FETCH_TIMEOUT_MS = 35000;
 
 // Build an Overpass QL query selecting libraries for one operator (name or
-// wikidata), constrained to the United States so common operator names or
-// Wikidata IDs reused abroad don't pull in foreign libraries.
+// wikidata).
 export function buildQuery(mode, value) {
   const esc = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-  const selector = mode === 'wikidata'
-    ? `["operator:wikidata"="${esc}"]`
-    : `["operator"="${esc}"]`;
-  return `[out:json][timeout:60];
-area(${US_AREA_ID})->.us;
+  if (mode === 'wikidata') {
+    return `[out:json][timeout:30];
+nwr["operator:wikidata"="${esc}"][amenity=library];
+out center tags;`;
+  }
+  return `[out:json][timeout:30];
 (
-  nwr${selector}[amenity=library](area.us);
+${US_BBOXES.map(bb => `  nwr["operator"="${esc}"][amenity=library]${bb};`).join('\n')}
 );
 out center tags;`;
 }
 
-// Fetch libraries, trying mirrors in order if the first fails.
-export async function fetchLibraries(mode, value) {
+// Fetch libraries plus response metadata, trying mirrors in order if one fails
+// (bad HTTP status, network/CORS error, or the per-endpoint timeout). Returns
+// { features, osmBase } — osmBase is the server's data timestamp, worth showing
+// because public mirrors can lag OSM by weeks.
+export async function fetchLibrariesMeta(mode, value) {
   const body = 'data=' + encodeURIComponent(buildQuery(mode, value));
   let lastErr;
   for (const url of overpassEndpoints()) {
@@ -31,16 +53,25 @@ export async function fetchLibraries(mode, value) {
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body
+        body,
+        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
       });
       if (!res.ok) { lastErr = new Error('Overpass returned ' + res.status); continue; }
       const json = await res.json();
-      return elementsToFeatures(json.elements || []);
+      return {
+        features: elementsToFeatures(json.elements || []),
+        osmBase: json.osm3s?.timestamp_osm_base || null
+      };
     } catch (e) {
       lastErr = e;
     }
   }
   throw lastErr || new Error('All Overpass endpoints failed');
+}
+
+// Back-compat wrapper: just the features.
+export async function fetchLibraries(mode, value) {
+  return (await fetchLibrariesMeta(mode, value)).features;
 }
 
 // Convert Overpass elements (node / way / relation) into GeoJSON point features.

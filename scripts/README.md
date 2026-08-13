@@ -1,53 +1,53 @@
 # Build scripts
 
-`build-systems.mjs` and `build-qa.mjs` query OpenStreetMap US's
-[Layercake](https://openstreetmap.us/our-work/layercake/) GeoParquet extracts
-remotely with DuckDB (only the needed columns/row-groups are read — the 4 GB POI
-file is never fully downloaded) and are run weekly by the
+The pipeline's **primary data source is an Overpass instance** with minutely
+OSM replication: `refresh-systems.mjs` (systems list) and `build-qa.mjs` (QA
+dataset) query it directly and are run **daily** by the
 [`update-systems`](../.github/workflows/update-systems.yml) GitHub Action.
+The Layercake/DuckDB path (`build-systems.mjs`, `build-qa.mjs --layercake`)
+remains as a manual fallback should the instance go away.
+
+## Overpass endpoint — private, never logged
+
+`overpass-source.mjs` resolves the endpoint for every script, in order:
+
+1. the `OVERPASS_URL` env var — in CI, populated from the
+   **`OVERPASS_PRIMARY_URL` repository secret**
+2. a `.overpass-url` file in the repo root — **gitignored** so the URL never
+   lands in git
+
+The URL is a secret. No script prints it *or its host* — GitHub Actions only
+masks the exact secret string in logs, so even the hostname would leak.
+`meta.source` in the data files stays deliberately generic ("Overpass, …").
 
 ## Freshness — every writer records `meta.sourceDate`
 
 Each data writer stamps the snapshot date of the source it built from into
-`meta.sourceDate` (YYYY-MM-DD) — Layercake's POI `Last-Modified` for the two
-`build-*` scripts, Overpass's `timestamp_osm_base` for `refresh-systems.mjs`.
-The generic `meta.source` names *which* source; `sourceDate` makes freshness
-comparable across sources.
+`meta.sourceDate` (YYYY-MM-DD) plus the full timestamp as `meta.sourceModified`
+— Overpass's `osm3s.timestamp_osm_base` on the primary path, Layercake's POI
+`Last-Modified` on the fallback. The generic `meta.source` names *which*
+source; `sourceDate` makes freshness comparable across sources.
 
 Before writing, a writer **compares its source date against the committed
 `sourceDate` and only writes if it is contributing newer data** (pass `--force`
-to override). This means the weekly Layercake job will *not* clobber a fresher
-out-of-band refresh — e.g. after a manual Overpass run (dated later than the last
-Layercake snapshot), the Monday Layercake build sees the committed data is newer
-and skips. The [`update-systems`](../.github/workflows/update-systems.yml)
-workflow applies the same gate up front (`force: true` input overrides) to also
-skip the DuckDB install when nothing newer is available.
+to override), so a rerun or an out-of-order job never clobbers fresher data.
+The [`update-systems`](../.github/workflows/update-systems.yml) workflow
+applies the same gate up front (`force: true` input overrides).
 
-`refresh-systems.mjs` is an on-demand alternative for the systems list that pulls
-from a dev Overpass instance instead — see below.
+## `refresh-systems.mjs` — systems list (Overpass, primary)
 
-## `refresh-systems.mjs` — on-demand fresh systems list (dev Overpass)
-
-Layercake lags OSM by up to a couple of weeks. After a batch of operator cleanup,
-this regenerates `../data/us-library-systems.json` from live OSM via a private
-Overpass instance, sharing all aggregation/labelling/output with `build-systems.mjs`
-(via `systems-core.mjs`) so the file shape is identical.
+Regenerates `../data/us-library-systems.json` from live OSM, sharing all
+aggregation/labelling/output with `build-systems.mjs` (via `systems-core.mjs`)
+so the file shape is identical regardless of path.
 
 ```sh
 npm run refresh:systems           # gated on data freshness
 node scripts/refresh-systems.mjs --force   # ignore the gate
 ```
 
-- **Endpoint** comes from the `OVERPASS_URL` env var, or a `.overpass-url` file in
-  the repo root. That file is **gitignored** so a private instance URL never lands
-  in git.
-- **Freshness gate**: the committed file records the snapshot date it was built
-  from; the script asks Overpass for its data timestamp (`osm3s.timestamp_osm_base`)
-  and only regenerates when Overpass is newer. This keeps an on-demand run from
-  clobbering a fresher weekly Layercake commit or churning the file for nothing.
-  `--force` overrides it.
-- US-scoped with `area(3600148838)` (the same US boundary relation Layercake uses),
-  so counts stay consistent with the weekly build.
+- US-scoped with `area(3600148838)` (the same US boundary relation Layercake
+  uses), so counts stay consistent across source paths.
+- Refuses to write when fewer than 10,000 libraries come back (gutted response).
 
 ## `build-pls.mjs` — IMLS PLS outlet data
 
@@ -74,19 +74,30 @@ Regenerates [`../data/qa-data.json`](../data/qa-data.json), the dataset behind
 [`qa.html`](../qa.html) (the Data QA page).
 
 ```sh
-node scripts/build-qa.mjs
+node scripts/build-qa.mjs               # Overpass (primary) when an endpoint is configured
+node scripts/build-qa.mjs --layercake   # force the Layercake/DuckDB fallback
 ```
 
-Runs [`qa-libraries.sql`](./qa-libraries.sql), which emits one row per US
-library (US-scoped by `ST_Contains` against boundary relation 148838, state
-assigned by point-in-polygon against `admin_level=4` boundaries) plus a list of
-likely-typo operator-name pairs (Levenshtein ≤ 2, length-scaled, computed in
-DuckDB). The Node script normalizes this into one compact file:
+**Primary path (Overpass):** two queries — every US library with full tags
+(`out center tags`, ~19k elements) and a per-state assignment (one `foreach`
+over the 56 `admin_level=4` areas carrying a `US-*` ISO3166-2 code). The
+likely-typo operator pairs (Levenshtein ≤ 2, length-scaled) are computed in JS
+with the same rules the SQL used. Because Overpass carries `addr:*` (absent
+from Layercake's POI layer), this path also tracks four address flags.
 
-- `meta` — generated date, Layercake freshness, totals
+**Fallback path (`--layercake`, or no endpoint configured):** runs
+[`qa-libraries.sql`](./qa-libraries.sql) via the DuckDB CLI — one row per US
+library (US-scoped by `ST_Contains` against boundary relation 148838, state by
+point-in-polygon against `admin_level=4` boundaries) plus the collision pairs.
+No addr flags; `meta.tags` records which flags a build actually tracked, and
+the QA page derives its columns from that.
+
+Either way the Node script normalizes the rows into one compact file:
+
+- `meta` — generated date, source + snapshot date, totals
 - `tags` — the tag behind each bit of a library's `flags` bitmask
-  (phone, website, opening_hours, operator, operator:wikidata — only the tags
-  the app itself uses)
+  (phone, website, opening_hours, operator, operator:wikidata, and on the
+  Overpass path addr:housenumber, addr:street, addr:city, addr:postcode)
 - `states` / `systems` — lookup arrays referenced by index from `libs`
 - `libs` — `[systemIdx, type, id, name, stateIdx, flags, lon, lat]` per library
 - `collisions` — the likely-typo pairs
@@ -124,15 +135,16 @@ Q-id (typo variants), only the principal (largest) one gets the count.
 
 **`not:` assertions.** OSM's `not:operator:wikidata` / `not:operator` tags record
 verified negatives ("definitely not that item"). Layercake doesn't extract them,
-so the build fetches them with one small Overpass query (set `OVERPASS_URL` to
-use a custom instance; fails soft if Overpass is unreachable). Ruled-out values
+so the build fetches them with one small Overpass query (the configured
+endpoint first, public mirrors as fallback; fails soft). Ruled-out values
 never count as real tags, veto matching suggestions, and are exposed per system
 as `nw` — the QA page shows them as struck-through badges, with a conflict
 warning when a system's dominant wikidata tag is itself ruled out by a mapper.
 
-**Limitation:** Layercake's POI layer has no `addr:*` columns, so address
-completion isn't in the weekly stats. The QA page's "Load live details" action
-fills that gap per-system via Overpass (full tag set, incl. addresses).
+**Fallback limitation:** Layercake's POI layer has no `addr:*` columns, so a
+`--layercake` build drops the address flags (the QA page hides those columns
+via `meta.tags`). The QA page's "Load live details" action still shows current
+tag values per-system via Overpass either way.
 
 **IMLS PLS augmentation** ([`pls-augment.mjs`](./pls-augment.mjs)). For each
 crosswalked system, the build compares matched PLS outlets against their EXISTING
@@ -196,10 +208,31 @@ systems and untouched states are preserved). `--replace` starts from an empty
 is stamped. Intended for generating preview / bug-fixing data; re-run `build:qa`
 to regenerate the real national dataset.
 
-## `build-systems.mjs` — US library-systems list
+## Automated daily refresh
 
-Regenerates [`../data/us-library-systems.json`](../data/us-library-systems.json),
-the curated list powering the onboarding autocomplete.
+The [`update-systems`](../.github/workflows/update-systems.yml) GitHub Action
+runs `refresh-systems.mjs`, `build-pls.mjs` (a no-op except when a new PLS
+fiscal year lands), and `build-qa.mjs` every day (and on-demand via the Actions
+tab), committing the result back to the repo so the picker and QA page keep
+pace with mappers' additions and cleanups. The Overpass endpoint comes from the
+`OVERPASS_PRIMARY_URL` repository secret; if the instance is unreachable the
+job fails loudly without committing (fall back manually, below).
+
+Guards keep a bad upstream response from landing:
+
+- **Absolute floors** — fewer than 1,000 systems or 10,000 QA libraries.
+- **±20% band** — rejects a day-over-day change greater than 20% in either
+  direction (almost always an upstream glitch, not real mapping activity).
+
+When a guard trips, the job fails without committing. If the change is genuine,
+re-run the workflow manually to accept it.
+
+## `build-systems.mjs` — US library-systems list (Layercake fallback)
+
+The manual fallback for `refresh-systems.mjs`: regenerates
+[`../data/us-library-systems.json`](../data/us-library-systems.json) from
+OpenStreetMap US's Layercake extract instead of Overpass. Use it (together with
+`build-qa.mjs --layercake`) if the private Overpass instance is unavailable.
 
 ```sh
 node scripts/build-systems.mjs
@@ -207,21 +240,6 @@ node scripts/build-systems.mjs
 
 Requires the [DuckDB CLI](https://duckdb.org/docs/installation/) on `PATH` (or set
 the `DUCKDB` env var to its location) and Node 18+. Run from the repo root.
-
-### Automated weekly refresh
-
-The [`update-systems`](../.github/workflows/update-systems.yml) GitHub Action runs
-this script every Monday (and on-demand via the Actions tab), committing the result
-back to the repo so the picker keeps pace with mappers' additions and cleanups.
-
-Two guards keep a bad upstream response from landing:
-
-- **Absolute floor** — rejects a result with fewer than 1,000 systems.
-- **±20% band** — rejects a week-over-week change greater than 20% in either
-  direction (almost always an upstream glitch, not real mapping activity).
-
-When a guard trips, the job fails without committing. If the change is genuine,
-re-run the workflow manually to accept it.
 
 ### What it does
 

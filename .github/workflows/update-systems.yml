@@ -1,19 +1,22 @@
-name: Update library systems list
+name: Update library data
 
-# Refresh data/us-library-systems.json from OpenStreetMap US's Layercake POI
-# extract so the onboarding picker reflects mappers' latest additions and
-# cleanups. Layercake is queried directly over HTTP with DuckDB (no full
-# download) and, unlike QLever, does not block GitHub Actions runner IPs.
+# Refresh data/us-library-systems.json and data/qa-data.json daily from the
+# private Overpass instance (minutely OSM replication), so the picker and the
+# QA page keep pace with mappers' work. The instance URL is the
+# OVERPASS_PRIMARY_URL repository secret; the scripts read it as OVERPASS_URL
+# and are careful never to print it (GitHub only masks the exact secret string,
+# so even the hostname would leak).
+#
+# The Layercake/DuckDB build path still exists as a manual fallback — see
+# scripts/README.md.
 
 on:
   schedule:
-    # Sundays 09:17 UTC — Layercake refreshes on Saturday, so this reliably
-    # picks up the new snapshot. (If it ever ran early, the freshness gate skips.)
-    - cron: '17 9 * * 0'
-  workflow_dispatch:         # allow manual runs from the Actions tab
+    - cron: '17 9 * * *'       # daily; the freshness gate makes reruns no-ops
+  workflow_dispatch:           # allow manual runs from the Actions tab
     inputs:
       force:
-        description: 'Rebuild even if Layercake has not published a newer snapshot'
+        description: 'Rebuild even if the committed data is already up to date'
         type: boolean
         default: false
 
@@ -28,6 +31,8 @@ concurrency:
 jobs:
   update:
     runs-on: ubuntu-latest
+    env:
+      OVERPASS_URL: ${{ secrets.OVERPASS_PRIMARY_URL }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -36,11 +41,6 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '24'
-
-      - name: Install DuckDB CLI
-        run: |
-          curl -fsSL https://install.duckdb.org | sh
-          echo "$HOME/.duckdb/cli/latest" >> "$GITHUB_PATH"
 
       - name: Record current counts
         id: before
@@ -54,37 +54,68 @@ jobs:
       - name: Freshness gate
         id: gate
         run: |
-          # Layercake is rebuilt periodically from OSM. Skip the whole rebuild when
-          # our committed data already comes from an equal-or-newer source (each
-          # data file records meta.sourceDate). This also avoids clobbering a
-          # fresher out-of-band refresh (e.g. a manual Overpass run).
-          LIVE=$(curl -sfI "https://data.openstreetmap.us/layercake/pois.parquet" \
-                 | grep -i '^last-modified:' | sed 's/^[Ll]ast-[Mm]odified: //' | tr -d '\r' || echo "")
-          LIVE_DATE=$(node -e "const t=Date.parse(process.argv[1]); process.stdout.write(Number.isNaN(t)?'':new Date(t).toISOString().slice(0,10))" "$LIVE" 2>/dev/null || echo "")
+          # Ask the Overpass instance for its data timestamp and skip the whole
+          # rebuild when the committed data already comes from an equal-or-newer
+          # snapshot (each data file records meta.sourceDate). Do not echo the
+          # endpoint anywhere.
+          if [ -z "$OVERPASS_URL" ]; then
+            echo "::error::OVERPASS_PRIMARY_URL secret is not set."
+            exit 1
+          fi
+          TS=$(curl -sf -X POST "$OVERPASS_URL" \
+                 --data-urlencode 'data=[out:json][timeout:60];out count;' \
+               | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).osm3s.timestamp_osm_base||'')}catch{}})" \
+               || echo "")
+          if [ -z "$TS" ]; then
+            echo "::error::The Overpass instance did not answer with a data timestamp. Is it up?"
+            exit 1
+          fi
+          LIVE_DATE="${TS:0:10}"
           SYS=$(node -p "const m=require('./data/us-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
           QA=$(node -p "const m=require('./data/qa-data.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
-          echo "Layercake live: '${LIVE:-unknown}' (${LIVE_DATE:-?})"
+          echo "Overpass data: $TS"
           echo "Committed sourceDate — systems: '${SYS:-none}', qa: '${QA:-none}'"
           echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
-          echo "OpenStreetMap US Layercake \`pois.parquet\` — live: ${LIVE:-unknown}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Private Overpass instance — data timestamp: $TS" >> "$GITHUB_STEP_SUMMARY"
 
           RUN=yes
           # Skip only if BOTH committed files are already at least as fresh as live.
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             echo "Forced rebuild requested."
-          elif [ -n "$LIVE_DATE" ] && [ -n "$SYS" ] && [ -n "$QA" ] \
+          elif [ -n "$SYS" ] && [ -n "$QA" ] \
                && [ ! "$SYS" \< "$LIVE_DATE" ] && [ ! "$QA" \< "$LIVE_DATE" ]; then
-            echo "Committed data is not older than the live Layercake snapshot — skipping rebuild."
-            echo "Up to date (committed sourceDate >= Layercake ${LIVE_DATE})." >> "$GITHUB_STEP_SUMMARY"
+            echo "Committed data is not older than the Overpass snapshot — skipping rebuild."
+            echo "Up to date (committed sourceDate >= ${LIVE_DATE})." >> "$GITHUB_STEP_SUMMARY"
             RUN=no
           fi
           echo "run=$RUN" >> "$GITHUB_OUTPUT"
 
-      - name: Regenerate systems list
+      - name: Check whether a new IMLS PLS release needs DuckDB
+        id: pls
         if: steps.gate.outputs.run == 'yes'
         run: |
-          duckdb --version
-          node scripts/build-systems.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+          # build-pls.mjs self-gates on its PLS_FY constant and only invokes
+          # DuckDB when a new fiscal-year release must be ingested — which
+          # happens about once a year, right after PLS_FY is bumped in a commit.
+          NEED=$(node -e "
+            const fs = require('fs');
+            const fy = (fs.readFileSync('scripts/build-pls.mjs','utf8').match(/const PLS_FY = '(\d+)'/) || [])[1];
+            let cur = null; try { cur = require('./data/pls-outlets.json').meta.fiscalYear } catch {}
+            process.stdout.write(fy && fy !== cur ? 'yes' : 'no');
+          ")
+          echo "PLS ingest needed: $NEED"
+          echo "need=$NEED" >> "$GITHUB_OUTPUT"
+
+      - name: Install DuckDB CLI (new PLS release only)
+        if: steps.gate.outputs.run == 'yes' && steps.pls.outputs.need == 'yes'
+        run: |
+          curl -fsSL https://install.duckdb.org | sh
+          echo "$HOME/.duckdb/cli/latest" >> "$GITHUB_PATH"
+
+      - name: Regenerate systems list (Overpass)
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          node scripts/refresh-systems.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Refresh IMLS PLS data
         if: steps.gate.outputs.run == 'yes'
@@ -92,7 +123,7 @@ jobs:
           # Self-gates on fiscal year — a no-op unless a new PLS release is out.
           node scripts/build-pls.mjs
 
-      - name: Regenerate QA dataset
+      - name: Regenerate QA dataset (Overpass)
         if: steps.gate.outputs.run == 'yes'
         run: |
           node scripts/build-qa.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
@@ -118,7 +149,7 @@ jobs:
           fi
 
           # Refuse a >20% swing in either direction — almost always an upstream
-          # data glitch rather than a week of real mapping activity.
+          # data glitch rather than a day of real mapping activity.
           check_band() {  # name old new
             if [ "$2" -gt 0 ]; then
               LOW=$(( $2 * 80 / 100 )); HIGH=$(( $2 * 120 / 100 ))
@@ -142,5 +173,5 @@ jobs:
           fi
           COUNT=$(node -p "require('./data/us-library-systems.json').systems.length")
           git add data/us-library-systems.json data/qa-data.json data/pls-outlets.json
-          git commit -m "chore: weekly refresh of library data ($COUNT systems)"
+          git commit -m "chore: daily refresh of library data ($COUNT systems)"
           git push

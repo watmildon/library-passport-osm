@@ -165,7 +165,7 @@ export async function writeSystems(rows, { source, sourceDate, sourceModified, f
     boundary: 'United States (OSM relation 148838)',
     totalSystems: systems.length
   };
-  // One system per line (still valid JSON) so weekly git diffs touch only the
+  // One system per line (still valid JSON) so daily git diffs touch only the
   // lines that actually changed, instead of rewriting one giant line.
   const json = '{\n' +
     `"meta": ${JSON.stringify(meta)},\n` +
