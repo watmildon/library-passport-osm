@@ -58,11 +58,20 @@ const EDITOR_KEY = 'libpass:editor';
 let currentEditor = (() => { try { return localStorage.getItem(EDITOR_KEY) || 'id'; } catch { return 'id'; } })();
 function setEditor(e) { currentEditor = e; try { localStorage.setItem(EDITOR_KEY, e); } catch {} }
 
+// geo: URI (RFC 5870) for the OS-registered map app. Kept parameterless — zoom
+// hints are an Android extension not every handler accepts.
+const geoUri = (lat, lon) => `geo:${lat},${lon}`;
+
 // Link to edit an existing object (node/way/relation). lat/lon optional but
 // needed for JOSM (to build a bbox to load and select within). JOSM/web builders
 // live in ./josm.js; this picks per the user's editor choice.
 function editObject(type, id, lat, lon) {
   const t = OSM_TYPE[type] || type; // accept 'n'/'node'
+  if (currentEditor === 'geo') {
+    // geo: can't reference an OSM object, only its centroid; without a
+    // coordinate, fall back to the object's osm.org page.
+    return lat == null ? `https://www.openstreetmap.org/${t}/${id}` : geoUri(lat, lon);
+  }
   if (currentEditor === 'josm') {
     if (lat == null) return `${JOSM}/import?url=https://www.openstreetmap.org/api/0.6/${t}/${id}/full`;
     const b = bboxAround(lat, lon);
@@ -73,6 +82,7 @@ function editObject(type, id, lat, lon) {
 
 // Link to edit at a coordinate (for creating a new node / checking a location).
 function editAt(lat, lon) {
+  if (currentEditor === 'geo') return geoUri(lat, lon);
   if (currentEditor === 'josm') {
     const b = bboxAround(lat, lon);
     return `${JOSM}/load_and_zoom?left=${b.left}&right=${b.right}&top=${b.top}&bottom=${b.bottom}`;
@@ -111,7 +121,9 @@ function setupEditorPicker() {
   const showHint = () => {
     hint.textContent = currentEditor === 'josm'
       ? 'JOSM must be running with Remote Control enabled.'
-      : '';
+      : currentEditor === 'geo'
+        ? 'Opens your device\'s map app (or Vespucci/OsmAnd) – mostly useful on mobile.'
+        : '';
   };
   sel.value = currentEditor;
   showHint();
