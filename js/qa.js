@@ -65,7 +65,8 @@ function deriveTagDefs(tags) {
 // Compact column label for a tag key.
 const tagLabel = k => k === 'operator:wikidata' ? 'wikidata' : k.replace(/^addr:/, '');
 
-// Library row accessors ([sysIdx, type, id, name, stateIdx, flags, lon, lat]).
+// Library row accessors. Column 0 is a system KEY in the file and a system INDEX
+// in memory — resolveSystemKeys() swaps it at load; see the note there.
 const L = { sys: 0, type: 1, id: 2, name: 3, state: 4, flags: 5, lon: 6, lat: 7 };
 
 const OSM_TYPE = { n: 'node', w: 'way', r: 'relation' };
@@ -218,6 +219,7 @@ async function boot() {
   }
 
   deriveTagDefs(data.tags);
+  resolveSystemKeys();
 
   const m = data.meta;
   const src = m.sourceModified || m.layercakeModified;
@@ -273,6 +275,20 @@ async function boot() {
   setupPlsuStateFilter();
   setupEditorPicker();
   openSection(location.hash.slice(1));
+}
+
+// The file references a system by KEY — a stable string (the operator name, or
+// "wd:Q…") that changes only when the OSM tag does. Array positions would be
+// cheaper on the wire but shift whenever any system is added, removed, or
+// renamed, rewriting most of the file in every daily diff for no real change.
+//
+// The UI wants an integer handle it can pass around in `data-sys` attributes, so
+// resolve keys to positions once here and let the rest of the page work in
+// indices exactly as before. Unknown or absent keys become -1.
+function resolveSystemKeys() {
+  const byKey = new Map(data.systems.map((s, i) => [s.k ?? s.n, i]));
+  for (const l of data.libs) l[L.sys] = l[L.sys] == null ? -1 : (byKey.get(l[L.sys]) ?? -1);
+  for (const p of data.pls || []) p.sysIdx = byKey.get(p.sysKey) ?? -1;
 }
 
 // ---------------- Overview ----------------
@@ -582,10 +598,14 @@ function renderPls() {
     return;
   }
   const term = plsFilter.trim().toLowerCase();
+  // The file is ordered by system key (stable diffs); rank the biggest
+  // opportunities first here, where the ordering is actually wanted.
+  const gaps = x => x.p.missing.length + x.p.untagged.length;
   const rows = data.pls
     .map(p => ({ p, name: data.systems[p.sysIdx]?.n || '' }))
     .filter(x => !plsState || x.p.state === plsState)
-    .filter(x => !term || x.name.toLowerCase().includes(term));
+    .filter(x => !term || x.name.toLowerCase().includes(term))
+    .sort((x, y) => gaps(y) - gaps(x) || x.name.localeCompare(y.name));
 
   if (!rows.length) {
     list.innerHTML = '<p class="qa-note">No systems match.</p>';

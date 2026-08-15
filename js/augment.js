@@ -118,7 +118,17 @@ async function boot() {
     $('#qa-meta').textContent = 'Could not load augment data (' + e.message + ').';
     return;
   }
-  const aug = data.augment || [];
+  // Entries reference their system by KEY — a stable string that only changes
+  // when the OSM tag does, so the daily diff shows real change instead of an
+  // array-position reshuffle. Resolve to an index once; the UI passes indices
+  // around in `data-sys` attributes. An unresolvable key means the system is
+  // gone from this build, so drop the entry rather than render a blank row.
+  const sysByKey = new Map(data.systems.map((s, i) => [s.k ?? s.n, i]));
+  data.augment = (data.augment || [])
+    .map(a => ({ ...a, sysIdx: sysByKey.get(a.sysKey) ?? -1 }))
+    .filter(a => a.sysIdx >= 0);
+
+  const aug = data.augment;
   augBySys = new Map(aug.map(a => [a.sysIdx, a]));
 
   const m = data.meta;

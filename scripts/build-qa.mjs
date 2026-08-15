@@ -17,8 +17,8 @@
 //   meta        generated date, source + snapshot date, totals
 //   tags        the tag names behind each bit of a library's flags bitmask
 //   states      state names (libs reference them by index)
-//   systems     { n: name, w: wikidata|null, c: count } (libs reference by index)
-//   libs        [sysIdx, type, id, name, stateIdx, flags, lon, lat]
+//   systems     { n: name, k?: key, w: wikidata|null, c: count }, sorted by key
+//   libs        [sysKey, type, id, name, stateIdx, flags, lon, lat]
 //   collisions  likely-typo operator name pairs (small Levenshtein distance)
 //
 // Flags bitmask: 1 phone, 2 website, 4 opening_hours, 8 operator,
@@ -416,12 +416,21 @@ async function main() {
     s.libs.push({ id: r.type[0] + r.id, name: r.name || '', lat: r.lat, lon: r.lon });
     if (r.state) s.states.set(r.state, (s.states.get(r.state) || 0) + 1);
   }
-  const sysKeys = [...sysMap.keys()];
-  const sysIdx = new Map(sysKeys.map((k, i) => [k, i]));
+  //
+  // Sorted by key, and everything downstream references a system BY KEY rather
+  // than by array position. Position is derived data: it used to fall out of
+  // first-appearance order over the library rows, so adding `operator=` to a
+  // single low-id node moved that system to the front of the array and shifted
+  // every index behind it — rewriting tens of thousands of otherwise-unchanged
+  // rows in the daily diff. Keys only change when the tag itself changes.
+  //
+  // `k` is emitted only where the key differs from the display name — i.e. the
+  // wikidata-keyed systems, whose name is the bare Q-id.
+  const sysKeys = [...sysMap.keys()].sort();
   const systems = sysKeys.map(k => {
     const s = sysMap.get(k);
     const w = [...s.wdVotes.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
-    return { n: s.n, w, c: s.c };
+    return { n: s.n, ...(k === s.n ? {} : { k }), w, c: s.c };
   });
 
   // Domain-derived operator:wikidata suggestions for systems that lack one:
@@ -497,7 +506,7 @@ async function main() {
     let flags = 0;
     flagDefs.forEach((d, i) => { if (d.has(r)) flags |= 1 << i; });
     return [
-      sysIdx.get(sysKey(r)) ?? -1,
+      sysKey(r),                                // system key, or null when untagged
       r.type[0],                                // n / w / r
       r.id,
       r.name ?? null,
@@ -534,7 +543,7 @@ async function main() {
   console.log(`  ${wdAliases.size} tagged systems have Wikidata labels/aliases`);
 
   // ---- IMLS PLS matching: find branches missing / untagged vs the federal census.
-  const pls = matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAliases);
+  const pls = matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases);
 
   // ---- IMLS PLS augmentation: per-crosswalked-system live tag fetch + suggestions.
   const augment = await buildAugment(pls, systems);
@@ -758,7 +767,7 @@ function findDomainClusters(rawLibs, stateIdx, notAssert) {
 // "not found in OSM" forever.
 const MIN_LIBS_FOR_PLS = 2;
 
-function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAliases = new Map()) {
+function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new Map()) {
   let plsData;
   try {
     plsData = JSON.parse(readFileSync(PLS_FILE, 'utf8'));
@@ -840,7 +849,7 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAlias
     if (cls.untagged.length === 0 && cls.missing.length === 0 && cls.discrepancies.length === 0) continue;
 
     results.push({
-      sysIdx: i,
+      sysKey: sysKeys[i],
       fscskey: cw.fscskey,
       state: plsSystem.state,   // 2-letter PLS state, for the state filter
       plsCount: cls.plsCount,
@@ -858,8 +867,11 @@ function matchPls(rawLibs, sysMap, sysKeys, sysIdx, systems, stateNames, wdAlias
       discrepancies: cls.discrepancies.map(d => ({ name: d.p.name, lat: d.p.lat, lon: d.p.lon, osmId: d.osmId, osmLat: d.osmLat, osmLon: d.osmLon, dist: d.dist }))
     });
   }
-  // Biggest opportunities first.
-  results.sort((a, b) => (b.missing.length + b.untagged.length) - (a.missing.length + a.untagged.length));
+  // Ordered by system key, NOT by severity: file order should change only when
+  // the set of findings changes, and a finding count that drifts by one would
+  // otherwise shuffle a system halfway across the array. The QA page ranks
+  // biggest-opportunity-first at render time.
+  results.sort((a, b) => (a.sysKey < b.sysKey ? -1 : a.sysKey > b.sysKey ? 1 : 0));
 
   // PLS systems that crosswalked to NOTHING in OSM — the catchall for systems
   // the matcher can't see at all: operator tags fragmented across spellings
@@ -982,7 +994,7 @@ async function buildAugment(pls, systems) {
 
     if (!branches.length) continue;
     augment.push({
-      sysIdx: cw.sysIdx,
+      sysKey: cw.sysKey,
       fscskey: cw.fscskey,
       state: cw.state,
       qid: suggestQid,
@@ -991,8 +1003,9 @@ async function buildAugment(pls, systems) {
     });
   }
 
-  // Biggest opportunities first.
-  augment.sort((a, b) => b.branches.length - a.branches.length);
+  // Ordered by system key for a stable diff (see the note on pls results); the
+  // augment page already ranks by branch count at render time.
+  augment.sort((a, b) => (a.sysKey < b.sysKey ? -1 : a.sysKey > b.sysKey ? 1 : 0));
   const totalBranches = augment.reduce((n, a) => n + a.branches.length, 0);
   console.log(`  Augment: ${queried} systems queried, ${skipped} skipped, ${augment.length} with suggestions (${totalBranches} branches)`);
   return augment;

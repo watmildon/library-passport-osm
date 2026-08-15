@@ -98,8 +98,11 @@ Either way the Node script normalizes the rows into one compact file:
 - `tags` — the tag behind each bit of a library's `flags` bitmask
   (phone, website, opening_hours, operator, operator:wikidata, and on the
   Overpass path addr:housenumber, addr:street, addr:city, addr:postcode)
-- `states` / `systems` — lookup arrays referenced by index from `libs`
-- `libs` — `[systemIdx, type, id, name, stateIdx, flags, lon, lat]` per library
+- `states` — lookup array referenced by index from `libs`
+- `systems` — `{ n: name, k?: key, w: wikidata|null, c: count }`, sorted by key.
+  The key is the operator name, or `wd:Q…` for a system known only by its
+  `operator:wikidata` tag; `k` is emitted only where it differs from `n`.
+- `libs` — `[systemKey, type, id, name, stateIdx, flags, lon, lat]` per library
 - `collisions` — the likely-typo pairs
 - `ambiguous` — operator names whose libraries form 2+ geographic clusters more
   than ~120 km apart (single-linkage): likely *distinct systems sharing a name*,
@@ -110,12 +113,22 @@ Either way the Node script normalizes the rows into one compact file:
   ready-made work sets; when tagged siblings share the domain, their operator /
   wikidata values are emitted as suggestions for the untagged rest. Generic
   hosting platforms and >2-state spreads (vendor/aggregator domains) are excluded.
-- `pls` — per-system IMLS PLS cross-reference (see below): `{ sysIdx, fscskey,
+- `pls` — per-system IMLS PLS cross-reference (see below): `{ sysKey, fscskey,
   plsCount, osmCount, matched, untagged[], missing[], discrepancies[] }`.
 - `augment` — per-system, ready-to-apply PLS tag **suggestions** for the JOSM-first
-  [augmentation page](../augment.html) (see below): `{ sysIdx, fscskey, state, qid,
+  [augmentation page](../augment.html) (see below): `{ sysKey, fscskey, state, qid,
   qidConfirmed, branches[] }`, each branch `{ kind:'existing'|'new', osm, lat, lon,
   plsName, tags }` where `tags` are additive-only OSM tags.
+
+**Why systems are referenced by key, not by array index.** An index is derived
+data: it used to fall out of the order systems were first seen while scanning the
+library rows, so adding `operator=` to one low-id node moved that system to the
+front of the array and shifted every index behind it — a one-tag edit rewrote
+~5,000 library rows in the daily diff without changing a single fact. Keys change
+only when the tag does. For the same reason `pls` and `augment` are written in key
+order rather than ranked by severity; the QA and augmentation pages sort at render
+time. The pages resolve keys to array positions once at load, so their internal
+`sysIdx` handles are unchanged.
 
 **IMLS PLS matching** ([`pls-match.mjs`](./pls-match.mjs)). Each OSM system with
 ≥3 libraries is crosswalked to a PLS system: name similarity proposes candidates,
@@ -202,7 +215,7 @@ node scripts/augment-state.mjs WA --replace # drop existing augment[] first
 ```
 
 It **accumulates**: systems for the requested states are merged into whatever's
-already in `augment[]` (keyed by `sysIdx`, so re-running a state refreshes just its
+already in `augment[]` (keyed by `sysKey`, so re-running a state refreshes just its
 systems and untouched states are preserved). `--replace` starts from an empty
 `augment[]`. Everything outside `augment[]` is preserved, and `meta.plsFiscalYear`
 is stamped. Intended for generating preview / bug-fixing data; re-run `build:qa`
@@ -226,6 +239,31 @@ Guards keep a bad upstream response from landing:
 
 When a guard trips, the job fails without committing. If the change is genuine,
 re-run the workflow manually to accept it.
+
+### `data-diff-summary.mjs` — what the refresh actually changed
+
+The data files are megabytes, so the raw diff can't tell you whether a refresh was
+a quiet day or a disaster. This compares the working tree against `HEAD` and counts
+added / removed / edited entries per section, keyed by a **stable** record key (a
+system key, an OSM element id, an FSCS key — never an array position):
+
+```sh
+node scripts/data-diff-summary.mjs             # vs HEAD
+node scripts/data-diff-summary.mjs --ref HEAD~1
+```
+
+```
+qa-data/systems: 5 changed, 1 added, 1 removed
+qa-data/libs: 15 changed, 1 added, 1 removed
+qa-data/pls: 2 removed
+```
+
+The daily workflow runs it before `git add` and puts the output in the commit body
+and the job summary, so `git log` shows the real size of each refresh. It's also
+the alarm for identity bugs: because it compares by key, a change that merely
+reorders records counts as zero here even when the raw diff is enormous. Thousands
+of "changed" entries on an ordinary day means something upstream started rewriting
+record identity again.
 
 ## `build-systems.mjs` — US library-systems list (Layercake fallback)
 
