@@ -20,6 +20,8 @@
 //   systems     { n: name, k?: key, w: wikidata|null, c: count }, sorted by key
 //   libs        [sysKey, type, id, name, stateIdx, flags, lon, lat]
 //   collisions  likely-typo operator name pairs (small Levenshtein distance)
+//   wdOperators operator suggestions read from each library's own wikidata= item
+//   wdConflicts libraries whose operator:wikidata disagrees with that item
 //
 // Flags bitmask: 1 phone, 2 website, 4 opening_hours, 8 operator,
 //                16 operator:wikidata, and (Overpass builds only)
@@ -120,6 +122,10 @@ async function queryOverpass(endpoint) {
       state: stateOf.get(el.type[0] + el.id) ?? null,
       operator: t.operator ?? null,
       wikidata: t['operator:wikidata'] ?? null,
+      // The library's OWN item (not its operator's). Overpass-only: Layercake's
+      // POI columns don't carry it, so the Wikidata-operator sections below are
+      // empty on that path, the same way the addr:* flags are.
+      selfWd: t.wikidata ?? null,
       website: t.website ?? t['contact:website'] ?? null,
       has_phone: !!(t.phone || t['contact:phone']),
       has_website: !!(t.website || t['contact:website']),
@@ -233,7 +239,7 @@ area(3600148838)->.us;
 );
 out tags;`;
   const wd = new Map(), op = new Map();
-  for (const url of OVERPASS_ENDPOINTS) {
+  for (const [i, url] of OVERPASS_ENDPOINTS.entries()) {
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -251,30 +257,26 @@ out tags;`;
       }
       return { wd, op };
     } catch (e) {
-      console.warn(`  not:-assertion fetch failed on ${url}: ${e.message}`);
+      // By position, never by URL — endpoint 0 may be the private instance.
+      console.warn(`  not:-assertion fetch failed on endpoint #${i}: ${e.cause?.code ?? e.message}`);
     }
   }
   console.warn('  proceeding without not:-assertions (all Overpass endpoints failed)');
   return { wd, op };
 }
 
-// ---- Wikidata branch counts ----------------------------------------------
+// ---- Wikidata Query Service ------------------------------------------------
 //
-// Many US library-system items on Wikidata list their branches (P527 "has part"
-// entries typed as library branch). Comparing that count against the OSM branch
-// count is a completeness hint in both directions: fewer in OSM suggests
-// unmapped branches; more suggests duplicates in OSM or a stale Wikidata list.
-async function fetchWikidataBranchCounts() {
-  const query = `SELECT ?system (COUNT(?branch) AS ?count) WHERE {
-  ?system wdt:P31 wd:Q26271642.
-  ?system wdt:P17 wd:Q30.
-  ?system wdt:P527 ?branch.
-  ?branch wdt:P31 wd:Q11396180.
-} GROUP BY ?system`;
+// One place for the SPARQL plumbing. Every caller here treats Wikidata as
+// enrichment, never a gate: on failure we warn, return no rows, and the build
+// carries on with one section thinner.
+const WDQS = 'https://query.wikidata.org/sparql';
+const qidOf = binding => binding.value.split('/').pop();
 
+async function sparqlRows(query, what) {
   for (let i = 0; i < 3; i++) {
     try {
-      const res = await fetch('https://query.wikidata.org/sparql', {
+      const res = await fetch(WDQS, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -284,17 +286,49 @@ async function fetchWikidataBranchCounts() {
         body: 'query=' + encodeURIComponent(query)
       });
       if (!res.ok) throw new Error('HTTP ' + res.status);
-      const rows = (await res.json()).results.bindings;
-      const out = new Map();
-      for (const r of rows) out.set(r.system.value.split('/').pop(), Number(r.count.value));
-      return out;
+      return (await res.json()).results.bindings;
     } catch (e) {
-      console.warn(`  Wikidata branch-count fetch failed (${e.message})${i < 2 ? ' — retrying…' : ''}`);
+      console.warn(`  Wikidata ${what} failed (${e.message})${i < 2 ? ' — retrying…' : ''}`);
       if (i < 2) await sleep(5000 * (i + 1));
     }
   }
-  console.warn('  proceeding without Wikidata branch counts');
-  return new Map();
+  console.warn(`  proceeding without ${what}`);
+  return null;
+}
+
+// Same, for queries that pin a VALUES list of QIDs: split into batches so one
+// oversized query can't time the service out, and merge the rows. A batch that
+// fails after its retries is skipped, not fatal.
+const WD_BATCH = 250;
+async function sparqlBatched(qids, buildQuery, what) {
+  const clean = qids.filter(q => /^Q\d+$/.test(q));
+  if (!clean.length) return [];
+  const out = [];
+  for (let i = 0; i < clean.length; i += WD_BATCH) {
+    const batch = clean.slice(i, i + WD_BATCH);
+    const rows = await sparqlRows(buildQuery(batch.map(q => 'wd:' + q).join(' ')), what);
+    if (rows) out.push(...rows);
+    if (i + WD_BATCH < clean.length) await sleep(1000);
+  }
+  return out;
+}
+
+// ---- Wikidata branch counts ----------------------------------------------
+//
+// Many US library-system items on Wikidata list their branches (P527 "has part"
+// entries typed as library branch). Comparing that count against the OSM branch
+// count is a completeness hint in both directions: fewer in OSM suggests
+// unmapped branches; more suggests duplicates in OSM or a stale Wikidata list.
+async function fetchWikidataBranchCounts() {
+  const rows = await sparqlRows(`SELECT ?system (COUNT(?branch) AS ?count) WHERE {
+  ?system wdt:P31 wd:Q26271642.
+  ?system wdt:P17 wd:Q30.
+  ?system wdt:P527 ?branch.
+  ?branch wdt:P31 wd:Q11396180.
+} GROUP BY ?system`, 'branch-count fetch');
+  const out = new Map();
+  for (const r of rows ?? []) out.set(qidOf(r.system), Number(r.count.value));
+  return out;
 }
 
 // ---- Wikidata alias names -------------------------------------------------
@@ -311,46 +345,139 @@ async function fetchWikidataBranchCounts() {
 // Returns Map(qid -> { names: [..], academic: bool }); fails soft to empty.
 async function fetchWikidataAliases(qids) {
   // Tag values aren't always clean QIDs (semicolon lists, literal names typed
-  // into operator:wikidata) — a malformed value in VALUES 400s the whole query.
-  qids = qids.filter(q => /^Q\d+$/.test(q));
-  if (!qids.length) return new Map();
-  const query = `SELECT ?item ?name ?academic WHERE {
-  VALUES ?item { ${qids.map(q => 'wd:' + q).join(' ')} }
+  // into operator:wikidata) — sparqlBatched drops anything malformed, which
+  // would otherwise 400 the whole query.
+  const rows = await sparqlBatched(qids, values => `SELECT ?item ?name ?academic WHERE {
+  VALUES ?item { ${values} }
   { ?item rdfs:label ?name . FILTER(LANG(?name) = "en") }
   UNION
   { ?item skos:altLabel ?name . FILTER(LANG(?name) = "en") }
   BIND(EXISTS { ?item wdt:P31/wdt:P279* wd:Q38723 } AS ?academic)
-}`;
-
-  for (let i = 0; i < 3; i++) {
-    try {
-      const res = await fetch('https://query.wikidata.org/sparql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Accept': 'application/sparql-results+json',
-          'User-Agent': USER_AGENT
-        },
-        body: 'query=' + encodeURIComponent(query)
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const rows = (await res.json()).results.bindings;
-      const out = new Map();
-      for (const r of rows) {
-        const qid = r.item.value.split('/').pop();
-        if (!out.has(qid)) out.set(qid, { names: [], academic: false });
-        const e = out.get(qid);
-        e.names.push(r.name.value);
-        if (r.academic?.value === 'true') e.academic = true;
-      }
-      return out;
-    } catch (e) {
-      console.warn(`  Wikidata alias fetch failed (${e.message})${i < 2 ? ' — retrying…' : ''}`);
-      if (i < 2) await sleep(5000 * (i + 1));
-    }
+}`, 'alias fetch');
+  const out = new Map();
+  for (const r of rows) {
+    const qid = qidOf(r.item);
+    if (!out.has(qid)) out.set(qid, { names: [], academic: false });
+    const e = out.get(qid);
+    e.names.push(r.name.value);
+    if (r.academic?.value === 'true') e.academic = true;
   }
-  console.warn('  proceeding without Wikidata aliases');
-  return new Map();
+  return out;
+}
+
+// ---- Wikidata: who operates this branch? ----------------------------------
+//
+// A library's OWN `wikidata=` item usually names the system it belongs to —
+// "Angeles Mesa Branch" (Q4762622) records parent organization = Los Angeles
+// Public Library. That single fact drives two checks:
+//
+//   • branches with no operator tag at all get a sourced suggestion, and
+//   • branches whose operator:wikidata disagrees with their item get flagged.
+//
+// P137 (operator) is the most direct statement but is rarely used; P749 (parent
+// organization) and P361 (part of) carry almost all of the signal, so all three
+// are read and ranked. Returns Map(branchQid -> [{ prop, q, label }]) ordered
+// best-first. Callers must still check the target looks like an operator —
+// P361 in particular is also used for buildings, campuses and historic
+// districts ("part of Beacon Hill"), which are not operators.
+const PARENT_PROPS = { P137: 0, P749: 1, P361: 2 };
+
+async function fetchBranchOperators(qids) {
+  const rows = await sparqlBatched(qids, values => `SELECT ?item ?prop ?parent ?parentLabel WHERE {
+  VALUES ?item { ${values} }
+  VALUES ?prop { wdt:P137 wdt:P749 wdt:P361 }
+  ?item ?prop ?parent .
+  OPTIONAL { ?parent rdfs:label ?parentLabel . FILTER(LANG(?parentLabel) = "en") }
+}`, 'branch-operator fetch');
+
+  const out = new Map();
+  for (const r of rows) {
+    const item = qidOf(r.item);
+    if (!out.has(item)) out.set(item, []);
+    out.get(item).push({ prop: qidOf(r.prop), q: qidOf(r.parent), label: r.parentLabel?.value ?? '' });
+  }
+  for (const cands of out.values()) {
+    cands.sort((a, b) => PARENT_PROPS[a.prop] - PARENT_PROPS[b.prop] || (a.q < b.q ? -1 : 1));
+  }
+  return out;
+}
+
+// ---- Wikidata: what KIND of thing is this item? ---------------------------
+//
+// Two jobs. First, a filter: only an organization can be an operator, so a
+// suggestion is only offered when the proposed item is one. Second, an
+// explanation: the most common operator:wikidata mistake is tagging the place
+// or its government ("San Diego", "City of San Diego") where a specific library
+// entity exists ("San Diego Public Library"), and naming that mistake is what
+// makes the finding actionable rather than just a disagreement.
+//
+// Kinds are ordered most- to least-specific; the first match wins, so a library
+// network that is also (pedantically) an organization reads as "libnet".
+const ENTITY_KINDS = [
+  { kind: 'libnet',     root: 'Q26271642' },  // library network
+  { kind: 'library',    root: 'Q7075'     },  // library
+  { kind: 'university', root: 'Q3918'     },  // university
+  { kind: 'school',     root: 'Q3914'     },  // school
+  // Place before government: a city is a subclass of both ("charter city" leads
+  // to each), and "San Diego" is more usefully described as a place than as a
+  // government. A government BODY ("City of San Diego") isn't a settlement, so
+  // it still falls through to 'gov'.
+  { kind: 'place',      root: 'Q486972'   },  // human settlement
+  { kind: 'gov',        root: 'Q7188'     },  // government
+  { kind: 'admin',      root: 'Q56061'    },  // administrative territorial entity
+  { kind: 'org',        root: 'Q43229'    }   // organization
+];
+// Only these can operate a library, so only these are ever suggested. The rest
+// ('gov', 'place', 'admin', 'other') exist to describe a value that IS tagged —
+// a place or its government sitting in operator:wikidata is the mistake this
+// pass is looking for, not a suggestion it would ever make.
+const OPERATORLIKE = new Set(['libnet', 'library', 'university', 'school', 'org']);
+
+// Returns Map(qid -> { kind, label }). An item we can't classify gets kind
+// 'other', which is never suggested and never flagged — silence beats a guess.
+//
+// Deliberately two cheap queries rather than one obvious `P31/P279*` per item:
+// walking the subclass tree for thousands of items times WDQS out, but the same
+// items only use a few hundred DISTINCT classes, so the tree is walked once per
+// class instead of once per item.
+async function fetchEntityKinds(qids) {
+  const itemRows = await sparqlBatched(qids, values => `SELECT ?item ?itemLabel ?cls WHERE {
+  VALUES ?item { ${values} }
+  OPTIONAL { ?item rdfs:label ?itemLabel . FILTER(LANG(?itemLabel) = "en") }
+  OPTIONAL { ?item wdt:P31 ?cls }
+}`, 'entity-class fetch');
+
+  const labels = new Map();
+  const itemClasses = new Map();   // qid -> Set(class qid)
+  for (const r of itemRows) {
+    const q = qidOf(r.item);
+    if (r.itemLabel) labels.set(q, r.itemLabel.value);
+    if (!itemClasses.has(q)) itemClasses.set(q, new Set());
+    if (r.cls) itemClasses.get(q).add(qidOf(r.cls));
+  }
+
+  const classes = [...new Set([...itemClasses.values()].flatMap(s => [...s]))];
+  const classRows = await sparqlBatched(classes, values => `SELECT ?cls ?root WHERE {
+  VALUES ?cls { ${values} }
+  VALUES ?root { ${ENTITY_KINDS.map(k => 'wd:' + k.root).join(' ')} }
+  ?cls wdt:P279* ?root .
+}`, 'class-hierarchy fetch');
+
+  const classRoots = new Map();
+  for (const r of classRows) {
+    const c = qidOf(r.cls);
+    if (!classRoots.has(c)) classRoots.set(c, new Set());
+    classRoots.get(c).add(qidOf(r.root));
+  }
+
+  const out = new Map();
+  for (const [q, cs] of itemClasses) {
+    const roots = new Set();
+    for (const c of cs) for (const root of classRoots.get(c) ?? []) roots.add(root);
+    const hit = ENTITY_KINDS.find(k => roots.has(k.root));
+    out.set(q, { kind: hit?.kind ?? 'other', label: labels.get(q) ?? '' });
+  }
+  return out;
 }
 
 async function main() {
@@ -542,11 +669,18 @@ async function main() {
     systems.filter(s => s.w).flatMap(s => s.w.split(';').map(q => q.trim())))]);
   console.log(`  ${wdAliases.size} tagged systems have Wikidata labels/aliases`);
 
+  // ---- Wikidata-sourced operators, from each library's own item.
+  const wdOps = await buildWikidataOperators(rawLibs, notAssert, systems, sysKeys, stateIdx);
+
   // ---- IMLS PLS matching: find branches missing / untagged vs the federal census.
   const pls = matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases);
 
   // ---- IMLS PLS augmentation: per-crosswalked-system live tag fetch + suggestions.
   const augment = await buildAugment(pls, systems);
+
+  // ---- operator:wikidata suggestions for the systems still missing one. Runs
+  // last because it consolidates every source, including the PLS crosswalk.
+  await suggestSystemQids(systems, sysKeys, wdOps.systemVotes, pls);
 
   const out = {
     meta: {
@@ -568,6 +702,8 @@ async function main() {
     collisions,
     ambiguous,
     domains,
+    wdOperators: wdOps.operators,
+    wdConflicts: wdOps.conflicts,
     pls: pls?.results ?? [],
     plsUnmatched: pls?.unmatched ?? [],
     augment
@@ -577,6 +713,286 @@ async function main() {
   const json = serializeLinewise(out);
   writeFileSync(dest, json);
   console.log(`Wrote ${libs.length} libraries, ${systems.length} systems, ${collisions.length} collisions (${Math.round(json.length / 1024)} KB) -> ${dest}`);
+}
+
+// ---- Wikidata-sourced operators -------------------------------------------
+//
+// Read every library's own `wikidata=` item, resolve the organization it says
+// operates it, and split the result two ways:
+//
+//   operators[] — the library has NO operator tag of any kind, and its item
+//                 names one. A sourced, ready-to-apply suggestion. Grouped by
+//                 the proposed system so a whole branch network can be worked
+//                 in one pass.
+//   conflicts[] — the library HAS an operator:wikidata and it disagrees with
+//                 what its item says. Grouped by the (tagged → asserted) pair,
+//                 because the same mistake is usually repeated across a system.
+//   systemVotes — the remaining case: the library has an operator NAME but no
+//                 operator:wikidata. Nothing to suggest per-library (the tag it
+//                 needs is a system-level one), so each branch item instead casts
+//                 a vote for its system's missing Q-id, resolved in
+//                 suggestSystemQids() below.
+//
+// Not every conflict is an error: tagging a consortium where the item names the
+// member library (or vice versa) is a real judgement call, and the page presents
+// these as questions. The `tk`/`pk` entity kinds are what make them rankable —
+// a place or government on the tagged side next to a library network on the
+// asserted side is the specific mistake worth surfacing first.
+//
+// Overpass-only (Layercake has no `wikidata` column); returns empty sections
+// there rather than failing.
+async function buildWikidataOperators(rawLibs, notAssert, systems, sysKeys, stateIdx) {
+  const empty = { operators: [], conflicts: [], systemVotes: new Map() };
+  const tagged = rawLibs.filter(r => /^Q\d+$/.test(r.selfWd ?? ''));
+  if (!tagged.length) {
+    console.log('  no wikidata= tags in this source — skipping Wikidata-operator sections');
+    return empty;
+  }
+
+  console.log(`Resolving operators from ${tagged.length} libraries' own Wikidata items…`);
+  const parents = await fetchBranchOperators([...new Set(tagged.map(r => r.selfWd))]);
+  if (!parents.size) return empty;
+
+  // Classify every proposed parent (is it even an organization?) together with
+  // every operator:wikidata already tagged on these libraries (so a conflict can
+  // say what the tagged value actually is).
+  const kinds = await fetchEntityKinds([...new Set([
+    ...[...parents.values()].flat().map(c => c.q),
+    ...tagged.map(r => r.wikidata).filter(Boolean)
+  ])]);
+
+  // The OSM operator name our own data already uses for a Q-id beats the
+  // Wikidata label: it is what mappers actually type, so a suggestion built from
+  // it matches its neighbours instead of introducing a new spelling.
+  const osmNameFor = new Map();
+  systems.forEach((s, i) => {
+    if (!s.w || sysKeys[i].startsWith('wd:')) return;      // skip Q-id-keyed systems
+    for (const q of s.w.split(';').map(x => x.trim())) {
+      const prev = osmNameFor.get(q);
+      if (!prev || prev.c < s.c) osmNameFor.set(q, { n: s.n, c: s.c });
+    }
+  });
+
+  // Best parent for a branch item: most-direct property first, and it has to
+  // look like something that can operate a library.
+  const operatorOf = wd => (parents.get(wd) ?? []).find(c => OPERATORLIKE.has(kinds.get(c.q)?.kind));
+
+  const opGroups = new Map();       // parent qid   -> group
+  const conflictGroups = new Map(); // "tagged>parent" -> group
+  const systemVotes = new Map();    // sysKey -> Map(qid -> { n, label })
+  const row = (r, cand) => ({
+    osm: r.type[0] + r.id,
+    n: r.name ?? null,
+    q: r.selfWd,
+    s: r.state ? stateIdx.get(r.state) : -1,
+    pr: cand.prop,
+    lat: Math.round(r.lat * 1e4) / 1e4,
+    lon: Math.round(r.lon * 1e4) / 1e4
+  });
+
+  let suggested = 0, conflicting = 0, vetoed = 0;
+  for (const r of tagged) {
+    const cand = operatorOf(r.selfWd);
+    if (!cand) continue;
+    const pk = kinds.get(cand.q)?.kind ?? 'other';
+    const pn = kinds.get(cand.q)?.label || cand.label || cand.q;
+
+    if (!r.operator && !r.wikidata) {
+      // Never re-propose something a mapper explicitly ruled out on this element.
+      if (notAssert.wd.get(r.type[0] + r.id)?.has(cand.q)) { vetoed++; continue; }
+      let g = opGroups.get(cand.q);
+      if (!g) {
+        g = { pq: cand.q, pn, pk, po: osmNameFor.get(cand.q)?.n ?? null, libs: [] };
+        opGroups.set(cand.q, g);
+      }
+      g.libs.push(row(r, cand));
+      suggested++;
+      continue;
+    }
+
+    // Operator name but no operator:wikidata — the gap this system needs filling.
+    // The tag belongs to the whole system, so the branch votes for it rather than
+    // producing a per-library suggestion.
+    if (!r.wikidata) {
+      if (notAssert.wd.get(r.type[0] + r.id)?.has(cand.q)) { vetoed++; continue; }
+      const key = r.operator;
+      if (!systemVotes.has(key)) systemVotes.set(key, new Map());
+      const votes = systemVotes.get(key);
+      votes.set(cand.q, { n: (votes.get(cand.q)?.n ?? 0) + 1, label: pn });
+      continue;
+    }
+
+    // Only operator:wikidata can be compared item-to-item; an operator name
+    // alone says nothing about which Q-id was meant.
+    if (r.wikidata === cand.q) continue;
+    // A semicolon list that already includes the asserted item is not a conflict.
+    if (r.wikidata.split(';').map(x => x.trim()).includes(cand.q)) continue;
+    const tk = kinds.get(r.wikidata)?.kind ?? 'other';
+    const key = `${r.wikidata}>${cand.q}`;
+    let g = conflictGroups.get(key);
+    if (!g) {
+      g = {
+        tw: r.wikidata, tn: kinds.get(r.wikidata)?.label ?? '', tk,
+        // `po` as in the suggestions above: the operator name OSM already uses
+        // for the asserted item, so a correction can offer the pair of tags
+        // mappers actually type rather than only the Q-id.
+        pq: cand.q, pn, pk, po: osmNameFor.get(cand.q)?.n ?? null,
+        libs: []
+      };
+      conflictGroups.set(key, g);
+    }
+    g.libs.push(row(r, cand));
+    conflicting++;
+  }
+
+  // States each group touches, for the page's state filter.
+  const withStates = g => ({
+    ...g,
+    st: [...new Set(g.libs.map(l => l.s).filter(s => s >= 0))].sort((a, b) => a - b)
+  });
+  // Key order, like every other section — see the note on pls results.
+  const byKey = k => (a, b) => (a[k] < b[k] ? -1 : a[k] > b[k] ? 1 : 0);
+  const operators = [...opGroups.values()].map(withStates).sort(byKey('pq'));
+  const conflicts = [...conflictGroups.values()].map(withStates)
+    .sort((a, b) => (a.tw < b.tw ? -1 : a.tw > b.tw ? 1 : 0) || byKey('pq')(a, b));
+  for (const g of [...operators, ...conflicts]) g.libs.sort(byKey('osm'));
+
+  console.log(`  ${suggested} operator-less libraries got a Wikidata-sourced operator ` +
+    `(${operators.length} systems)${vetoed ? `, ${vetoed} vetoed by not:operator:wikidata` : ''}`);
+  console.log(`  ${conflicting} libraries disagree with their own item's operator (${conflicts.length} distinct pairs)`);
+  console.log(`  ${systemVotes.size} wikidata-less systems have a branch item naming their operator`);
+  return { operators, conflicts, systemVotes };
+}
+
+// ---- operator:wikidata suggestions for systems that lack one --------------
+//
+// Three independent sources, ranked by how directly each speaks about these
+// actual libraries:
+//
+//   branch — the system's own libraries carry `wikidata=` items that name a
+//            parent organization. A statement about these very objects, so it
+//            outranks everything else.
+//   fscs   — the system crosswalked to an IMLS PLS system, and some Wikidata
+//            item carries that Federal-State Cooperative System ID (P6618).
+//            An exact federal identifier, but reached via an inferred crosswalk.
+//   domain — the pre-existing heuristic: libraries sharing a website domain with
+//            wikidata-tagged libraries elsewhere. Weakest, and already computed.
+//
+// Every source is a suggestion, never an edit: the page marks them for review and
+// `not:operator:wikidata` vetoes any that a mapper has already ruled out.
+const SUGGEST_SOURCES = ['branch', 'fscs', 'domain'];
+
+// Wikidata items carrying an FSCS ID, keyed by that ID. ~9.2k US library systems
+// are catalogued this way. A key held by more than one item is a duplicate-item
+// situation (the Orange County Library System / District case) — skipped rather
+// than guessed at, since suggesting the wrong twin entrenches the duplicate.
+async function fetchItemsByFscs(keys) {
+  if (!keys.length) return new Map();
+  const out = new Map();     // fscs key -> Map(qid -> label)
+  for (let i = 0; i < keys.length; i += WD_BATCH) {
+    const batch = keys.slice(i, i + WD_BATCH);
+    const rows = await sparqlRows(`
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+SELECT ?item ?itemLabel ?key WHERE {
+  VALUES ?key { ${batch.map(k => JSON.stringify(k)).join(' ')} }
+  ?item wdt:P6618 ?key .
+  OPTIONAL { ?item rdfs:label ?itemLabel . FILTER(LANG(?itemLabel) = "en") }
+}`, 'FSCS-identifier fetch');
+    for (const r of rows ?? []) {
+      const k = r.key.value;
+      if (!out.has(k)) out.set(k, new Map());
+      out.get(k).set(qidOf(r.item), r.itemLabel?.value ?? '');
+    }
+    if (i + WD_BATCH < keys.length) await sleep(1000);
+  }
+  return out;
+}
+
+// Fill in `sw` (suggested Q-id), `sn` (its English label) and `ss` (which
+// sources proposed it) on every system that has no operator:wikidata. Mutates
+// `systems` in place; `sw` may already hold a domain-derived guess, which is
+// folded in as the lowest-priority source.
+async function suggestSystemQids(systems, sysKeys, systemVotes, pls) {
+  // FSCS keys for wikidata-less crosswalked systems. `pls.crosswalks` covers
+  // every match, not just the ones with findings.
+  const fscsOf = new Map();
+  for (const cw of pls?.crosswalks ?? []) fscsOf.set(cw.sysKey, cw.fscskey);
+  const wanted = systems
+    .map((s, i) => ({ s, key: sysKeys[i] }))
+    .filter(({ s }) => !s.w)
+    .filter(({ key }) => fscsOf.has(key))
+    .map(({ key }) => fscsOf.get(key));
+  const byFscs = await fetchItemsByFscs([...new Set(wanted)]);
+
+  const counts = { branch: 0, fscs: 0, domain: 0 };
+  let ambiguous = 0, vetoed = 0, suggested = 0;
+
+  systems.forEach((s, i) => {
+    if (s.w) return;
+    const key = sysKeys[i];
+    const ruledOut = new Set(s.nw ?? []);
+    const cands = new Map();   // qid -> { sources: Set, label }
+    const offer = (qid, source, label) => {
+      if (!qid || ruledOut.has(qid)) { if (qid) vetoed++; return; }
+      if (!cands.has(qid)) cands.set(qid, { sources: new Set(), label: '' });
+      const c = cands.get(qid);
+      c.sources.add(source);
+      if (label && !c.label) c.label = label;
+    };
+
+    // branch: plurality of the system's branch items, ties dropped as unresolved
+    const votes = systemVotes.get(key);
+    if (votes?.size) {
+      const ranked = [...votes].sort((a, b) => b[1].n - a[1].n || (a[0] < b[0] ? -1 : 1));
+      if (ranked.length === 1 || ranked[0][1].n > ranked[1][1].n) {
+        offer(ranked[0][0], 'branch', ranked[0][1].label);
+      }
+    }
+    // fscs: exactly one Wikidata item may hold the key
+    const fk = fscsOf.get(key);
+    const items = fk ? byFscs.get(fk) : null;
+    if (items?.size === 1) {
+      const [qid, label] = [...items][0];
+      offer(qid, 'fscs', label);
+    } else if (items && items.size > 1) {
+      ambiguous++;
+    }
+    // domain: whatever the earlier heuristic left on `sw`
+    if (s.sw) offer(s.sw, 'domain', '');
+
+    if (!cands.size) { delete s.sw; return; }
+    // Rank by the most authoritative source that proposed each candidate, then
+    // by how many sources agree.
+    const best = [...cands].sort((a, b) => {
+      const rank = c => Math.min(...[...c.sources].map(x => SUGGEST_SOURCES.indexOf(x)));
+      return rank(a[1]) - rank(b[1]) || b[1].sources.size - a[1].sources.size || (a[0] < b[0] ? -1 : 1);
+    })[0];
+    const [qid, info] = best;
+    s.sw = qid;
+    if (info.label) s.sn = info.label;
+    s.ss = SUGGEST_SOURCES.filter(x => info.sources.has(x));
+    for (const src of s.ss) counts[src]++;
+    suggested++;
+  });
+
+  // The branch and FSCS paths already carry a label; the domain heuristic has
+  // only a Q-id. Backfill so every suggestion reads as a name, not a number.
+  const unlabelled = systems.filter(s => !s.w && s.sw && !s.sn).map(s => s.sw);
+  if (unlabelled.length) {
+    const rows = await sparqlBatched([...new Set(unlabelled)], values => `SELECT ?item ?itemLabel WHERE {
+  VALUES ?item { ${values} }
+  ?item rdfs:label ?itemLabel . FILTER(LANG(?itemLabel) = "en")
+}`, 'suggestion-label fetch');
+    const labels = new Map(rows.map(r => [qidOf(r.item), r.itemLabel.value]));
+    for (const s of systems) if (!s.w && s.sw && !s.sn && labels.has(s.sw)) s.sn = labels.get(s.sw);
+  }
+
+  console.log(`  ${suggested} wikidata-less systems have a suggested operator:wikidata ` +
+    `(branch ${counts.branch}, FSCS id ${counts.fscs}, domain ${counts.domain})`);
+  if (ambiguous) console.log(`    ${ambiguous} skipped: their FSCS id is held by more than one Wikidata item`);
+  if (vetoed) console.log(`    ${vetoed} candidate(s) vetoed by not:operator:wikidata`);
 }
 
 // ---- Ambiguous operator names -------------------------------------------
@@ -810,8 +1226,10 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
   }
   plsGrid.cell = CELL;
 
-  const results = [];
-  const crosswalks = [];   // every crosswalked system, for the augment pass to reuse
+  // Pass 1: every OSM system that plausibly crosswalks to a PLS system, with the
+  // classification that proves it. Arbitration between rival claimants happens
+  // after the loop — see the note there.
+  const claims = [];
   let checked = 0, crosswalked = 0;
   for (let i = 0; i < sysKeys.length; i++) {
     const s = sysMap.get(sysKeys[i]);
@@ -840,21 +1258,70 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
     crosswalked++;
 
     const plsSystem = plsIndex.byKey.get(cw.fscskey);
+    const cls = classify(plsSystem.outlets, s.libs, s.n, nearbyLib);
+    claims.push({ sysIdx: i, sysKey: sysKeys[i], name: s.n, osmCount: s.c, cw, plsSystem, cls });
+  }
+
+  // ---- Arbitration: one PLS system, one OSM system -------------------------
+  //
+  // Systems are crosswalked independently, so several OSM operator spellings can
+  // claim the same PLS system — and they do, because that fragmentation is
+  // exactly what this dataset is full of: "Orange County Library System" and a
+  // 3-library "Orange County" grab-bag both matched Orlando's FL0005, and
+  // "Fort Vancouver Regional Libraries", "…Library District" and a
+  // wikidata-keyed fragment all matched WA0058.
+  //
+  // Name similarity can't settle it — normSystem strips `library`, `system`,
+  // `county` and `district`, so "Orange County" and "Orange County Library
+  // System" both reduce to the single token "orange" and tie at 1.0 — and the
+  // spatial check passes for both, since the rival spellings sit in the same
+  // town. Left unarbitrated it produced two rows for one system, the smaller of
+  // which told mappers to tag 14 OCLS branches `operator=Orange County`, and
+  // made the augment pass query Overpass twice for the same system.
+  //
+  // So rank by evidence of actual correspondence: how many of the PLS system's
+  // outlets this spelling really matched. Everything else is a tiebreak.
+  const byFscs = new Map();
+  for (const c of claims) {
+    if (!byFscs.has(c.cw.fscskey)) byFscs.set(c.cw.fscskey, []);
+    byFscs.get(c.cw.fscskey).push(c);
+  }
+  const results = [];
+  const crosswalks = [];   // winners only, for the augment pass to reuse
+  let folded = 0;
+  for (const rivals of byFscs.values()) {
+    rivals.sort((a, b) =>
+      b.cls.matched - a.cls.matched ||
+      b.osmCount - a.osmCount ||
+      b.cw.sim - a.cw.sim ||
+      (a.sysKey < b.sysKey ? -1 : 1));
+    const [win, ...lost] = rivals;
+    folded += lost.length;
+    // The losers aren't noise — they're the other spellings of this operator,
+    // which is a more precise statement of the problem than counting their
+    // libraries as "untagged". Carry them on the row instead of dropping them.
+    const variants = lost.map(l => l.name).sort((a, b) => a.localeCompare(b));
+    if (lost.length) {
+      console.log(`  PLS ${win.cw.fscskey}: "${win.name}" (${win.cls.matched} matched) wins over ` +
+        lost.map(l => `"${l.name}" (${l.cls.matched})`).join(', '));
+    }
+
     // Record the crosswalk so buildAugment can fetch this system's live OSM tags
     // and compute augmentation suggestions without re-deriving the match.
-    crosswalks.push({ sysIdx: i, sysKey: sysKeys[i], fscskey: cw.fscskey, state: plsSystem.state });
+    crosswalks.push({ sysIdx: win.sysIdx, sysKey: win.sysKey, fscskey: win.cw.fscskey, state: win.plsSystem.state });
 
-    const cls = classify(plsSystem.outlets, s.libs, s.n, nearbyLib);
+    const cls = win.cls;
     // Only surface systems where PLS reveals something actionable.
     if (cls.untagged.length === 0 && cls.missing.length === 0 && cls.discrepancies.length === 0) continue;
 
     results.push({
-      sysKey: sysKeys[i],
-      fscskey: cw.fscskey,
-      state: plsSystem.state,   // 2-letter PLS state, for the state filter
+      sysKey: win.sysKey,
+      fscskey: win.cw.fscskey,
+      state: win.plsSystem.state,   // 2-letter PLS state, for the state filter
       plsCount: cls.plsCount,
-      osmCount: s.c,
+      osmCount: win.osmCount,
       matched: cls.matched,
+      ...(variants.length ? { variants } : {}),
       untagged: cls.untagged.map(u => ({
         name: u.p.name, addr: u.p.addr, city: u.p.city, lat: u.p.lat, lon: u.p.lon,
         osm: u.near.id, osmLat: u.near.lat, osmLon: u.near.lon,
@@ -867,6 +1334,7 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
       discrepancies: cls.discrepancies.map(d => ({ name: d.p.name, lat: d.p.lat, lon: d.p.lon, osmId: d.osmId, osmLat: d.osmLat, osmLon: d.osmLon, dist: d.dist }))
     });
   }
+  if (folded) console.log(`  ${folded} rival crosswalk claim(s) folded into ${byFscs.size} PLS systems`);
   // Ordered by system key, NOT by severity: file order should change only when
   // the set of findings changes, and a finding count that drifts by one would
   // otherwise shuffle a system halfway across the array. The QA page ranks
@@ -902,7 +1370,8 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
   }
   unmatched.sort((a, b) => b.outlets - a.outlets || a.name.localeCompare(b.name));
 
-  console.log(`  PLS: ${checked} systems checked, ${crosswalked} crosswalked, ${results.length} with findings, ${unmatched.length} multi-outlet PLS systems unmatched`);
+  console.log(`  PLS: ${checked} OSM systems checked, ${crosswalked} claims over ${byFscs.size} PLS systems, ` +
+    `${results.length} with findings, ${unmatched.length} multi-outlet PLS systems unmatched`);
   return { meta: plsData.meta, results, crosswalks, plsIndex, unmatched };
 }
 
@@ -928,7 +1397,7 @@ async function fetchSystemTags(mode, value) {
   const esc = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const sel = mode === 'wikidata' ? `["operator:wikidata"="${esc}"]` : `["operator"="${esc}"]`;
   const q = `[out:json][timeout:90];\narea(3600148838)->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
-  for (const url of OVERPASS_ENDPOINTS) {
+  for (const [i, url] of OVERPASS_ENDPOINTS.entries()) {
     try {
       const res = await fetch(url, {
         method: 'POST',
@@ -943,7 +1412,10 @@ async function fetchSystemTags(mode, value) {
         return { id: e.type[0] + e.id, name: e.tags?.name || '', lat, lon, tags: e.tags || {} };
       }).filter(Boolean);
     } catch (e) {
-      console.warn(`    augment: overpass ${url} failed for ${value}: ${e.message}`);
+      // Endpoint 0 may be the private instance, so identify it by position, never
+      // by URL — and keep the error to its code, since node puts the hostname in
+      // DNS/TLS error text. See the header note in overpass-source.mjs.
+      console.warn(`    augment: endpoint #${i} failed for ${value}: ${e.cause?.code ?? e.message}`);
     }
   }
   return null;
@@ -1050,6 +1522,8 @@ export function serializeLinewise(out) {
     `"collisions": ${arr(out.collisions)},\n` +
     `"ambiguous": ${arr(out.ambiguous)},\n` +
     `"domains": ${arr(out.domains)},\n` +
+    `"wdOperators": ${arr(out.wdOperators ?? [])},\n` +
+    `"wdConflicts": ${arr(out.wdConflicts ?? [])},\n` +
     `"pls": ${arr(out.pls)},\n` +
     `"plsUnmatched": ${arr(out.plsUnmatched ?? [])},\n` +
     `"augment": ${arr(out.augment)}\n` +

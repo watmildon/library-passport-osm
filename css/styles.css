@@ -232,6 +232,27 @@ body.qa-page { height: auto; background: var(--bg); }
 .qa-editor-pick select option { color: #1a2230; }
 .qa-editor-hint { color: rgba(255,255,255,0.7); font-size: 12px; }
 
+/* Overpass server picker — same row treatment as the editor picker. */
+.qa-endpoint-pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; font-size: 13px; color: rgba(255,255,255,0.9); }
+.qa-endpoint-pick input {
+  flex: 1 1 340px; max-width: 460px; padding: 4px 8px; border-radius: 7px;
+  border: 1px solid rgba(255,255,255,0.35); background: rgba(255,255,255,0.12);
+  color: #fff; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.qa-endpoint-pick input::placeholder { color: rgba(255,255,255,0.5); }
+.qa-endpoint-hint { color: rgba(255,255,255,0.7); font-size: 12px; flex-basis: 100%; }
+.qa-endpoint-hint.qa-endpoint-custom { color: rgba(163,230,180,0.95); }
+
+/* Pending state for a button that's waiting on the network. */
+.qa-spinner {
+  display: inline-block; width: 11px; height: 11px; margin-right: 6px; vertical-align: -1px;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: qa-spin 0.7s linear infinite;
+}
+@keyframes qa-spin { to { transform: rotate(360deg); } }
+.qa-link-btn.is-busy, .qa-more.is-busy { opacity: 0.75; cursor: progress; }
+@media (prefers-reduced-motion: reduce) { .qa-spinner { animation-duration: 2.4s; } }
+
 .qa-meta { margin: 0 0 14px; font-size: 13px; color: rgba(255,255,255,0.75); }
 .qa-nav { display: flex; gap: 6px; flex-wrap: wrap; padding-bottom: 14px; }
 .qa-nav a {
@@ -340,6 +361,8 @@ body.qa-page { height: auto; background: var(--bg); }
 .qa-badge-mixed { background: rgba(217,179,16,0.16); color: #9a7d00; }
 .qa-badge-mixed a { color: #9a7d00; text-decoration: none; }
 .qa-badge-not { background: #eef1f5; color: var(--muted); }
+/* Where a suggestion came from, subordinate to the item it labels. */
+.qa-badge-src { font-weight: 600; opacity: 0.72; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
 .qa-badge-not a { color: var(--muted); text-decoration: line-through; }
 .qa-delta-miss { color: #9a7d00; font-weight: 700; }   /* fewer in OSM than Wikidata */
 .qa-delta-extra { color: var(--accent); font-weight: 700; } /* more in OSM than Wikidata */
@@ -367,6 +390,19 @@ body.qa-page { height: auto; background: var(--bg); }
 }
 .pls-qid a { color: inherit; font-weight: 700; text-decoration: none; }
 .pls-qid-suggested { background: rgba(217,179,16,0.16); color: #9a7d00; }
+
+/* The "here's the fix, take it to an editor" bar on an operator mismatch. */
+.wd-fix {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; margin: 0 0 8px 2px; padding: 7px 10px;
+  border: 1px dashed var(--border); border-radius: 8px; background: #f8fafc;
+}
+.wd-fix-tags code {
+  font-size: 12px; padding: 2px 6px; border-radius: 5px;
+  background: rgba(46,160,67,0.12); color: var(--visited);
+}
+.wd-fix-tags code.wd-fix-guess { background: rgba(217,179,16,0.16); color: #9a7d00; }
+.wd-fix-actions { display: flex; gap: 14px; align-items: center; white-space: nowrap; }
 .pls-row {
   display: grid;
   grid-template-columns: minmax(150px, 1.2fr) minmax(0, 2fr) 120px 20px;

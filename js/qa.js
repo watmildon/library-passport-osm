@@ -6,7 +6,9 @@
 import { searchSystems } from './systems.js';
 import { fetchLibrariesMeta } from './overpass.js';
 import { TRACKED_TAGS } from './completeness.js';
-import { JOSM, bboxAround, josmSend, webEditObjectUrl, webEditAtUrl } from './josm.js';
+import { JOSM, bboxAround, josmSend, buildOsmXml, loadData, webEditObjectUrl, webEditAtUrl } from './josm.js';
+import { overpassEndpoint } from './config.js';
+import { setupOverpassPicker, withBusy } from './controls.js';
 
 const $ = sel => document.querySelector(sel);
 
@@ -153,7 +155,11 @@ function setupEditorPicker() {
   sel.addEventListener('change', () => {
     setEditor(sel.value);
     showHint();
+    // Every section holding edit links has to be rebuilt for the new editor.
     renderPls();
+    renderWdOperators();
+    renderWdConflicts();
+    renderCollisions();
     if (currentSys >= 0) showSystem(currentSys);  // re-render the explorer table
   });
 
@@ -244,6 +250,8 @@ async function boot() {
   renderWikidataGaps();
   renderAmbiguous();
   renderDomains();
+  renderWdOperators();
+  renderWdConflicts();
   renderPls();
   renderPlsUnmatched();
   renderBranchCounts();
@@ -258,6 +266,16 @@ async function boot() {
     domFilter = e.target.value;
     renderDomains();
   });
+  $('#wdop-filter').addEventListener('input', e => {
+    wdopFilter = e.target.value;
+    wdopExpanded = false;
+    renderWdOperators();
+  });
+  $('#wdc-filter').addEventListener('input', e => {
+    wdcFilter = e.target.value;
+    wdcExpanded = false;
+    renderWdConflicts();
+  });
   $('#pls-filter').addEventListener('input', e => {
     plsFilter = e.target.value;
     plsExpanded = false;
@@ -265,6 +283,8 @@ async function boot() {
   });
   setupPlsStateFilter();
   setupWdStateFilter();
+  setupWdopStateFilter();
+  setupWdcStateFilter();
   setupDomStateFilter();
   setupBrStateFilter();
   $('#plsu-filter').addEventListener('input', e => {
@@ -274,6 +294,7 @@ async function boot() {
   });
   setupPlsuStateFilter();
   setupEditorPicker();
+  setupOverpassPicker();
   openSection(location.hash.slice(1));
 }
 
@@ -306,6 +327,9 @@ function renderTiles() {
   const withWd = data.libs.filter(l => l[L.flags] & 16).length;
   const plsMissing = (data.pls || []).reduce((n, p) => n + p.missing.length, 0);
   const plsUntagged = (data.pls || []).reduce((n, p) => n + p.untagged.length, 0);
+  const libCount = gs => (gs || []).reduce((n, g) => n + g.libs.length, 0);
+  const wdOpLibs = libCount(data.wdOperators);
+  const wdConflictLibs = libCount(data.wdConflicts);
   $('#tiles').innerHTML =
     tile('US libraries', fmt(total)) +
     tile('Library systems', fmt(data.systems.length)) +
@@ -316,7 +340,11 @@ function renderTiles() {
         'IMLS PLS branches with no OSM library nearby – likely need creating', '#pls') +
       tile('Branches untagged in OSM', `<span class="pls-untagged-n">${fmt(plsUntagged)}</span>`,
         'IMLS PLS branches present in OSM but missing the operator tag', '#pls')
-    ) : '');
+    ) : '') +
+    (wdOpLibs ? tile('Operator sourced from Wikidata', `<span class="pls-untagged-n">${fmt(wdOpLibs)}</span>`,
+      'Operator-less libraries whose own Wikidata item names the system that runs them', '#wd-operators') : '') +
+    (wdConflictLibs ? tile('Operator mismatches', `<span class="qa-delta-miss">${fmt(wdConflictLibs)}</span>`,
+      'Libraries whose operator:wikidata disagrees with their own Wikidata item', '#wd-conflicts') : '');
 }
 
 function meterRow(label, n, d) {
@@ -451,6 +479,36 @@ const WD_COLS = [
   { id: 'sw', label: 'Suggested' }
 ];
 
+// Where a suggested operator:wikidata came from, strongest first. `ss` lists
+// every source that proposed the same item, so agreement between two of them is
+// worth showing — it's the difference between a hint and a near-certainty.
+const WD_SOURCE = {
+  branch: {
+    short: 'branch item',
+    why: 'This system’s own libraries carry wikidata items naming this as their parent organization — a statement about these very branches'
+  },
+  fscs: {
+    short: 'FSCS id',
+    why: 'This system crosswalked to an IMLS PLS system, and this Wikidata item carries that Federal-State Cooperative System ID (P6618)'
+  },
+  domain: {
+    short: 'shared domain',
+    why: 'Suggested via a shared website domain with wikidata-tagged libraries — the weakest of the three, verify before applying'
+  }
+};
+
+function suggestionBadge(s) {
+  const sources = s.ss?.length ? s.ss : ['domain'];   // older data carried no `ss`
+  // Two independent sources agreeing is a much stronger claim than one.
+  const strong = sources.length > 1 || sources[0] === 'branch';
+  const why = sources.map(x => WD_SOURCE[x]?.why ?? x).join('. ') +
+    (sources.length > 1 ? '. Two independent sources agree.' : '');
+  const label = sources.map(x => WD_SOURCE[x]?.short ?? x).join(' + ');
+  return `<span class="qa-badge ${strong ? 'qa-badge-wd' : 'qa-badge-mixed'}" title="${escapeHtml(why)}">
+    <a href="https://www.wikidata.org/wiki/${escapeHtml(s.sw)}" target="_blank" rel="noopener">${escapeHtml(s.sw)}</a>${
+    s.sn ? ` ${escapeHtml(s.sn)}` : ''} <span class="qa-badge-src">${escapeHtml(label)}</span></span>`;
+}
+
 function renderWikidataGaps() {
   const term = wdFilter.trim().toLowerCase();
   const { col, dir } = wdSort;
@@ -479,9 +537,7 @@ function renderWikidataGaps() {
     <tbody>${shown.length ? shown.map(s => `<tr>
       <td>${escapeHtml(s.n)}</td>
       <td class="num">${fmt(s.c)}</td>
-      <td>${s.sw
-        ? `<span class="qa-badge qa-badge-mixed" title="Suggested via a shared website domain with wikidata-tagged libraries – verify before applying"><a href="https://www.wikidata.org/wiki/${escapeHtml(s.sw)}" target="_blank" rel="noopener">${escapeHtml(s.sw)}</a> ?</span>`
-        : ''}${(s.nw || []).map(q =>
+      <td>${s.sw ? suggestionBadge(s) : ''}${(s.nw || []).map(q =>
           `<span class="qa-badge qa-badge-not" title="Mappers ruled this item out (not:operator:wikidata) – no need to re-research it"><a href="https://www.wikidata.org/wiki/${escapeHtml(q)}" target="_blank" rel="noopener">not ${escapeHtml(q)}</a></span>`).join(' ')}</td>
       <td class="qa-actions">
         ${wdSearchLink(s.n)}
@@ -651,6 +707,14 @@ function renderPls() {
         ? `<span class="pls-qid pls-qid-suggested" title="Suggested via a shared website domain – verify before applying">operator:wikidata ≈ <a href="https://www.wikidata.org/wiki/${escapeHtml(sys.sw)}" target="_blank" rel="noopener">${escapeHtml(sys.sw)}</a> ?</span>`
         : '';
 
+    // Other operator spellings that crosswalked to the same PLS system — the
+    // system is fragmented in OSM, which is a sharper statement of the problem
+    // than the branches merely showing up as untagged.
+    const variants = p.variants?.length
+      ? `<div class="pls-qid-row"><span class="pls-qid pls-qid-suggested"
+          title="These libraries belong to the same PLS system but carry a different operator value – consolidating the spelling is the underlying fix">also tagged as ${
+        p.variants.map(v => `“${escapeHtml(v)}”`).join(' · ')}</span></div>`
+      : '';
     return `<div class="pls-sys">
       <div class="pls-sys-head">
         <span class="qa-coll-name">${escapeHtml(name)}</span>
@@ -661,6 +725,7 @@ function renderPls() {
           <button class="qa-link-btn" data-sys="${p.sysIdx}">Explore →</button></span>
       </div>
       ${qidNote ? `<div class="pls-qid-row">${qidNote}</div>` : ''}
+      ${variants}
       ${missing}${untagged}${disc}
     </div>`;
   }).join('');
@@ -887,7 +952,333 @@ function renderDomains() {
   more.onclick = () => { domExpanded = true; renderDomains(); };
 }
 
+// ---------------- Wikidata-sourced operators ----------------
+//
+// A library's own `wikidata=` item usually names the system that runs it, which
+// makes the operator *sourced* rather than guessed. build-qa.mjs resolves those
+// items and splits the result two ways: groups where OSM has no operator at all
+// (a ready-to-apply suggestion) and groups where OSM's operator:wikidata
+// disagrees with the item (a question to judge).
+
+// Human labels for the entity kinds build-qa.mjs emits.
+const WD_KIND = {
+  libnet: 'library network', library: 'library', university: 'university',
+  school: 'school', gov: 'government', place: 'place',
+  admin: 'administrative area', org: 'organization', other: 'unclassified'
+};
+// A place, its government, or a bare administrative area sitting in
+// operator:wikidata is the specific mistake worth showing first.
+const WD_PLACELIKE = new Set(['gov', 'place', 'admin']);
+
+// Placelike kinds read as a problem, a library network as the thing to aim for.
+function wdKindBadge(kind) {
+  const cls = WD_PLACELIKE.has(kind) ? 'qa-badge-miss'
+    : kind === 'libnet' || kind === 'library' ? 'qa-badge-wd'
+      : 'qa-badge-not';
+  return `<span class="qa-badge ${cls}">${escapeHtml(WD_KIND[kind] || kind)}</span>`;
+}
+const wdItemLink = q =>
+  `<a href="https://www.wikidata.org/wiki/${escapeHtml(q)}" target="_blank" rel="noopener">${escapeHtml(q)}</a>`;
+
+// The property the claim came from, spelled out — P137 states the operator
+// outright, the other two are inferred from structure, so the distinction is
+// worth showing on the row rather than hiding it.
+const WD_PROP = {
+  P137: 'operator',
+  P749: 'parent organization',
+  P361: 'part of'
+};
+
+// Overpass Turbo link for exactly this group's OSM objects, so the whole set
+// can be loaded and edited in one pass.
+function turboIdsUrl(osmIds) {
+  const kind = { n: 'node', w: 'way', r: 'relation' };
+  const byType = { n: [], w: [], r: [] };
+  for (const o of osmIds) byType[o[0]]?.push(o.slice(1));
+  const parts = Object.entries(byType)
+    .filter(([, ids]) => ids.length)
+    .map(([t, ids]) => `  ${kind[t]}(id:${ids.join(',')});`);
+  const q = `[out:json][timeout:60];\n(\n${parts.join('\n')}\n);\nout center tags;`;
+  return 'https://overpass-turbo.eu/?Q=' + encodeURIComponent(q) + '&R';
+}
+
+// One library line, shared by both sections: name, its own Wikidata item and
+// where the claim came from, state, and an edit link.
+function wdLibRow(l) {
+  return `<div class="pls-row pls-untagged">
+    <span class="pls-name">${escapeHtml(l.n || '(unnamed)')}</span>
+    <span class="pls-detail">↳ ${wdItemLink(l.q)} says ${escapeHtml(WD_PROP[l.pr] || l.pr)}</span>
+    <span class="pls-meta"><span class="pls-geo">${escapeHtml(l.s >= 0 ? stateAbbr(data.states[l.s]) : '')}</span></span>
+    <a class="qa-icon-link" href="${editObject(l.osm[0], l.osm.slice(1), l.lat, l.lon)}" target="_blank" rel="noopener" title="Fix tags in OSM editor">✏️</a>
+  </div>`;
+}
+
+// Shared state-filter wiring: both sections carry `st` (state indexes touched).
+function setupWdGroupStateFilter(selId, groups, onChange) {
+  const sel = $(selId);
+  if (!sel || !groups?.length) return;
+  const states = new Set(groups.flatMap(g => g.st));
+  const opts = [...states]
+    .map(st => ({ st, abbr: stateAbbr(data.states[st]) }))
+    .sort((a, b) => a.abbr.localeCompare(b.abbr))
+    .map(x => `<option value="${x.st}" title="${escapeHtml(data.states[x.st])}">${escapeHtml(x.abbr)}</option>`);
+  sel.insertAdjacentHTML('beforeend', opts.join(''));
+  sel.addEventListener('change', () => onChange(sel.value));
+}
+
+const WDOP_PREVIEW = 20;
+let wdopExpanded = false, wdopFilter = '', wdopState = '';
+
+function setupWdopStateFilter() {
+  setupWdGroupStateFilter('#wdop-state', data.wdOperators, v => {
+    wdopState = v; wdopExpanded = false; renderWdOperators();
+  });
+}
+
+function renderWdOperators() {
+  const list = $('#wdop-list');
+  if (!list) return;
+  const groups = data.wdOperators || [];
+  if (!groups.length) {
+    list.innerHTML = '<p class="qa-note">Nothing to suggest – either every wikidata-tagged library already has an operator, or this build came from a source without <code>wikidata</code> tags. 🎉</p>';
+    $('#wdop-more').hidden = true;
+    return;
+  }
+  const term = wdopFilter.trim().toLowerCase();
+  // File order is by Q-id (stable diffs); biggest work sets first is what's
+  // wanted on screen.
+  const rows = groups
+    .filter(g => !wdopState || g.st.includes(+wdopState))
+    .filter(g => !term || (g.po || g.pn || '').toLowerCase().includes(term) || g.pq.toLowerCase() === term)
+    .sort((a, b) => b.libs.length - a.libs.length || (a.po || a.pn).localeCompare(b.po || b.pn));
+
+  if (!rows.length) {
+    list.innerHTML = '<p class="qa-note">No systems match.</p>';
+    $('#wdop-more').hidden = true;
+    return;
+  }
+
+  const shown = wdopExpanded ? rows : rows.slice(0, WDOP_PREVIEW);
+  list.innerHTML = shown.map((g, i) => {
+    // Where OSM's spelling and Wikidata's label differ, show the label too —
+    // it's the evidence behind the suggestion.
+    const alt = g.po && g.pn && g.po !== g.pn
+      ? ` <span class="pls-geo" title="English label on Wikidata">Wikidata: “${escapeHtml(g.pn)}”</span>` : '';
+    return `<div class="pls-sys">
+      <div class="pls-sys-head">
+        <span class="qa-coll-name">${escapeHtml(g.po || g.pn)}</span>
+        <span class="qa-coll-meta">${wdKindBadge(g.pk)} ·
+          <b class="pls-untagged-n">${fmt(g.libs.length)}</b> ${g.libs.length === 1 ? 'library' : 'libraries'} ·
+          ${escapeHtml(g.st.map(i => stateAbbr(data.states[i])).join(' / '))}
+          ${turboLink(turboIdsUrl(g.libs.map(l => l.osm)))}
+          ${wdItemLink(g.pq)}</span>
+      </div>
+      ${wdFixBar(g, i, 'wdop', alt)}
+      ${g.libs.map(wdLibRow).join('')}
+    </div>`;
+  }).join('');
+  bindWdFixActions(list, shown, 'wdop', 'add');
+
+  const more = $('#wdop-more');
+  more.hidden = wdopExpanded || rows.length <= WDOP_PREVIEW;
+  more.textContent = `Show all ${fmt(rows.length)} systems`;
+  more.onclick = () => { wdopExpanded = true; renderWdOperators(); };
+}
+
+// ---- Delivering a group's tags to an editor -------------------------------
+//
+// Shared by both Wikidata panes. The only differences between them are the
+// changeset wording, the JOSM layer name, and whether existing values may be
+// replaced — captured in the WD_FIX_MODE table below.
+//
+// The tags a group should end up with. `operator:wikidata` is the whole point;
+// the operator NAME rides along because it is almost always needed too — the
+// operator-less libraries have no name at all, and the mismatched ones usually
+// carry the wrong one (San Diego's branches read `operator=City of San Diego`
+// next to the city's Q-id, so correcting only the Q-id leaves the pair
+// contradicting itself).
+//
+// Two sources for that name, and the difference matters to a reviewer: `po` is
+// the spelling OSM already uses for the asserted item, `pn` is Wikidata's
+// English label — right far more often than not, but not an established OSM
+// value. Callers surface which one they got via wdFixName().
+function wdFixName(g) {
+  return g.po ? { name: g.po, fromOsm: true } : g.pn ? { name: g.pn, fromOsm: false } : null;
+}
+function wdFixTags(g) {
+  const n = wdFixName(g);
+  return { 'operator:wikidata': g.pq, ...(n ? { operator: n.name } : {}) };
+}
+const tagLines = tags => Object.entries(tags).map(([k, v]) => `${k}=${v}`).join('\n');
+
+const WD_FIX_MODE = {
+  // Operator-less libraries: nothing to clobber, so merge additively.
+  add: {
+    overwrite: false,
+    layer: g => `Add operator — ${g.pn || g.pq}`
+  },
+  // Mismatches: the current value is wrong, so it has to be replaced.
+  fix: {
+    overwrite: true,
+    layer: g => `Fix operator:wikidata — ${g.pn || g.pq}`
+  }
+};
+
+// There is deliberately no "open the whole group in iD" link. iD has no URL
+// parameter for setting tags at all, and its `id=` hash — which does accept a
+// comma-separated list — only selects entities it has already downloaded. iD
+// loads by viewport, so a group spread across a county never has more than a
+// couple of its objects in memory and the selection silently comes up short.
+// Per-library edit links (below) work fine; JOSM is the route for a whole group.
+
+async function copyTags(g, btn) {
+  const text = tagLines(wdFixTags(g));
+  try {
+    await navigator.clipboard.writeText(text);
+    toast('Tags copied – paste into the editor’s text view');
+  } catch {
+    // Clipboard needs a secure context and permission; show the text instead of
+    // failing silently so it can still be copied by hand.
+    btn.title = text;
+    toast('Couldn’t copy – the tags are in this button’s tooltip', true);
+  }
+}
+
+// JOSM is the one editor that can genuinely be handed the finished tags: the
+// group goes over as a single unsaved layer with them already applied.
+async function sendFixToJosm(g, mode) {
+  const { overwrite, layer } = WD_FIX_MODE[mode];
+  const tags = wdFixTags(g);
+  const skips = [];
+  let xml;
+  try {
+    xml = await buildOsmXml(g.libs.map(l => ({ osm: l.osm, tags })), [], {
+      endpoint: overpassEndpoint(),
+      onSkip: (b, why) => skips.push(`${b.osm}: ${why}`),
+      overwrite
+    });
+  } catch (e) {
+    toast(`Couldn’t prepare data (${e.message}).`, true);
+    return;
+  }
+  const ok = await loadData(xml, layer(g));
+  if (!ok) toast('JOSM didn’t respond – is it running with Remote Control enabled?', true);
+  else if (skips.length) {
+    console.warn('Wikidata-operator skips:', skips);
+    toast(`Sent ${g.libs.length - skips.length}/${g.libs.length} to JOSM (${skips.length} skipped) – review before uploading`, true);
+  } else {
+    toast(`Sent ${g.libs.length} to JOSM – review the layer before uploading`);
+  }
+}
+
+// The "here are the tags, take them to an editor" bar. `ns` namespaces the data
+// attributes so the two panes' buttons don't collide.
+function wdFixBar(g, i, ns, note = '') {
+  const fix = wdFixTags(g);
+  const name = wdFixName(g);
+  return `<div class="wd-fix">
+    <span class="wd-fix-tags" title="What these libraries should end up tagged with">${
+      Object.entries(fix).map(([k, v]) => {
+        // Flag a name that came from Wikidata's label rather than from
+        // established OSM usage — it's a suggestion, not a convention.
+        const guessed = k === 'operator' && name && !name.fromOsm;
+        return `<code${guessed ? ' class="wd-fix-guess" title="From Wikidata\'s English label – no OSM system uses this item yet, so check the spelling mappers would expect"' : ''}>${escapeHtml(k)}=${escapeHtml(v)}${guessed ? ' ?' : ''}</code>`;
+      }).join(' ')
+    }${note}</span>
+    <span class="wd-fix-actions">
+      <button class="qa-link-btn" data-${ns}-copy="${i}">Copy tags</button>
+      <button class="qa-link-btn" data-${ns}-josm="${i}"
+         title="Send all ${g.libs.length} to JOSM as one layer with the tags already applied">Send to JOSM →</button>
+    </span>
+  </div>`;
+}
+
+function bindWdFixActions(list, shown, ns, mode) {
+  list.querySelectorAll(`[data-${ns}-copy]`).forEach(b =>
+    b.addEventListener('click', () => copyTags(shown[+b.dataset[`${ns}Copy`]], b)));
+  list.querySelectorAll(`[data-${ns}-josm]`).forEach(b =>
+    b.addEventListener('click', () =>
+      withBusy(b, 'Sending…', () => sendFixToJosm(shown[+b.dataset[`${ns}Josm`]], mode))));
+}
+
+const WDC_PREVIEW = 20;
+let wdcExpanded = false, wdcFilter = '', wdcState = '';
+
+function setupWdcStateFilter() {
+  setupWdGroupStateFilter('#wdc-state', data.wdConflicts, v => {
+    wdcState = v; wdcExpanded = false; renderWdConflicts();
+  });
+}
+
+function renderWdConflicts() {
+  const list = $('#wdc-list');
+  if (!list) return;
+  const groups = data.wdConflicts || [];
+  if (!groups.length) {
+    list.innerHTML = '<p class="qa-note">No library disagrees with its own Wikidata item. 🎉</p>';
+    $('#wdc-more').hidden = true;
+    return;
+  }
+  const term = wdcFilter.trim().toLowerCase();
+  const rows = groups
+    .filter(g => !wdcState || g.st.includes(+wdcState))
+    .filter(g => !term ||
+      `${g.tn} ${g.pn}`.toLowerCase().includes(term) ||
+      g.tw.toLowerCase() === term || g.pq.toLowerCase() === term)
+    // A place or government tagged where a library entity exists is the mistake
+    // worth fixing first; everything else is a judgement call.
+    .sort((a, b) =>
+      (WD_PLACELIKE.has(b.tk) - WD_PLACELIKE.has(a.tk)) ||
+      b.libs.length - a.libs.length ||
+      (a.tn || a.tw).localeCompare(b.tn || b.tw));
+
+  if (!rows.length) {
+    list.innerHTML = '<p class="qa-note">No mismatches match.</p>';
+    $('#wdc-more').hidden = true;
+    return;
+  }
+
+  const shown = wdcExpanded ? rows : rows.slice(0, WDC_PREVIEW);
+  list.innerHTML = shown.map((g, i) => `<div class="pls-sys">
+      <div class="pls-sys-head">
+        <span class="qa-coll-name">${escapeHtml(g.tn || g.tw)} ${wdKindBadge(g.tk)}</span>
+        <span class="qa-coll-meta">→ ${escapeHtml(g.pn || g.pq)} ${wdKindBadge(g.pk)} ·
+          <b class="pls-untagged-n">${fmt(g.libs.length)}</b> ${g.libs.length === 1 ? 'library' : 'libraries'} ·
+          ${escapeHtml(g.st.map(i => stateAbbr(data.states[i])).join(' / '))}
+          ${turboLink(turboIdsUrl(g.libs.map(l => l.osm)))}</span>
+      </div>
+      <div class="pls-qid-row">
+        <span class="pls-qid pls-qid-suggested">tagged operator:wikidata = ${wdItemLink(g.tw)} ·
+          their items say ${wdItemLink(g.pq)}</span>
+      </div>
+      ${wdFixBar(g, i, 'wdc')}
+      ${g.libs.map(wdLibRow).join('')}
+    </div>`).join('');
+  bindWdFixActions(list, shown, 'wdc', 'fix');
+
+  const more = $('#wdc-more');
+  more.hidden = wdcExpanded || rows.length <= WDC_PREVIEW;
+  more.textContent = `Show all ${fmt(rows.length)} mismatches`;
+  more.onclick = () => { wdcExpanded = true; renderWdConflicts(); };
+}
+
 // ---------------- Collisions ----------------
+
+// sysIdx -> its library rows, built once on demand. The collisions pane needs
+// the actual object behind a one-branch side so it can link straight to the edit.
+let sysLibsIndex = null;
+function sysLibs(idx) {
+  if (!sysLibsIndex) {
+    sysLibsIndex = new Map();
+    for (const l of data.libs) {
+      if (l[L.sys] < 0) continue;
+      if (!sysLibsIndex.has(l[L.sys])) sysLibsIndex.set(l[L.sys], []);
+      sysLibsIndex.get(l[L.sys]).push(l);
+    }
+  }
+  return sysLibsIndex.get(idx) ?? [];
+}
+
 function renderCollisions() {
   if (!data.collisions.length) {
     $('#collisions').innerHTML = '<p class="qa-note">No likely collisions found. 🎉</p>';
@@ -905,15 +1296,23 @@ function renderCollisions() {
     else if (c.lev === 1 && c.ca >= 5 * c.cb && c.cb <= 2) hint = `Likely typo of “${escapeHtml(c.a)}”.`;
     else if (c.aw !== c.bw) hint = `Only one side has operator:wikidata – if these are the same system, align the other.`;
     const side = (name, cnt, hasWd) => {
+      const idx = sysByName.get(name);
       // Direct link to the tagged operator:wikidata item, when there is one.
-      const wd = hasWd ? data.systems[sysByName.get(name)]?.w : null;
+      const wd = hasWd ? data.systems[idx]?.w : null;
+      // A typo side is usually a single stray object, and then the fix is one
+      // edit — so skip the query and the system table and open it directly.
+      const libs = idx === undefined ? [] : sysLibs(idx);
+      const only = libs.length === 1 ? libs[0] : null;
       return `
       <div class="qa-coll-side">
         <span class="qa-coll-name">${escapeHtml(name)}</span>
         <span class="qa-coll-meta">${fmt(cnt)} ${cnt === 1 ? 'branch' : 'branches'}
           ${wd ? `<span class="qa-badge qa-badge-wd" title="operator:wikidata"><a href="https://www.wikidata.org/wiki/${escapeHtml(wd)}" target="_blank" rel="noopener">${escapeHtml(wd)}</a> ✓</span>` : ''}
+          ${only
+            ? `<a class="qa-icon-link" href="${editObject(only[L.type], only[L.id], only[L.lat], only[L.lon])}" target="_blank" rel="noopener" title="Edit ${escapeHtml(only[L.name] || 'this library')} – the only library tagged with this operator">✏️</a>`
+            : ''}
           ${turboLink(turboUrl('operator', name))}
-          ${sysByName.has(name) ? `<button class="qa-link-btn" data-sys="${sysByName.get(name)}">Explore →</button>` : ''}
+          ${idx !== undefined ? `<button class="qa-link-btn" data-sys="${idx}">Explore →</button>` : ''}
         </span>
       </div>`;
     };
@@ -1020,10 +1419,11 @@ function showSystem(idx) {
 async function loadLive() {
   if (currentSys < 0) return;
   const s = data.systems[currentSys];
-  const btn = $('#btn-live');
-  btn.disabled = true;
   $('#live-note').textContent = 'Fetching live data from Overpass…';
+  return withBusy($('#btn-live'), 'Loading…', () => loadLiveInner(s));
+}
 
+async function loadLiveInner(s) {
   try {
     const { features: feats, osmBase } = await fetchLibrariesMeta(s.w ? 'wikidata' : 'operator', s.w || s.n);
     if (!feats.length) throw new Error('no results');
@@ -1046,8 +1446,11 @@ async function loadLive() {
         </tr>`;
       }).join('')}</tbody>`;
   } catch (e) {
-    $('#live-note').textContent = 'Could not fetch live data (' + e.message + '). Try again shortly.';
-    btn.disabled = false;
+    // One endpoint, no silent retry elsewhere — say which failure it was so a
+    // misconfigured or overloaded server is diagnosable.
+    const why = e.name === 'TimeoutError' ? 'the server did not answer in time' : e.message;
+    $('#live-note').textContent =
+      `Could not fetch live data (${why}). Check the Overpass server setting above, or try again shortly.`;
   }
 }
 

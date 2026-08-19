@@ -1,16 +1,21 @@
 // config.js — deployment-level settings.
 
-// Overpass endpoints, tried in order until one succeeds.
+// The Overpass endpoint every page talks to.
 //
-// Users can supply their own instance in the onboarding screen (e.g. a faster or
-// self-hosted server). The public mirrors are the fallback so the app works for
-// everyone out of the box. A custom endpoint can also be passed via the
-// ?overpass=<url> query param, which takes precedence and is persisted.
+// ONE endpoint, not a fallback chain. Chaining looks resilient but behaves
+// badly: a busy public mirror doesn't refuse a request, it queues it and holds
+// the connection open, so the "fallback" only starts after the first has hung
+// for its whole timeout. One endpoint plus a real timeout fails fast and tells
+// the user something actionable — and anyone who cares about throughput should
+// point the app at their own instance anyway.
+//
+// Users set theirs in the app's onboarding screen or the Overpass field in the
+// QA/Augment headers; ?overpass=<url> also works and is persisted.
 
-const PUBLIC_ENDPOINTS = [
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter'
-];
+export const DEFAULT_ENDPOINT = 'https://overpass-api.de/api/interpreter';
+
+// How long any single Overpass request may take before we give up on it.
+export const OVERPASS_TIMEOUT_MS = 35000;
 
 const LS_OVERPASS = 'libpass:overpass-custom';
 
@@ -38,9 +43,9 @@ export function setCustomOverpass(url) {
   } catch { /* storage unavailable — ignore */ }
 }
 
-export function overpassEndpoints() {
-  const custom = customOverpass();
-  return custom ? [custom, ...PUBLIC_ENDPOINTS] : PUBLIC_ENDPOINTS;
+// The endpoint to use: the user's, else the public default.
+export function overpassEndpoint() {
+  return customOverpass() || DEFAULT_ENDPOINT;
 }
 
 // Basemap style (OpenFreeMap positron — free, no API key).
