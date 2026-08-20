@@ -28,6 +28,12 @@
         </select>
         <span class="qa-editor-hint" id="editor-hint"></span>
       </div>
+      <div class="qa-endpoint-pick">
+        <label for="overpass-url">Overpass server:</label>
+        <input id="overpass-url" type="url" inputmode="url" autocomplete="off" spellcheck="false"
+               title="Used for the live system view and for reading objects before sending them to JOSM. Leave blank for the public server." />
+        <span class="qa-endpoint-hint" id="overpass-hint"></span>
+      </div>
       <p class="qa-meta" id="qa-meta">Loading data…</p>
       <nav class="qa-nav">
         <a href="./qa-map.html">🗺️ Map view</a>
@@ -35,6 +41,8 @@
         <a href="#wikidata">Wikidata gaps</a>
         <a href="#ambiguous">Shared operators</a>
         <a href="#domains">Website domains</a>
+        <a href="#wd-operators">Operator from Wikidata</a>
+        <a href="#wd-conflicts">Operator mismatches</a>
         <a href="#pls">Missing branches</a>
         <a href="#pls-unmatched">Unmatched systems</a>
         <a href="./augment.html">🧩 Augment (JOSM)</a>
@@ -63,9 +71,14 @@
     <details id="wikidata" class="qa-section" open>
       <summary><h2>Wikidata gaps</h2></summary>
       <p class="qa-note">Library systems with no <code>operator:wikidata</code> tag, biggest first.
-        Adding one makes the system unambiguous across name variations. Amber <em>Suggested</em>
-        badges come from wikidata-tagged libraries sharing the same website domain – verify, then apply.
-        Grey <em>not Qxxx</em> badges are items mappers already ruled out (<code>not:operator:wikidata</code>).</p>
+        Adding one makes the system unambiguous across name variations. Suggestions carry the source they
+        came from: <em>branch item</em> (the system's own libraries name this as their parent organization
+        on Wikidata), <em>FSCS id</em> (the system crosswalks to an IMLS PLS system whose Federal-State
+        Cooperative System ID this item carries), or <em>shared domain</em> (wikidata-tagged libraries on
+        the same website domain – the weakest of the three). Green means a branch item said so, or two
+        sources agree; amber is a single weaker source. All of them are <em>suggestions</em> – verify,
+        then apply. Grey <em>not Qxxx</em> badges are items mappers already ruled out
+        (<code>not:operator:wikidata</code>).</p>
       <div class="qa-filter-row">
         <input id="wd-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
         <select id="wd-state" class="qa-state-select" title="Filter by state">
@@ -104,6 +117,55 @@
         <table class="qa-table" id="dom-table"></table>
       </div>
       <button class="qa-more" id="dom-more" hidden>Show all</button>
+    </details>
+
+    <details id="wd-operators" class="qa-section" open>
+      <summary><h2>Operator from Wikidata</h2></summary>
+      <p class="qa-note">Libraries with no <code>operator</code> tag that carry their own
+        <code>wikidata</code> tag – and whose Wikidata item already names the system they belong to
+        (<code>P749</code> parent organization, <code>P361</code> part of, or <code>P137</code> operator).
+        That makes the operator <em>sourced rather than guessed</em>: “Angeles Mesa Branch”
+        (<a href="https://www.wikidata.org/wiki/Q4762622" target="_blank" rel="noopener">Q4762622</a>) records
+        its parent as Los Angeles Public Library, so both <code>operator</code> and
+        <code>operator:wikidata</code> follow. Grouped by system so a whole branch network is one work
+        set. <em>Where the system is already tagged elsewhere in OSM, the operator name shown is the one
+        mappers actually use</em> – prefer it over the Wikidata label so spellings stay consistent; a name
+        shown <code class="wd-fix-guess">like this ?</code> comes from Wikidata's label instead, because no
+        OSM system carries that item yet. Items ruled out on an element with
+        <code>not:operator:wikidata</code> are never proposed.</p>
+      <div class="qa-filter-row">
+        <input id="wdop-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
+        <select id="wdop-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
+      <div id="wdop-list"></div>
+      <button class="qa-more" id="wdop-more" hidden>Show all</button>
+    </details>
+
+    <details id="wd-conflicts" class="qa-section" open>
+      <summary><h2>Operator mismatches</h2></summary>
+      <p class="qa-note">Libraries whose <code>operator:wikidata</code> points at one item while their own
+        Wikidata item names a different operator. The common case is a <strong>place or its government
+        tagged where a specific library entity exists</strong> – San Diego Public Library branches tagged
+        <a href="https://www.wikidata.org/wiki/Q16552" target="_blank" rel="noopener">Q16552</a> (the city)
+        or <a href="https://www.wikidata.org/wiki/Q138816781" target="_blank" rel="noopener">Q138816781</a>
+        (the city government) rather than
+        <a href="https://www.wikidata.org/wiki/Q5486355" target="_blank" rel="noopener">Q5486355</a>
+        (the library network). Those are listed first and marked
+        <span class="qa-badge qa-badge-miss">place</span>. <em>Not every mismatch is an error</em>: a small
+        library really can be run by the city directly, and tagging a consortium where the item names the
+        member library is a genuine judgement call – so each row shows both sides and what kind of thing
+        each one is. Check before changing, and record a decision against the wrong item with
+        <code>not:operator:wikidata</code>.</p>
+      <div class="qa-filter-row">
+        <input id="wdc-filter" class="qa-filter" type="text" placeholder="Filter items…" autocomplete="off" />
+        <select id="wdc-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
+      <div id="wdc-list"></div>
+      <button class="qa-more" id="wdc-more" hidden>Show all</button>
     </details>
 
     <details id="pls" class="qa-section" open>

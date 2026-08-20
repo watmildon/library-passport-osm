@@ -172,6 +172,24 @@ jobs:
             exit 0
           fi
           COUNT=$(node -p "require('./data/us-library-systems.json').systems.length")
+
+          # What actually changed, counted per section by stable record key (see
+          # scripts/data-diff-summary.mjs). Goes in the commit body so `git log`
+          # shows the real size of a refresh — the raw diff is megabytes either
+          # way. Must run before `git add`: it compares the tree against HEAD.
+          SUMMARY=$(node scripts/data-diff-summary.mjs || true)
+          echo "${SUMMARY:-No section-level changes.}"
+          {
+            echo "### Changes"
+            echo '```'
+            echo "${SUMMARY:-No section-level changes.}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
           git add data/us-library-systems.json data/qa-data.json data/pls-outlets.json
-          git commit -m "chore: daily refresh of library data ($COUNT systems)"
+          if [ -n "$SUMMARY" ]; then
+            git commit -m "chore: daily refresh of library data ($COUNT systems)" -m "$SUMMARY"
+          else
+            git commit -m "chore: daily refresh of library data ($COUNT systems)"
+          fi
           git push

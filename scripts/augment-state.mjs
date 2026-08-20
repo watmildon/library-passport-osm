@@ -19,7 +19,7 @@
 //
 // Notes:
 //   • ACCUMULATES into augment[]: systems for the requested states are merged
-//     into whatever's already committed (matched by sysIdx, so re-running a state
+//     into whatever's already committed (matched by sysKey, so re-running a state
 //     refreshes just its systems). Pass --replace to start from an empty augment[]
 //     (drops states you don't list this run). Everything outside augment[] is
 //     preserved. Re-runnable.
@@ -97,18 +97,19 @@ async function augmentState(code, ctx) {
     return { entries: [], crosswalked: 0, queried: 0, skipped: 0 };
   }
 
-  // Library-row accessors: [sysIdx, type, id, name, stateIdx, flags, lon, lat].
+  // Library-row accessors: [sysKey, type, id, name, stateIdx, flags, lon, lat].
   const L = { sys: 0, name: 3, state: 4, lon: 6, lat: 7 };
 
   // Systems that have libraries in this state, with their OSM coords (from the
   // committed extract) so we can crosswalk to PLS exactly like build-qa does.
-  const bySys = new Map();       // sysIdx -> [{ lat, lon }]
+  const sysByKey = new Map(qa.systems.map(s => [s.k ?? s.n, s]));
+  const bySys = new Map();       // sysKey -> [{ lat, lon }]
   for (const l of qa.libs) {
     if (l[L.state] !== stateIdx) continue;
-    const si = l[L.sys];
-    if (si < 0 || !qa.systems[si]) continue;   // libraries with no operator/wikidata key
-    if (!bySys.has(si)) bySys.set(si, []);
-    bySys.get(si).push({ lat: l[L.lat], lon: l[L.lon] });
+    const key = l[L.sys];
+    if (key == null || !sysByKey.has(key)) continue;   // libraries with no operator/wikidata key
+    if (!bySys.has(key)) bySys.set(key, []);
+    bySys.get(key).push({ lat: l[L.lat], lon: l[L.lon] });
   }
   const candidates = [...bySys.entries()].filter(([, coords]) => coords.length >= MIN_LIBS_FOR_PLS);
   console.log(`\n${code} (${stateName}): ${bySys.size} systems here, ${candidates.length} crosswalk candidates.`);
@@ -116,8 +117,8 @@ async function augmentState(code, ctx) {
   const entries = [];
   let queried = 0, crosswalked = 0, skipped = 0;
 
-  for (const [sysIdx, osmCoords] of candidates) {
-    const sys = qa.systems[sysIdx];
+  for (const [sysKey, osmCoords] of candidates) {
+    const sys = sysByKey.get(sysKey);
     const cw = crosswalk(plsIndex, sys.n, code, osmCoords);
     if (!cw) continue;
     crosswalked++;
@@ -154,7 +155,7 @@ async function augmentState(code, ctx) {
     }
 
     if (!branches.length) continue;
-    entries.push({ sysIdx, fscskey: cw.fscskey, state: plsSystem.state, qid: suggestQid, qidConfirmed, branches });
+    entries.push({ sysKey, fscskey: cw.fscskey, state: plsSystem.state, qid: suggestQid, qidConfirmed, branches });
     console.log(`  ✓ ${sys.n}: ${branches.length} suggestions`);
   }
 
@@ -188,23 +189,25 @@ async function main() {
   // Never print the endpoint — it may be a private (secret) instance URL.
   console.log(`Augmenting ${codes.length} state(s): ${codes.join(', ')}${replace ? '  (--replace: dropping existing augment[])' : ''}`);
 
-  // Start from committed augment[] (accumulate) unless --replace. Keyed by sysIdx
+  // Start from committed augment[] (accumulate) unless --replace. Keyed by sysKey
   // so re-running a state refreshes just its systems, and states not touched this
-  // run are preserved.
-  const bySysIdx = new Map();
-  if (!replace) for (const a of (qa.augment || [])) bySysIdx.set(a.sysIdx, a);
+  // run are preserved. (A key survives a full rebuild; an array index would not.)
+  const bySysKey = new Map();
+  if (!replace) for (const a of (qa.augment || [])) bySysKey.set(a.sysKey, a);
 
   let totCrosswalked = 0, totQueried = 0, totSkipped = 0;
   for (const code of codes) {
     // Drop this state's previous entries first, so a system that no longer has
     // findings doesn't linger from an earlier run.
-    for (const [k, v] of bySysIdx) if (v.state === code) bySysIdx.delete(k);
+    for (const [k, v] of bySysKey) if (v.state === code) bySysKey.delete(k);
     const { entries, crosswalked, queried, skipped } = await augmentState(code, ctx);
-    for (const e of entries) bySysIdx.set(e.sysIdx, e);
+    for (const e of entries) bySysKey.set(e.sysKey, e);
     totCrosswalked += crosswalked; totQueried += queried; totSkipped += skipped;
   }
 
-  const augment = [...bySysIdx.values()].sort((a, b) => b.branches.length - a.branches.length);
+  // Same key order the full build writes, so the two paths produce comparable files.
+  const augment = [...bySysKey.values()]
+    .sort((a, b) => (a.sysKey < b.sysKey ? -1 : a.sysKey > b.sysKey ? 1 : 0));
   const totalBranches = augment.reduce((n, a) => n + a.branches.length, 0);
   const states = [...new Set(augment.map(a => a.state))].sort();
 

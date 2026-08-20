@@ -9,6 +9,8 @@
 //
 // Command reference: https://josm.openstreetmap.de/wiki/Help/RemoteControlCommands
 
+import { OVERPASS_TIMEOUT_MS } from './config.js';
+
 export const JOSM = 'http://127.0.0.1:8111';
 
 const OSM_TYPE = { n: 'node', w: 'way', r: 'relation' };
@@ -24,9 +26,15 @@ export function bboxAround(lat, lon, d = 0.0002) {
 // Fire a JOSM remote-control command in the background (no new tab). Resolves to
 // true if dispatched, false if the connection was refused. Callers usually pass
 // the returned boolean to a toast.
+//
+// The timeout bounds the caller's pending state rather than the work: JOSM has
+// already received the request by then, so giving up here doesn't cancel the
+// layer — it just stops a wedged button from spinning forever.
+const JOSM_TIMEOUT_MS = 60000;
+
 export async function josmSend(url) {
   try {
-    await fetch(url, { mode: 'no-cors' });
+    await fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(JOSM_TIMEOUT_MS) });
     return true;
   } catch {
     return false;
@@ -63,10 +71,16 @@ function tagsXml(tags) {
 // Fetch ALL of a system's existing objects + their geometry in ONE Overpass
 // query (`out meta` gives versions; `>;` recurses ways down to their nodes with
 // coords). Using Overpass — the same source the augment data was built from —
-// keeps us off the tightly rate-limited OSM API. `endpoints` is tried in order so
-// a bad custom instance or a down mirror falls back. Returns a Map(elKey ->
-// element) covering every target and referenced member; throws if all fail.
-async function fetchObjects(endpoints, osmKeys) {
+// keeps us off the tightly rate-limited OSM API.
+//
+// This is the slow half of "Send to JOSM", and the recursion is why: a 49-branch
+// system's 49 objects expand to ~930 elements, nearly all of them child nodes.
+// JOSM needs them — a way without its nodes is incomplete and can't be edited or
+// uploaded — but it means the request is worth a real timeout rather than an
+// open-ended wait on a queued public mirror.
+//
+// Returns a Map(elKey -> element) covering every target and referenced member.
+async function fetchObjects(endpoint, osmKeys) {
   if (!osmKeys.length) return new Map();
   // Group ids by type into id-lists: node(1,2,3); way(4,5); relation(6);
   const byType = { node: [], way: [], relation: [] };
@@ -76,27 +90,17 @@ async function fetchObjects(endpoints, osmKeys) {
     .map(([t, ids]) => `${t}(id:${ids.join(',')});`)
     .join('');
   const q = `[out:json][timeout:90];(${sel});(._;>;);out meta;`;
-  const body = 'data=' + encodeURIComponent(q);
 
-  const urls = (Array.isArray(endpoints) ? endpoints : [endpoints]).filter(Boolean);
-  let lastErr;
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body
-      });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      const map = new Map();
-      for (const el of (await res.json()).elements || []) map.set(el.type[0] + el.id, el);
-      return map;
-    } catch (e) {
-      lastErr = e;
-      console.warn(`  augment: Overpass ${url} failed: ${e.message}`);
-    }
-  }
-  throw new Error(`all Overpass endpoints failed (${lastErr?.message || 'unknown'})`);
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'data=' + encodeURIComponent(q),
+    signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS)
+  });
+  if (!res.ok) throw new Error('Overpass returned ' + res.status);
+  const map = new Map();
+  for (const el of (await res.json()).elements || []) map.set(el.type[0] + el.id, el);
+  return map;
 }
 
 // Serialize one OSM API element to XML. `modifyId` (the target's "t123" key)
@@ -124,18 +128,24 @@ function elementXml(el, targetKey) {
 //   existing: [{ osm, tags }]  — current objects fetched from Overpass, the
 //                                suggested tags merged onto the target (modify)
 //   created:  [{ lat, lon, tags }] — emitted as new nodes with negative ids
-// `overpassEndpoints` is an array of instances to read current objects from,
-// tried in order. Returns the XML string. Existing objects that Overpass doesn't
-// return are skipped (reported via onSkip); if Overpass fails entirely, existing
-// edits are skipped but any new nodes are still emitted so the send isn't a total
-// loss.
-export async function buildOsmXml(existing, created, { overpassEndpoints, onSkip } = {}) {
+// `endpoint` is the Overpass instance to read current objects from. Returns the
+// XML string. Existing objects that Overpass doesn't return are skipped
+// (reported via onSkip); if Overpass fails outright, existing edits are skipped
+// but any new nodes are still emitted so the send isn't a total loss.
+//
+// Tags are merged ADDITIVELY by default — an existing value is never clobbered,
+// which is what the PLS augmentation wants (it only ever fills blanks). Pass
+// `overwrite: true` for the opposite case: correcting a value that is wrong
+// rather than missing, e.g. an operator:wikidata that contradicts the library's
+// own Wikidata item. Either way JOSM shows the result as an unsaved layer, so
+// the mapper still reviews every change before upload.
+export async function buildOsmXml(existing, created, { endpoint, onSkip, overwrite = false } = {}) {
   const parts = [];
   const seen = new Set();
 
   let objs = new Map();
-  if (existing.length && overpassEndpoints) {
-    try { objs = await fetchObjects(overpassEndpoints, existing.map(b => b.osm)); }
+  if (existing.length && endpoint) {
+    try { objs = await fetchObjects(endpoint, existing.map(b => b.osm)); }
     catch (e) { for (const b of existing) onSkip?.(b, e.message); }
   }
 
@@ -152,9 +162,10 @@ export async function buildOsmXml(existing, created, { overpassEndpoints, onSkip
   for (const b of existing) {
     const target = objs.get(b.osm);
     if (!target) { if (objs.size) onSkip?.(b, 'not returned by Overpass'); continue; }
-    // Merge suggested tags additively (don't clobber a value that now exists).
     target.tags = { ...(target.tags || {}) };
-    for (const [k, v] of Object.entries(b.tags)) if (!target.tags[k]) target.tags[k] = v;
+    for (const [k, v] of Object.entries(b.tags)) {
+      if (overwrite || !target.tags[k]) target.tags[k] = v;
+    }
     emit(target, b.osm);
   }
 

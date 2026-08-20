@@ -98,8 +98,14 @@ Either way the Node script normalizes the rows into one compact file:
 - `tags` — the tag behind each bit of a library's `flags` bitmask
   (phone, website, opening_hours, operator, operator:wikidata, and on the
   Overpass path addr:housenumber, addr:street, addr:city, addr:postcode)
-- `states` / `systems` — lookup arrays referenced by index from `libs`
-- `libs` — `[systemIdx, type, id, name, stateIdx, flags, lon, lat]` per library
+- `states` — lookup array referenced by index from `libs`
+- `systems` — `{ n: name, k?: key, w: wikidata|null, c: count }`, sorted by key.
+  The key is the operator name, or `wd:Q…` for a system known only by its
+  `operator:wikidata` tag; `k` is emitted only where it differs from `n`.
+  Systems with no `w` may also carry a suggestion: `sw` (the proposed Q-id), `sn`
+  (its English label) and `ss` (which sources proposed it — see below), plus `nw`
+  for items ruled out with `not:operator:wikidata`.
+- `libs` — `[systemKey, type, id, name, stateIdx, flags, lon, lat]` per library
 - `collisions` — the likely-typo pairs
 - `ambiguous` — operator names whose libraries form 2+ geographic clusters more
   than ~120 km apart (single-linkage): likely *distinct systems sharing a name*,
@@ -110,12 +116,77 @@ Either way the Node script normalizes the rows into one compact file:
   ready-made work sets; when tagged siblings share the domain, their operator /
   wikidata values are emitted as suggestions for the untagged rest. Generic
   hosting platforms and >2-state spreads (vendor/aggregator domains) are excluded.
-- `pls` — per-system IMLS PLS cross-reference (see below): `{ sysIdx, fscskey,
-  plsCount, osmCount, matched, untagged[], missing[], discrepancies[] }`.
+- `wdOperators` — operator suggestions read from each library's **own** `wikidata`
+  item (see below), grouped by the system they point at: `{ pq, pn, pk, po, st,
+  libs[] }` where `pq`/`pn` are the proposed operator's Q-id and label, `pk` its
+  entity kind, and `po` the `operator` name OSM already uses for that Q-id.
+- `wdConflicts` — libraries whose `operator:wikidata` disagrees with their own
+  item, grouped by the `(tagged → asserted)` pair: `{ tw, tn, tk, pq, pn, pk, st,
+  libs[] }`. Overpass-only, like `wdOperators`.
+- `pls` — per-system IMLS PLS cross-reference (see below): `{ sysKey, fscskey,
+  plsCount, osmCount, matched, variants?, untagged[], missing[], discrepancies[] }`.
+  One row per PLS system; `variants` lists the other OSM operator spellings that
+  crosswalked to it.
 - `augment` — per-system, ready-to-apply PLS tag **suggestions** for the JOSM-first
-  [augmentation page](../augment.html) (see below): `{ sysIdx, fscskey, state, qid,
+  [augmentation page](../augment.html) (see below): `{ sysKey, fscskey, state, qid,
   qidConfirmed, branches[] }`, each branch `{ kind:'existing'|'new', osm, lat, lon,
   plsName, tags }` where `tags` are additive-only OSM tags.
+
+**Why systems are referenced by key, not by array index.** An index is derived
+data: it used to fall out of the order systems were first seen while scanning the
+library rows, so adding `operator=` to one low-id node moved that system to the
+front of the array and shifted every index behind it — a one-tag edit rewrote
+~5,000 library rows in the daily diff without changing a single fact. Keys change
+only when the tag does. For the same reason `pls` and `augment` are written in key
+order rather than ranked by severity; the QA and augmentation pages sort at render
+time. The pages resolve keys to array positions once at load, so their internal
+`sysIdx` handles are unchanged.
+
+**Suggesting `operator:wikidata` for systems that lack it.** Three independent
+sources feed `sw`/`sn`/`ss`, ranked by how directly each speaks about the actual
+libraries:
+
+| `ss` | source | strength |
+|---|---|---|
+| `branch` | the system's own libraries carry `wikidata` items naming a parent organization | a statement about these very branches |
+| `fscs` | the system crosswalked to a PLS system whose FSCS ID (`P6618`) is on a Wikidata item | an exact federal identifier, reached via an inferred crosswalk |
+| `domain` | libraries sharing a website domain with wikidata-tagged libraries elsewhere | weakest — a heuristic |
+
+Branch votes are a plurality of the system's branch items, and a tie is dropped
+rather than guessed. An FSCS key held by **more than one** Wikidata item is
+skipped, not picked between: that's the duplicate-item situation (Orange County
+Library System vs Library District), and suggesting the wrong twin entrenches it.
+When two sources land on the same item, `ss` lists both and the page marks the
+agreement. `not:operator:wikidata` vetoes any candidate it names.
+
+**Operators from each library's own Wikidata item.** A branch's `wikidata` tag
+identifies *the branch*, but its Wikidata item usually names the system that runs
+it — `P749` parent organization, `P361` part of, or (rarely, and most directly)
+`P137` operator. Angeles Mesa Branch (`Q4762622`) records its parent as Los
+Angeles Public Library, which settles both `operator` and `operator:wikidata`
+without guessing. The build reads every such item and splits the result:
+
+- **`wdOperators`** — the library has no operator tag at all, so the claim
+  becomes a sourced suggestion. Where OSM already uses a name for that Q-id
+  elsewhere, that name is carried as `po` and preferred over the Wikidata label,
+  so a suggestion matches its neighbours instead of introducing a spelling.
+  `not:operator:wikidata` on an element vetoes a matching proposal.
+- **`wdConflicts`** — the library's `operator:wikidata` names a *different* item
+  than its own page does. The case worth fixing is a **place or its government
+  tagged where a specific library entity exists**: San Diego Public Library
+  branches tagged `Q16552` (the city) or `Q138816781` (the city government)
+  rather than `Q5486355` (the library network). Not every mismatch is an error —
+  a small library really can be run by the city, and consortium-vs-member is a
+  judgement call — so each side carries an entity kind (`tk` / `pk`, one of
+  `libnet`, `library`, `university`, `school`, `gov`, `place`, `admin`, `org`,
+  `other`) and the page ranks the place-like ones first and presents the rest as
+  questions.
+
+Only organizations are ever *suggested*: `P361` in particular is also used for
+buildings, campuses and historic districts ("part of Beacon Hill"), which is why
+every proposed item is class-checked before it is offered. Both sections need the
+`wikidata` tag, which Layercake's POI columns don't carry, so they are empty on
+that path — the page says so rather than claiming a clean bill of health.
 
 **IMLS PLS matching** ([`pls-match.mjs`](./pls-match.mjs)). Each OSM system with
 ≥3 libraries is crosswalked to a PLS system: name similarity proposes candidates,
@@ -126,6 +197,20 @@ _matched_ (in OSM), _untagged_ (an OSM library exists nearby but without this
 operator — add the tag), _missing_ (no OSM library there — likely create one), or
 _discrepancy_ (name-matched but far from the OSM coordinate — verify location).
 Requires `data/pls-outlets.json`; if absent, PLS matching is skipped.
+
+**One PLS system, one OSM system.** Systems crosswalk independently, so rival
+operator spellings can claim the same PLS system — and do, because that
+fragmentation is what the data is full of. Name similarity can't arbitrate:
+`normSystem` strips `library`, `system`, `county` and `district`, so
+"Orange County" and "Orange County Library System" both reduce to `orange` and
+tie at 1.0, and the spatial check passes for both because the rival spellings sit
+in the same town. Unarbitrated that produced two rows for Orlando's FL0005, the
+smaller of which told mappers to tag 14 OCLS branches `operator=Orange County`,
+and made the augment pass query Overpass twice for one system. Claims are
+therefore ranked by **how many PLS outlets the spelling actually matched** (then
+OSM library count, then name similarity); the winner keeps the row and the losing
+spellings ride along as `variants`, which names the fragmentation more precisely
+than counting their branches as untagged.
 
 **Wikidata branch counts.** Systems whose Wikidata item enumerates its branches
 (`P527` parts typed as library branch) get that count attached as `wb` (one
@@ -202,7 +287,7 @@ node scripts/augment-state.mjs WA --replace # drop existing augment[] first
 ```
 
 It **accumulates**: systems for the requested states are merged into whatever's
-already in `augment[]` (keyed by `sysIdx`, so re-running a state refreshes just its
+already in `augment[]` (keyed by `sysKey`, so re-running a state refreshes just its
 systems and untouched states are preserved). `--replace` starts from an empty
 `augment[]`. Everything outside `augment[]` is preserved, and `meta.plsFiscalYear`
 is stamped. Intended for generating preview / bug-fixing data; re-run `build:qa`
@@ -226,6 +311,31 @@ Guards keep a bad upstream response from landing:
 
 When a guard trips, the job fails without committing. If the change is genuine,
 re-run the workflow manually to accept it.
+
+### `data-diff-summary.mjs` — what the refresh actually changed
+
+The data files are megabytes, so the raw diff can't tell you whether a refresh was
+a quiet day or a disaster. This compares the working tree against `HEAD` and counts
+added / removed / edited entries per section, keyed by a **stable** record key (a
+system key, an OSM element id, an FSCS key — never an array position):
+
+```sh
+node scripts/data-diff-summary.mjs             # vs HEAD
+node scripts/data-diff-summary.mjs --ref HEAD~1
+```
+
+```
+qa-data/systems: 5 changed, 1 added, 1 removed
+qa-data/libs: 15 changed, 1 added, 1 removed
+qa-data/pls: 2 removed
+```
+
+The daily workflow runs it before `git add` and puts the output in the commit body
+and the job summary, so `git log` shows the real size of each refresh. It's also
+the alarm for identity bugs: because it compares by key, a change that merely
+reorders records counts as zero here even when the raw diff is enormous. Thousands
+of "changed" entries on an ordinary day means something upstream started rewriting
+record identity again.
 
 ## `build-systems.mjs` — US library-systems list (Layercake fallback)
 

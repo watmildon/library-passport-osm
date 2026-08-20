@@ -3,7 +3,8 @@
 // layers via Remote Control. Additive-only; the mapper reviews before uploading.
 
 import { searchSystems } from './systems.js';
-import { overpassEndpoints } from './config.js';
+import { overpassEndpoint } from './config.js';
+import { setupOverpassPicker, withBusy } from './controls.js';
 import { josmSend, buildOsmXml, loadData, webEditObjectUrl } from './josm.js';
 
 const $ = sel => document.querySelector(sel);
@@ -60,11 +61,12 @@ async function sendBranches(branches, layerName, { label } = {}) {
   const skips = [];
   toast(`Preparing ${fillable.length === 1 ? 'suggestion' : fillable.length + ' suggestions'} for JOSM…`);
 
-  // Read current objects from Overpass (custom instance wins; public mirrors fall back).
+  // Read each object's current geometry and version from the configured Overpass
+  // server. This is the slow step — see the note in josm.js.
   let xml;
   try {
     xml = await buildOsmXml(fillable, [], {
-      overpassEndpoints: overpassEndpoints(),
+      endpoint: overpassEndpoint(),
       onSkip: (b, why) => skips.push(`${b.plsName}: ${why}`)
     });
   } catch (e) {
@@ -110,6 +112,8 @@ let searchable = [];        // systems that HAVE suggestions, for the picker
 let currentSys = -1;
 
 async function boot() {
+  // A setting, not a feature of the data — wire it before anything can bail out.
+  setupOverpassPicker();
   try {
     const res = await fetch('./data/qa-data.json');
     if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -118,7 +122,17 @@ async function boot() {
     $('#qa-meta').textContent = 'Could not load augment data (' + e.message + ').';
     return;
   }
-  const aug = data.augment || [];
+  // Entries reference their system by KEY — a stable string that only changes
+  // when the OSM tag does, so the daily diff shows real change instead of an
+  // array-position reshuffle. Resolve to an index once; the UI passes indices
+  // around in `data-sys` attributes. An unresolvable key means the system is
+  // gone from this build, so drop the entry rather than render a blank row.
+  const sysByKey = new Map(data.systems.map((s, i) => [s.k ?? s.n, i]));
+  data.augment = (data.augment || [])
+    .map(a => ({ ...a, sysIdx: sysByKey.get(a.sysKey) ?? -1 }))
+    .filter(a => a.sysIdx >= 0);
+
+  const aug = data.augment;
   augBySys = new Map(aug.map(a => [a.sysIdx, a]));
 
   const m = data.meta;
@@ -328,9 +342,11 @@ function selectSystem(sysIdx) {
     <div class="aug-rows">${a.branches.map((b, i) => branchRow(b, i)).join('')}</div>`;
 
   view.querySelectorAll('[data-branch]').forEach(btn =>
-    btn.addEventListener('click', () => sendOneBranch(a.branches[+btn.dataset.branch], s)));
+    btn.addEventListener('click', () =>
+      withBusy(btn, 'Sending…', () => sendOneBranch(a.branches[+btn.dataset.branch], s))));
   const sendAll = $('#aug-send-all');
-  if (sendAll) sendAll.addEventListener('click', () => sendSystem(a, s));
+  if (sendAll) sendAll.addEventListener('click', () =>
+    withBusy(sendAll, 'Sending…', () => sendSystem(a, s)));
 
   $('#explorer').open = true;
   view.scrollIntoView({ behavior: 'smooth', block: 'nearest' });

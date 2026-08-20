@@ -1,6 +1,6 @@
 // overpass.js — fetch library data from the Overpass API and normalise it to GeoJSON.
 
-import { overpassEndpoints } from './config.js';
+import { overpassEndpoint, OVERPASS_TIMEOUT_MS } from './config.js';
 
 // The public Overpass servers are busy: expensive queries routinely 504 or get
 // their connection dropped (which browsers report as a CORS failure). The
@@ -21,10 +21,6 @@ const US_BBOXES = [
   '(-14.7,-171.2,-13.8,-169.2)'  // American Samoa
 ];
 
-// How long to wait on one endpoint before failing over to the next. Slightly
-// above the query's own [timeout:30] so the server gets to answer first.
-const FETCH_TIMEOUT_MS = 35000;
-
 // Build an Overpass QL query selecting libraries for one operator (name or
 // wikidata).
 export function buildQuery(mode, value) {
@@ -41,32 +37,25 @@ ${US_BBOXES.map(bb => `  nwr["operator"="${esc}"][amenity=library]${bb};`).join(
 out center tags;`;
 }
 
-// Fetch libraries plus response metadata, trying mirrors in order if one fails
-// (bad HTTP status, network/CORS error, or the per-endpoint timeout). Returns
+// Fetch libraries plus response metadata from the configured endpoint. Throws
+// on a bad status, a network/CORS error, or OVERPASS_TIMEOUT_MS elapsing — the
+// caller surfaces that rather than silently retrying somewhere else. Returns
 // { features, osmBase } — osmBase is the server's data timestamp, worth showing
 // because public mirrors can lag OSM by weeks.
 export async function fetchLibrariesMeta(mode, value) {
   const body = 'data=' + encodeURIComponent(buildQuery(mode, value));
-  let lastErr;
-  for (const url of overpassEndpoints()) {
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body,
-        signal: AbortSignal.timeout(FETCH_TIMEOUT_MS)
-      });
-      if (!res.ok) { lastErr = new Error('Overpass returned ' + res.status); continue; }
-      const json = await res.json();
-      return {
-        features: elementsToFeatures(json.elements || []),
-        osmBase: json.osm3s?.timestamp_osm_base || null
-      };
-    } catch (e) {
-      lastErr = e;
-    }
-  }
-  throw lastErr || new Error('All Overpass endpoints failed');
+  const res = await fetch(overpassEndpoint(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+    signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS)
+  });
+  if (!res.ok) throw new Error('Overpass returned ' + res.status);
+  const json = await res.json();
+  return {
+    features: elementsToFeatures(json.elements || []),
+    osmBase: json.osm3s?.timestamp_osm_base || null
+  };
 }
 
 // Back-compat wrapper: just the features.
