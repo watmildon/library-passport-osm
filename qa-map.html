@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Library Passport · QA Map</title>
+  <meta name="description" content="Map-first view of US library data issues in OpenStreetMap – find missing branches, operator tag fixes, and ready-to-apply tag fills near you." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🗺️</text></svg>" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- Floating control / work-list panel -->
+  <div id="qm-panel">
+    <div class="qm-head">
+      <div class="qm-title">
+        <h1>🗺️ QA Map</h1>
+        <a class="qm-back" href="./qa.html" title="Data QA dashboard">🔧 Dashboard</a>
+        <button class="qm-collapse" id="qm-collapse" title="Collapse panel" aria-expanded="true">▾</button>
+      </div>
+      <p class="qm-sub">Library data issues near you. Pick issue types, zoom to your area, click a pin to fix it in your editor.</p>
+      <div class="qm-editor">
+        <label for="qm-editor-select">Edit in:</label>
+        <select id="qm-editor-select">
+          <option value="id">iD</option>
+          <option value="rapid">Rapid</option>
+          <option value="josm">JOSM (remote)</option>
+          <option value="geo">Map app (geo:)</option>
+        </select>
+        <span class="qm-editor-hint" id="qm-editor-hint"></span>
+      </div>
+      <p class="qm-meta" id="qm-meta">Loading data…</p>
+    </div>
+
+    <div class="qm-body" id="qm-body">
+      <div class="qm-chips" id="qm-chips"></div>
+      <div class="qm-gaptags" id="qm-gaptags" hidden></div>
+      <div class="qm-viewbar">
+        <span><b id="qm-count">0</b> in view</span>
+        <button class="qm-locate" id="qm-locate" title="Zoom the map to your location">📍 Near me</button>
+      </div>
+      <div class="qm-list" id="qm-list">
+        <div class="list-empty">Loading issues…</div>
+      </div>
+    </div>
+
+    <div class="qm-foot">
+      <a href="./index.html">📚 Library Passport</a>
+      <a href="./qa.html">🔧 Data QA</a>
+      <a href="./augment.html">🧩 Augment</a>
+    </div>
+  </div>
+
+  <div id="loading" class="show"><div class="spinner"></div><div class="msg">Loading QA data…</div></div>
+
+  <script type="module" src="./js/qa-map.js"></script>
+</body>
+</html>

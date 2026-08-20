@@ -85,9 +85,15 @@ export function splitAddress(raw) {
 
 // Normalize a value for conflict comparison, so trivial formatting differences
 // (case, spacing, punctuation) don't read as conflicts. Phones compare on digits.
+// Postcodes compare on the 5-digit base: PLS only ships ZIP5, so an OSM ZIP+4
+// with the same base is MORE precise, not different.
 function normForCompare(key, v) {
   const s = String(v).trim();
   if (key === 'phone') return s.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); // last 10 digits
+  if (key === 'addr:postcode') {
+    const m = s.match(/^(\d{5})(?:-\d{4})?$/);
+    if (m) return m[1];
+  }
   return s.toLowerCase().replace(/[.,]/g, '').replace(/\s+/g, ' ').trim();
 }
 

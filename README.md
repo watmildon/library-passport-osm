@@ -25,6 +25,9 @@ or state.
 - **Data QA dashboard** — want to give back? The [Data QA page](qa.html) shows
   where US library data in OpenStreetMap needs love: missing tags, wikidata gaps,
   and likely typos.
+- **QA map** — the [QA Map](qa-map.html) puts every issue on a map, filterable
+  by type (missing branches, operator tag fixes, ready-to-apply tag fills…), so
+  you can zoom to your own area and fix what's nearby.
 
 ## Data & attribution
 

@@ -466,6 +466,88 @@ body.qa-page { height: auto; background: var(--bg); }
 .aug-cf-pls { color: #244; }
 .aug-cf-osm::before, .aug-cf-pls::before { content: ''; }
 
+/* ==================== QA map page ==================== */
+#qm-panel {
+  position: absolute; top: 12px; left: 12px; z-index: 10;
+  width: 360px; max-width: calc(100vw - 24px);
+  background: var(--panel); border-radius: var(--radius); box-shadow: var(--shadow);
+  display: flex; flex-direction: column; max-height: calc(100vh - 24px);
+}
+.qm-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+.qm-title { display: flex; align-items: center; gap: 10px; }
+.qm-title h1 { margin: 0; font-size: 18px; flex: 1; }
+.qm-back { color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none; }
+.qm-back:hover { color: var(--accent); }
+.qm-collapse {
+  background: none; border: 1px solid var(--border); border-radius: 7px;
+  cursor: pointer; font-size: 12px; color: var(--muted); padding: 2px 8px;
+}
+.qm-sub { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.qm-editor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.qm-editor select {
+  padding: 3px 7px; border-radius: 7px; border: 1px solid var(--border);
+  background: #fff; font-size: 12px; cursor: pointer;
+}
+.qm-editor-hint { font-size: 11px; }
+.qm-meta { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
+
+.qm-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+#qm-panel.collapsed .qm-body, #qm-panel.collapsed .qm-foot,
+#qm-panel.collapsed .qm-sub, #qm-panel.collapsed .qm-editor, #qm-panel.collapsed .qm-meta { display: none; }
+
+.qm-chips { display: flex; gap: 6px; padding: 10px 16px 4px; flex-wrap: wrap; }
+.qm-chip { padding: 5px 10px; font-size: 12px; gap: 5px; }
+.qm-chip.active { background: rgba(0,119,187,0.07); }
+.qm-chip-n { font-weight: 700; font-size: 11px; opacity: 0.75; }
+.qm-chip-sm { padding: 3px 9px; font-size: 11px; }
+.qm-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  background: var(--c); border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
+}
+.qm-dot-lg { width: 12px; height: 12px; margin-top: 3px; }
+.qm-gaptags { display: flex; gap: 6px; padding: 6px 16px 2px; flex-wrap: wrap; align-items: center; }
+.qm-gaptags[hidden] { display: none; }
+.qm-gaptags-label { font-size: 11px; color: var(--muted); font-weight: 600; }
+
+.qm-viewbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 9px 16px; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+  margin-top: 8px; font-size: 13px; color: var(--muted);
+}
+.qm-viewbar b { color: var(--text); }
+.qm-locate {
+  border: 1px solid var(--border); background: #fff; border-radius: 16px;
+  padding: 4px 12px; font-size: 12px; font-weight: 600; color: var(--accent); cursor: pointer;
+}
+.qm-locate:hover { background: rgba(0,119,187,0.06); }
+
+.qm-list { overflow-y: auto; flex: 1; min-height: 80px; }
+.qm-item { align-items: flex-start; }
+
+.qm-foot { padding: 8px 16px; border-top: 1px solid var(--border); display: flex; gap: 16px; justify-content: center; }
+.qm-foot a { color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none; }
+.qm-foot a:hover { color: var(--accent); }
+
+/* Issue popups */
+.qm-pop { width: 280px; }
+.qm-badge {
+  display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 11px; font-weight: 700;
+  color: var(--c); background: color-mix(in srgb, var(--c) 12%, #fff);
+}
+.qm-pop .pop-body { padding-bottom: 14px; }
+.qm-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.qm-act { font-size: 12px; font-weight: 600; }
+.qm-act-btn {
+  padding: 6px 12px; border: none; border-radius: 8px; background: var(--accent); color: #fff;
+  font-weight: 700; font-size: 12px; cursor: pointer;
+}
+.qm-act-btn:hover { background: #0069a8; }
+.qm-act-btn:disabled { opacity: 0.6; cursor: default; }
+
+@media (max-width: 560px) {
+  #qm-panel { width: calc(100vw - 24px); max-height: 52vh; }
+}
+
 /* Background-action toast (e.g. JOSM remote-control feedback) */
 .qa-toast {
   position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(12px);

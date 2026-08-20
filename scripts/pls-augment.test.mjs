@@ -115,6 +115,21 @@ test('suggestTagsForOutlet: unconfirmed QID is withheld (no fill, no conflict)',
   assert.equal(conflicts.length, 0);
 });
 
+test('suggestTagsForOutlet: OSM ZIP+4 over a matching PLS ZIP5 is neither fill nor conflict', () => {
+  const outlet = { name: 'X', addr: '', city: '', zip: '36064', phone: '-4' };
+  const osm = { 'addr:postcode': '36064-2292' };
+  const { tags, conflicts } = suggestTagsForOutlet(outlet, null, osm, { allowAddr: true });
+  assert.equal(tags['addr:postcode'], undefined);   // key present — never a fill
+  assert.equal(conflicts.length, 0);                // ZIP+4 is more precise, not different
+});
+
+test('suggestTagsForOutlet: a genuinely different postcode still conflicts', () => {
+  const outlet = { name: 'X', addr: '', city: '', zip: '36064', phone: '-4' };
+  const osm = { 'addr:postcode': '36066-2292' };
+  const { conflicts } = suggestTagsForOutlet(outlet, null, osm, { allowAddr: true });
+  assert.deepEqual(conflicts, [{ key: 'addr:postcode', osm: '36066-2292', pls: '36064' }]);
+});
+
 test('suggestTagsForOutlet: allowAddr=false withholds all addr:*', () => {
   const outlet = { name: 'X', addr: '100 MAIN ST', city: 'Y', zip: '12345', phone: '-4' };
   const { tags } = suggestTagsForOutlet(outlet, null, {}, { allowAddr: false });
