@@ -208,9 +208,19 @@ in the same town. Unarbitrated that produced two rows for Orlando's FL0005, the
 smaller of which told mappers to tag 14 OCLS branches `operator=Orange County`,
 and made the augment pass query Overpass twice for one system. Claims are
 therefore ranked by **how many PLS outlets the spelling actually matched** (then
-OSM library count, then name similarity); the winner keeps the row and the losing
-spellings ride along as `variants`, which names the fragmentation more precisely
-than counting their branches as untagged.
+OSM library count, then name similarity).
+
+The rivals are fragments of *one* real-world system, so the winner is classified
+against their **merged membership**: every rival's libraries, plus every library
+under a rival's dominant QID (catching fragments that never claimed — below the
+size floor, or an unscorable name like a wikidata-keyed fragment's bare Q-id).
+Classifying against only the winning fragment used to flag the other fragments'
+libraries as untagged/conflicting — e.g. Goldendale, correctly tagged
+`operator=Fort Vancouver Regional Libraries` plus the right QID, read as a
+conflict because the wikidata-keyed fragment won WA0058. The row is reported
+under the best *human-named* fragment (never a bare Q-id), the other name-keyed
+spellings ride along as `variants`, and `osmCount` is the merged size. Unit
+tests: `npm run test:pls`.
 
 **Wikidata branch counts.** Systems whose Wikidata item enumerates its branches
 (`P527` parts typed as library branch) get that count attached as `wb` (one

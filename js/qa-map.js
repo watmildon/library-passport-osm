@@ -2,23 +2,29 @@
 // qa-data.json rendered as a pin, filterable by issue type, so mappers can zoom
 // to their own area and work through what's nearby. Issue types:
 //
+//   unnamed    a library with no name tag at all                (libs[])
 //   missing    PLS lists a branch, no OSM library within 200 m  (pls[].missing)
-//   operator   an OSM library is there but the operator tag is
-//              absent or disagrees                              (pls[].untagged)
-//   augment    PLS has values for blank tags — ready to apply   (augment[].branches)
-//   loc        name matched but coordinates are far apart       (pls[].discrepancies)
-//   unmatched  a whole multi-outlet PLS system the crosswalk
-//              couldn't find in OSM (bbox centroid pin)         (plsUnmatched[])
+//   opconflict operator signals disagree — the existing tag
+//              conflicts with the PLS match, or operator:wikidata
+//              contradicts the library's own Wikidata item — a
+//              person has to judge             (pls[].untagged, wdConflicts[])
+//   operator   no operator tag, with a high-probability
+//              suggestion from the PLS crosswalk or the
+//              library's own Wikidata item     (pls[].untagged, wdOperators[])
 //   gaps       libraries missing basic tags (phone, website,
 //              hours, address…) from the flags bitmask          (libs[])
+//   unmatched  a whole multi-outlet PLS system the crosswalk
+//              couldn't find in OSM (bbox centroid pin)         (plsUnmatched[])
+//
+// PLS tag fills and location discrepancies are deliberately NOT map layers —
+// the Augment page and the QA dashboard's PLS section own those workflows.
 //
 // The map view and active filters live in the URL hash so local views are
 // shareable (#map=z/lat/lon&t=missing,operator&g=phone,website).
 
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/+esm';
-import { MAP_STYLE, overpassEndpoint } from './config.js';
-import { setupOverpassPicker, withBusy } from './controls.js';
-import { JOSM, bboxAround, josmSend, buildOsmXml, loadData, webEditObjectUrl, webEditAtUrl } from './josm.js';
+import { MAP_STYLE, OVERPASS_TIMEOUT_MS } from './config.js';
+import { JOSM, bboxAround, josmSend, webEditObjectUrl, webEditAtUrl } from './josm.js';
 
 const $ = sel => document.querySelector(sel);
 
@@ -48,21 +54,30 @@ const fmt = n => n.toLocaleString();
 // Array order is also click/list priority (topmost pin type wins a click).
 // `on` is the default; the URL hash overrides it.
 const TYPES = [
-  { id: 'missing',  label: 'Missing library',  color: '#d1434f', on: true,
+  { id: 'unnamed',  label: 'Unnamed',          color: '#a98307', on: true,
+    hint: 'A library with no name tag at all – needs a person to find the real name (system branch list, website, imagery, or a visit)' },
+  { id: 'missing',  label: 'Missing',          color: '#d1434f', on: true,
     hint: 'IMLS PLS lists a branch here but OSM has no library within 200 m – likely needs creating' },
-  { id: 'operator', label: 'Operator tag fix', color: '#e8872e', on: true,
-    hint: 'An OSM library is here but its operator tag is missing or disagrees with PLS' },
-  { id: 'augment',  label: 'Tag fills ready',  color: '#6f4bd8', on: true,
-    hint: 'PLS has values for tags this library lacks – review and apply' },
-  { id: 'loc',      label: 'Location check',   color: '#c23a94', on: true,
-    hint: 'Name matched but the OSM and PLS coordinates are far apart – verify which is right' },
+  { id: 'opconflict', label: 'Operator conflict', color: '#c23a94', on: true,
+    hint: 'Signals disagree – the existing operator tag conflicts with the PLS match, or operator:wikidata contradicts the library’s own Wikidata item. Needs a person to judge' },
+  { id: 'operator', label: 'Add operator', color: '#e8872e', on: true,
+    hint: 'No operator tag, with a high-probability suggestion – from the IMLS PLS crosswalk or the library’s own Wikidata item' },
+  { id: 'gaps',     label: 'Incomplete Tags',  color: '#2f8f85', on: false,
+    hint: 'Libraries missing everyday tags – choose which tags below' },
   { id: 'unmatched', label: 'System not in OSM', color: '#8c5a3c', on: false,
-    hint: 'A multi-outlet PLS system the crosswalk found no OSM operator for – fragmented tags or unmapped' },
-  { id: 'gaps',     label: 'Basic tag gaps',   color: '#2f8f85', on: false,
-    hint: 'Libraries missing everyday tags – choose which tags below' }
+    hint: 'A multi-outlet PLS system the crosswalk found no OSM operator for – fragmented tags or unmapped' }
 ];
 const TYPE_BY_ID = new Map(TYPES.map(t => [t.id, t]));
 const priority = id => TYPES.findIndex(t => t.id === id);
+
+// Wikidata vocabulary, mirrored from qa.js: the property a parent claim came
+// from, and human labels for the entity kinds build-qa.mjs classifies.
+const WD_PROP = { P137: 'operator', P749: 'parent organization', P361: 'part of' };
+const WD_KIND = {
+  libnet: 'library network', library: 'library', university: 'university',
+  school: 'school', gov: 'government', place: 'place',
+  admin: 'administrative area', org: 'organization', other: 'unclassified'
+};
 
 // Tag-gap sub-filters (gaps type). `address` = housenumber AND street present.
 const GAP_TAGS = [
@@ -154,37 +169,74 @@ function buildIssues() {
   const byKey = new Map(d.systems.map((s, i) => [s.k ?? s.n, i]));
   for (const l of d.libs) l[0] = typeof l[0] === 'number' ? l[0] : (byKey.get(l[0]) ?? -1);
   for (const p of d.pls || []) p.sysIdx ??= byKey.get(p.sysKey) ?? -1;
-  for (const a of d.augment || []) a.sysIdx ??= byKey.get(a.sysKey) ?? -1;
 
-  const issues = { missing: [], operator: [], augment: [], loc: [], unmatched: [], gaps: [] };
+  const issues = { missing: [], operator: [], opconflict: [], unnamed: [], unmatched: [], gaps: [] };
+
+  // Wikidata-sourced operator additions: the library's own wikidata= item names
+  // the system that runs it, and OSM has no operator tag — a sourced suggestion.
+  // Added before the PLS pass so a library found by both gets one pin (the
+  // per-object Wikidata evidence wins).
+  const seenAdd = new Set();
+  for (const g of d.wdOperators || []) {
+    for (const l of g.libs) {
+      seenAdd.add(l.osm);
+      issues.operator.push({
+        type: 'operator', kind: 'wd', lon: l.lon, lat: l.lat,
+        name: l.n || '(unnamed library)', osm: l.osm,
+        ownQ: l.q, prop: WD_PROP[l.pr] || l.pr,
+        opName: g.po, parentQ: g.pq, parentName: g.pn,
+        sysName: g.po || g.pn
+      });
+    }
+  }
+
+  // Conflicting Wikidata signals: operator:wikidata points at one item while
+  // the library's own item names another (often a place or a government rather
+  // than the library system).
+  for (const g of d.wdConflicts || []) {
+    for (const l of g.libs) {
+      issues.opconflict.push({
+        type: 'opconflict', kind: 'wdc', lon: l.lon, lat: l.lat,
+        name: l.n || '(unnamed library)', osm: l.osm,
+        ownQ: l.q, prop: WD_PROP[l.pr] || l.pr,
+        taggedQ: g.tw, taggedName: g.tn, taggedKind: g.tk,
+        parentQ: g.pq, parentName: g.pn
+      });
+    }
+  }
+
+  // Unnamed libraries — no name tag at all. High-value fixes that need a
+  // person: the real name comes from the system's branch list, the website,
+  // imagery, or a visit.
+  for (const l of d.libs) {
+    const [sysIdx, type, id, name, , flags, lon, lat] = l;
+    if (name) continue;
+    issues.unnamed.push({
+      type: 'unnamed', lon, lat, osm: type + id, flags,
+      name: '(unnamed library)', sysName: d.systems[sysIdx]?.n ?? ''
+    });
+  }
 
   for (const p of d.pls || []) {
     const sys = sysInfo(p.sysIdx);
     for (const m of p.missing) issues.missing.push({
       type: 'missing', lon: m.lon, lat: m.lat,
       name: titleCase(m.name), addr: titleCase(m.addr), city: titleCase(m.city),
-      geo: m.geo || '', state: p.state, ...sys
+      state: p.state, ...sys
     });
-    for (const u of p.untagged) issues.operator.push({
-      type: 'operator', lon: u.osmLon ?? u.lon, lat: u.osmLat ?? u.lat,
-      name: u.osmName || titleCase(u.name), plsName: titleCase(u.name),
-      osm: u.osm || null, wrong: !!u.osmHasOperator, state: p.state, ...sys
-    });
-    for (const dd of p.discrepancies) issues.loc.push({
-      type: 'loc', lon: dd.osmLon ?? dd.lon, lat: dd.osmLat ?? dd.lat,
-      name: titleCase(dd.name), osm: dd.osmId || null,
-      plsLat: dd.lat, plsLon: dd.lon, dist: dd.dist, state: p.state, ...sys
-    });
-  }
-
-  for (const a of d.augment || []) {
-    const sys = sysInfo(a.sysIdx);
-    for (const b of a.branches) issues.augment.push({
-      type: 'augment', lon: b.lon, lat: b.lat,
-      name: b.plsName, osm: b.osm, tags: b.tags || {}, conflicts: b.conflicts || [],
-      qid: a.qid || sys.qid, qidConfirmed: a.qidConfirmed ?? sys.qidConfirmed,
-      state: a.state, sysName: sys.sysName
-    });
+    for (const u of p.untagged) {
+      const base = {
+        lon: u.osmLon ?? u.lon, lat: u.osmLat ?? u.lat,
+        name: u.osmName || titleCase(u.name), plsName: titleCase(u.name),
+        osm: u.osm || null, state: p.state, ...sys
+      };
+      // An existing-but-different operator is a conflict for a person to judge;
+      // no operator at all is a straight addition.
+      if (u.osmHasOperator) issues.opconflict.push({ type: 'opconflict', kind: 'pls', ...base });
+      else if (!seenAdd.has(u.osm)) issues.operator.push({ type: 'operator', kind: 'pls', ...base });
+    }
+    // (PLS location discrepancies are deliberately NOT a map layer — the QA
+    // dashboard's PLS section lists the few there are.)
   }
 
   for (const u of d.plsUnmatched || []) {
@@ -230,7 +282,7 @@ function rebuildGaps() {
       if (!missing.length) continue;
       out.push({
         type: 'gaps', lon, lat,
-        name: name || '(unnamed library)', osm: type + id, missing,
+        name: name || '(unnamed library)', osm: type + id, missing, flags,
         // sysIdx is null (older builds: -1) when the library has no system.
         sysName: d.systems[sysIdx]?.n ?? ''
       });
@@ -269,12 +321,16 @@ function applyVisibility() {
 }
 
 // ---------------- Map ----------------
-function initMap(view) {
+function initMap(view, sourceDateLabel) {
   state.map = new maplibregl.Map({
     container: 'map',
     style: MAP_STYLE,
     center: view ? [view.lon, view.lat] : [-98, 40],
-    zoom: view ? view.z : 4
+    zoom: view ? view.z : 4,
+    // The issue data's snapshot date lives with the other data credits.
+    attributionControl: sourceDateLabel
+      ? { customAttribution: `Issue data as of ${sourceDateLabel}` }
+      : undefined
   });
   state.map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'bottom-right');
   const geolocate = new maplibregl.GeolocateControl({ fitBoundsOptions: { maxZoom: 11 } });
@@ -388,7 +444,6 @@ function popupHtml(type, it) {
     return head('<span class="qm-badge" style="--c:#d1434f">missing from OSM</span>') + `
       <div class="pop-body">
         ${it.addr || it.city ? `<div class="r"><span class="k">📍</span><span>${escapeHtml([it.addr, it.city].filter(Boolean).join(', '))}</span></div>` : ''}
-        <div class="r"><span class="k">geocode</span><span class="pls-geo" title="IMLS geocode precision – the pin may sit on the parcel or street, not the door">${escapeHtml(it.geo)}</span></div>
         ${qidRow(it)}
         <div class="qa-note" style="margin:8px 0 0">Suggested starter tags – verify on the ground or from the library's website:</div>
         ${tagChips(tags)}
@@ -398,50 +453,44 @@ function popupHtml(type, it) {
 
   if (type === 'operator') {
     const sug = {};
-    if (it.sysName && !/^Q\d+$/.test(it.sysName)) sug.operator = it.sysName;
-    if (it.qid && it.qidConfirmed) sug['operator:wikidata'] = it.qid;
-    return head(it.wrong
-      ? '<span class="qm-badge" style="--c:#9a7d00">wrong operator?</span>'
-      : '<span class="qm-badge" style="--c:#e8872e">no operator tag</span>') + `
+    let source;
+    if (it.kind === 'wd') {
+      // The library's own wikidata item names the system: a sourced suggestion.
+      // Prefer the operator spelling OSM mappers already use (po); the item's
+      // label is the fallback, flagged so the spelling gets checked.
+      if (it.opName || it.parentName) sug.operator = it.opName || it.parentName;
+      sug['operator:wikidata'] = it.parentQ;
+      source = `<div class="r"><span class="k">src</span><span>Its own item ${wdLink(it.ownQ)}
+        says ${escapeHtml(it.prop)}: ${escapeHtml(it.parentName || it.parentQ)}${it.opName ? '' :
+        ' <span class="qa-badge qa-badge-mixed" title="Name from the Wikidata label – no OSM system carries this item yet; check the spelling mappers use">verify name</span>'}</span></div>`;
+    } else {
+      if (it.sysName && !/^Q\d+$/.test(it.sysName)) sug.operator = it.sysName;
+      if (it.qid && it.qidConfirmed) sug['operator:wikidata'] = it.qid;
+      source = (it.plsName && it.plsName !== it.name
+        ? `<div class="r"><span class="k">PLS</span><span>${escapeHtml(it.plsName)}</span></div>` : '') + qidRow(it);
+    }
+    return head('<span class="qm-badge" style="--c:#e8872e">no operator tag</span>') + `
       <div class="pop-body">
-        ${it.plsName && it.plsName !== it.name ? `<div class="r"><span class="k">PLS</span><span>${escapeHtml(it.plsName)}</span></div>` : ''}
-        ${qidRow(it)}
+        ${source}
         ${Object.keys(sug).length ? `<div class="qa-note" style="margin:8px 0 0">Suggested:</div>${tagChips(sug)}` : ''}
-        <div class="qm-actions">${it.osm ? editLink(editObject(it.osm, it.lat, it.lon), '✏️ Fix tags') : editLink(editAt(it.lat, it.lon), '✏️ Edit here')}</div>
+        <div class="qm-actions">${it.osm ? editLink(editObject(it.osm, it.lat, it.lon), '✏️ Add tags') : editLink(editAt(it.lat, it.lon), '✏️ Edit here')}</div>
       </div>`;
   }
 
-  if (type === 'augment') {
-    const n = Object.keys(it.tags).length;
-    const conflicts = it.conflicts.length ? `
-      <div class="aug-conflicts">
-        <span class="aug-conflict-label">⚠ Conflicts – resolve by hand, never auto-applied</span>
-        ${it.conflicts.map(c => `<div class="aug-conflict-row"><code>${escapeHtml(c.key)}</code>
-          <span class="aug-cf-osm">OSM: ${escapeHtml(c.osm)}</span>
-          <span class="aug-cf-pls">PLS: ${escapeHtml(c.pls)}</span></div>`).join('')}
-      </div>` : '';
-    return head(n
-      ? `<span class="qm-badge" style="--c:#6f4bd8">${n} fill${n === 1 ? '' : 's'} ready</span>`
-      : `<span class="qm-badge" style="--c:#9a7d00">${it.conflicts.length} conflict${it.conflicts.length === 1 ? '' : 's'} to review</span>`) + `
+  if (type === 'opconflict') {
+    const body = it.kind === 'wdc'
+      ? `<div class="r"><span class="k">now</span><span>operator:wikidata = ${wdLink(it.taggedQ)}
+          ${escapeHtml(it.taggedName || '')}
+          <span class="qa-badge qa-badge-miss">${escapeHtml(WD_KIND[it.taggedKind] || it.taggedKind || '')}</span></span></div>
+         <div class="r"><span class="k">item</span><span>But its own item ${wdLink(it.ownQ)} says
+          ${escapeHtml(it.prop)}: ${escapeHtml(it.parentName || '')} ${wdLink(it.parentQ)}</span></div>`
+      : `<div class="r"><span class="k">⚠</span><span>OSM already has a different operator tag,
+          but PLS matches this library to “${escapeHtml(it.sysName)}”. Check which is right.</span></div>` + qidRow(it);
+    return head('<span class="qm-badge" style="--c:#c23a94">conflicting signals</span>') + `
       <div class="pop-body">
-        ${n ? tagChips(it.tags) : ''}
-        ${conflicts}
-        <div class="qm-actions">
-          ${n ? `<button class="qm-act-btn" id="qm-send-josm">⬆ Send fills to JOSM</button>` : ''}
-          ${editLink(editObject(it.osm, it.lat, it.lon), '✏️ Edit')}
-          <a class="qm-act" href="./augment.html" target="_blank" rel="noopener" title="The Augment page batches all of a system's fills into one JOSM review layer">whole system →</a>
-        </div>
-      </div>`;
-  }
-
-  if (type === 'loc') {
-    return head('<span class="qm-badge" style="--c:#c23a94">location check</span>') + `
-      <div class="pop-body">
-        <div class="r"><span class="k">⚑</span><span>The OSM object is ~${fmt(it.dist)} m from the PLS coordinate – verify which is right.</span></div>
-        <div class="qm-actions">
-          ${it.osm ? editLink(editObject(it.osm, it.lat, it.lon), '✏️ OSM object') : ''}
-          ${editLink(editAt(it.plsLat, it.plsLon), '📍 PLS spot')}
-        </div>
+        ${body}
+        <div id="qm-opcard">${opCardHtml(null, 'loading…')}</div>
+        <div class="qm-actions">${editLink(editObject(it.osm, it.lat, it.lon), '✏️ Review')}</div>
       </div>`;
   }
 
@@ -461,12 +510,128 @@ function popupHtml(type, it) {
       </div>`;
   }
 
-  // gaps
-  return head(`<span class="qm-badge" style="--c:#2f8f85">${it.missing.length} tag${it.missing.length === 1 ? '' : 's'} missing</span>`) + `
+  if (type === 'unnamed') {
+    return head('<span class="qm-badge" style="--c:#a98307">no name tag</span>') + `
+      <div class="pop-body">
+        <div class="qa-note" style="margin:6px 0 0">Find the official name –
+          ${it.sysName ? 'the system’s branch list, the library’s website,' : 'the library’s website'}
+          or imagery – then add <code>name</code>.</div>
+        <div id="qm-tagcard">${tagCardHtml(snapshotTagRows(it), 'checking live…')}</div>
+        <div class="qm-actions">${editLink(editObject(it.osm, it.lat, it.lon), '✏️ Edit')}</div>
+      </div>`;
+  }
+
+  // gaps — the same tag-breakdown card as the main map's "Missing OSM data"
+  // popup, rendered from the daily snapshot's flags immediately and upgraded
+  // with live values from Overpass once they arrive (fillLiveTagCard).
+  // The badge counts ALL tracked tags (matching the card), not just the ones
+  // selected in the gaps filter — it.missing drives the list row instead.
+  const nMiss = snapshotTagRows(it).filter(r => !r.present).length;
+  return head(`<span class="qm-badge" style="--c:#2f8f85">${nMiss} tag${nMiss === 1 ? '' : 's'} missing</span>`) + `
     <div class="pop-body">
-      <div class="aug-chips">${it.missing.map(m => `<span class="aug-chip">${escapeHtml(m)}</span>`).join('')}</div>
+      <div id="qm-tagcard">${tagCardHtml(snapshotTagRows(it), 'checking live…')}</div>
       <div class="qm-actions">${editLink(editObject(it.osm, it.lat, it.lon), '✏️ Edit')}</div>
     </div>`;
+}
+
+// ---------------- Tag-breakdown card (shared visual with the main map) ------
+// The daily snapshot only knows tag PRESENCE (the flags bitmask); values come
+// from a live single-object Overpass fetch when the popup opens.
+const LIVE_TAG_GET = {
+  // The build counts contact:* variants as present — mirror that here.
+  phone: t => t.phone || t['contact:phone'],
+  website: t => t.website || t['contact:website']
+};
+
+function snapshotTagRows(it) {
+  return (state.data.tags || []).map(key => ({
+    key, present: !!(it.flags & (state.tagBits[key] || 0)), value: null
+  }));
+}
+
+function tagCardHtml(rows, note) {
+  const missing = rows.filter(r => !r.present);
+  const present = rows.filter(r => r.present);
+  const missingHtml = missing.map(r =>
+    `<div class="tag-row tag-missing"><span class="tag-k">${escapeHtml(r.key)}</span><span class="tag-v">— missing</span></div>`).join('');
+  const presentHtml = present.map(r =>
+    `<div class="tag-row tag-present"><span class="tag-k">${escapeHtml(r.key)}</span><span class="tag-v">${r.value != null ? escapeHtml(r.value) : '✓'}</span></div>`).join('');
+  return `
+    <div class="tags-block">
+      <div class="tags-title">OSM tags ${missing.length
+        ? `· <span class="tags-count">${missing.length} missing</span>`
+        : '· <span class="tags-complete">complete</span>'}${note ? ` <span class="qm-tagcard-note">· ${escapeHtml(note)}</span>` : ''}</div>
+      ${missingHtml}${presentHtml}
+    </div>`;
+}
+
+// One object's current tags, read straight from the OSM API — authoritative,
+// CORS-enabled, no replication lag. We always know the exact object id, and
+// single-object reads are exactly what the API is for (bulk reads stay on
+// Overpass). Returns null on failure — e.g. a 410 for a since-deleted object.
+async function fetchOsmTags(osmKey) {
+  try {
+    const t = OSM_TYPE[osmKey[0]];
+    const res = await fetch(`https://api.openstreetmap.org/api/0.6/${t}/${osmKey.slice(1)}.json`, {
+      signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS)
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return (await res.json()).elements?.[0]?.tags ?? {};
+  } catch {
+    return null;
+  }
+}
+
+// The operator-related tags currently on a conflict object — the judgment
+// should start from what's actually tagged, so these load live when the popup
+// opens. Q-ids in *wikidata values link out.
+const OP_KEY_RE = /^(not:)?operator(:|$)|^wikidata$|^brand(:|$)/;
+
+function opCardHtml(tags, note) {
+  let rows = '';
+  if (tags) {
+    const keys = Object.keys(tags).filter(k => OP_KEY_RE.test(k)).sort();
+    rows = keys.map(k => {
+      const html = /wikidata$/.test(k)
+        ? tags[k].split(';').map(q => q.trim())
+            .map(q => /^Q\d+$/.test(q) ? wdLink(q) : escapeHtml(q)).join('; ')
+        : escapeHtml(tags[k]);
+      return `<div class="tag-row tag-present"><span class="tag-k">${escapeHtml(k)}</span><span class="tag-v">${html}</span></div>`;
+    }).join('') ||
+      '<div class="tag-row tag-missing"><span class="tag-k">operator</span><span class="tag-v">— none tagged</span></div>';
+  }
+  return `<div class="tags-block">
+    <div class="tags-title">Current operator tags${note ? ` <span class="qm-tagcard-note">· ${escapeHtml(note)}</span>` : ''}</div>
+    ${rows}
+  </div>`;
+}
+
+async function fillOpCard(it, popup) {
+  const tags = await fetchOsmTags(it.osm);
+  if (state.popup !== popup || !popup.isOpen()) return;
+  const card = popup.getElement()?.querySelector('#qm-opcard');
+  if (!card) return;
+  card.innerHTML = opCardHtml(tags, tags ? '' : 'unavailable – object may have changed');
+}
+
+// Upgrade the snapshot card with the object's CURRENT tags — real values, and
+// presence that may already be better than the daily snapshot. Fails soft back
+// to the snapshot view.
+async function fillLiveTagCard(it, popup) {
+  const tags = await fetchOsmTags(it.osm);
+
+  // The user may have closed this popup or opened another while we fetched.
+  if (state.popup !== popup || !popup.isOpen()) return;
+  const card = popup.getElement()?.querySelector('#qm-tagcard');
+  if (!card) return;
+
+  const rows = tags
+    ? (state.data.tags || []).map(key => {
+        const v = (LIVE_TAG_GET[key] || (tg => tg[key]))(tags);
+        return { key, present: !!v, value: v || null };
+      })
+    : snapshotTagRows(it);
+  card.innerHTML = tagCardHtml(rows, tags ? 'live' : 'daily snapshot – live check failed');
 }
 
 function openIssue(type, i, opts = {}) {
@@ -494,27 +659,8 @@ function openIssue(type, i, opts = {}) {
   el.querySelector('#qm-zoom-bbox')?.addEventListener('click', () => {
     if (it.bb) state.map.fitBounds([[it.bb[0], it.bb[1]], [it.bb[2], it.bb[3]]], { padding: 60, duration: 700 });
   });
-  el.querySelector('#qm-send-josm')?.addEventListener('click', ev => sendFillsToJosm(it, ev.currentTarget));
-}
-
-// Send one branch's fill-blank tags to JOSM as a review layer (same load_data
-// flow as the Augment page, scoped to a single object). Conflicts never go.
-async function sendFillsToJosm(it, btn) {
-  await withBusy(btn, 'Sending…', async () => {
-    let skipped = null;
-    try {
-      const xml = await buildOsmXml(
-        [{ osm: it.osm, tags: it.tags }], [],
-        { endpoint: overpassEndpoint(), onSkip: (_b, why) => { skipped = why; } }
-      );
-      if (skipped) throw new Error(skipped);
-      const ok = await loadData(xml, `PLS augment · ${it.sysName || it.name}`);
-      if (ok) toast('Sent to JOSM – review the new layer, then upload from JOSM.');
-      else toast('JOSM didn’t respond – is it running with Remote Control enabled?', true);
-    } catch (e) {
-      toast('Could not prepare the JOSM layer (' + e.message + ').', true);
-    }
-  });
+  if (type === 'gaps' || type === 'unnamed') fillLiveTagCard(it, state.popup);
+  if (type === 'opconflict') fillOpCard(it, state.popup);
 }
 
 // ---------------- Filter chips ----------------
@@ -581,12 +727,11 @@ function renderList() {
 
   const detail = ({ t, it }) => {
     if (t.id === 'missing') return [it.city, it.state, 'create'].filter(Boolean).join(' · ');
-    if (t.id === 'operator') return it.wrong ? 'wrong operator?' : 'add operator tag';
-    if (t.id === 'augment') return [
-      Object.keys(it.tags).join(', '),
-      it.conflicts.length ? `${it.conflicts.length} conflict${it.conflicts.length === 1 ? '' : 's'}` : ''
-    ].filter(Boolean).join(' · ');
-    if (t.id === 'loc') return `~${fmt(it.dist)} m from PLS location`;
+    if (t.id === 'operator') return it.sysName ? `add operator → ${it.sysName}` : 'add operator tag';
+    if (t.id === 'opconflict') return it.kind === 'wdc'
+      ? `tagged “${it.taggedName || it.taggedQ}”, item says “${it.parentName || it.parentQ}”`
+      : `operator differs from PLS match “${it.sysName}”`;
+    if (t.id === 'unnamed') return [it.sysName, 'needs a name'].filter(Boolean).join(' · ');
     if (t.id === 'unmatched') return `${it.state} · ${it.outlets} outlets · ${it.near}/${it.outlets} in OSM`;
     return 'missing ' + it.missing.join(', ');
   };
@@ -668,6 +813,16 @@ function setupEditorPicker() {
   });
 }
 
+// ---------------- Preferences pane (behind the gear) ----------------
+function setupPrefs() {
+  const btn = $('#qm-prefs-btn');
+  const pane = $('#qm-prefs');
+  btn.addEventListener('click', () => {
+    pane.hidden = !pane.hidden;
+    btn.setAttribute('aria-expanded', String(!pane.hidden));
+  });
+}
+
 // ---------------- Panel collapse (small screens) ----------------
 function setupCollapse() {
   const btn = $('#qm-collapse');
@@ -682,7 +837,7 @@ function setupCollapse() {
 // ---------------- Boot ----------------
 async function boot() {
   setupEditorPicker();
-  setupOverpassPicker();
+  setupPrefs();
   setupCollapse();
 
   let data;
@@ -692,8 +847,8 @@ async function boot() {
     data = await res.json();
   } catch (e) {
     $('#loading').classList.remove('show');
-    $('#qm-meta').textContent = 'Could not load QA data (' + e.message + ').';
-    $('#qm-list').innerHTML = '<div class="list-empty">QA data unavailable.</div>';
+    $('#qm-list').innerHTML =
+      `<div class="list-empty">Could not load QA data (${escapeHtml(e.message)}). Reload to retry.</div>`;
     return;
   }
   state.data = data;
@@ -707,13 +862,10 @@ async function boot() {
 
   const m = data.meta;
   const src = m.sourceModified || m.layercakeModified;
-  const total = TYPES.reduce((n, t) => t.id === 'gaps' ? n : n + state.issues[t.id].length, 0);
-  $('#qm-meta').textContent =
-    `${fmt(total)} PLS-sourced issues · data as of ${src ? new Date(src).toLocaleDateString() : m.generated} (updated daily)`;
 
   renderChips();
   renderGapTagChips();
-  initMap(hash.view);
+  initMap(hash.view, src ? new Date(src).toLocaleDateString() : m.generated);
   $('#loading').classList.remove('show');
 }
 

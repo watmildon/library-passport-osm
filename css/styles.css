@@ -512,34 +512,27 @@ body.qa-page { height: auto; background: var(--bg); }
 .qm-head { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
 .qm-title { display: flex; align-items: center; gap: 10px; }
 .qm-title h1 { margin: 0; font-size: 18px; flex: 1; }
-.qm-back { color: var(--muted); font-size: 12px; font-weight: 600; text-decoration: none; }
-.qm-back:hover { color: var(--accent); }
+.qm-gear {
+  background: none; border: none; cursor: pointer; font-size: 15px;
+  color: var(--muted); padding: 2px 4px;
+}
 .qm-collapse {
   background: none; border: 1px solid var(--border); border-radius: 7px;
   cursor: pointer; font-size: 12px; color: var(--muted); padding: 2px 8px;
 }
 .qm-sub { margin: 6px 0 0; font-size: 12px; color: var(--muted); line-height: 1.45; }
-.qm-editor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.qm-prefs { margin-top: 8px; padding: 9px 11px; background: #f6f8fb; border-radius: 9px; }
+.qm-prefs[hidden] { display: none; }
+.qm-editor { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
 .qm-editor select {
   padding: 3px 7px; border-radius: 7px; border: 1px solid var(--border);
   background: #fff; font-size: 12px; cursor: pointer;
 }
 .qm-editor-hint { font-size: 11px; }
-/* Overpass field, restyled for the white panel (the shared rules assume the blue header) */
-.qm-endpoint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
-.qm-endpoint input {
-  flex: 1; min-width: 0; padding: 3px 8px; border: 1px solid var(--border); border-radius: 7px;
-  background: #fff; color: var(--text); font-size: 12px; outline: none;
-}
-.qm-endpoint input:focus { border-color: var(--accent); }
-.qm-endpoint input::placeholder { color: var(--closed); }
-.qm-endpoint .qa-endpoint-hint { color: var(--muted); font-size: 11px; }
-.qm-endpoint .qa-endpoint-hint.qa-endpoint-custom { color: var(--visited); }
-.qm-meta { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
 
 .qm-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }
 #qm-panel.collapsed .qm-body, #qm-panel.collapsed .qm-foot,
-#qm-panel.collapsed .qm-sub, #qm-panel.collapsed .qm-editor, #qm-panel.collapsed .qm-meta { display: none; }
+#qm-panel.collapsed .qm-sub, #qm-panel.collapsed .qm-prefs { display: none; }
 
 .qm-chips { display: flex; gap: 6px; padding: 10px 16px 4px; flex-wrap: wrap; }
 .qm-chip { padding: 5px 10px; font-size: 12px; gap: 5px; }
@@ -589,6 +582,7 @@ body.qa-page { height: auto; background: var(--bg); }
 }
 .qm-act-btn:hover { background: #0069a8; }
 .qm-act-btn:disabled { opacity: 0.6; cursor: default; }
+.qm-tagcard-note { color: var(--muted); font-weight: 400; }
 
 @media (max-width: 560px) {
   #qm-panel { width: calc(100vw - 24px); max-height: 52vh; }

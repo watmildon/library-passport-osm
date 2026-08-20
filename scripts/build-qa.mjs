@@ -1183,6 +1183,35 @@ function findDomainClusters(rawLibs, stateIdx, notAssert) {
 // "not found in OSM" forever.
 const MIN_LIBS_FOR_PLS = 2;
 
+// Every system's libraries indexed by its dominant QID, so a crosswalk winner
+// can absorb same-QID fragments that never claimed the PLS system themselves
+// (below MIN_LIBS_FOR_PLS, or a name the crosswalk couldn't score).
+export function buildLibsByQid(sysKeys, sysMap, systems) {
+  const byQid = new Map();
+  for (let i = 0; i < sysKeys.length; i++) {
+    const w = systems[i].w;
+    if (!w) continue;
+    if (!byQid.has(w)) byQid.set(w, []);
+    byQid.get(w).push(...sysMap.get(sysKeys[i]).libs);
+  }
+  return byQid;
+}
+
+// The merged OSM membership for one PLS system's rival claimants: the union
+// (deduped by element id) of every rival fragment's libraries plus every
+// library under a rival's dominant QID. A distant wrongly-QID'd library is
+// harmless here — classify() only matches outlets to nearby libraries — so
+// erring toward inclusion only removes false "untagged"/conflict findings.
+export function mergeClaimLibs(rivals, sysMap, systems, libsByQid) {
+  const byId = new Map();
+  for (const r of rivals) {
+    for (const l of sysMap.get(r.sysKey).libs) byId.set(l.id, l);
+    const w = systems[r.sysIdx].w;
+    for (const l of (w && libsByQid.get(w)) || []) byId.set(l.id, l);
+  }
+  return [...byId.values()];
+}
+
 function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new Map()) {
   let plsData;
   try {
@@ -1262,7 +1291,7 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
     claims.push({ sysIdx: i, sysKey: sysKeys[i], name: s.n, osmCount: s.c, cw, plsSystem, cls });
   }
 
-  // ---- Arbitration: one PLS system, one OSM system -------------------------
+  // ---- Arbitration + merge: one PLS system, one OSM membership -------------
   //
   // Systems are crosswalked independently, so several OSM operator spellings can
   // claim the same PLS system — and they do, because that fragmentation is
@@ -1271,21 +1300,26 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
   // "Fort Vancouver Regional Libraries", "…Library District" and a
   // wikidata-keyed fragment all matched WA0058.
   //
-  // Name similarity can't settle it — normSystem strips `library`, `system`,
-  // `county` and `district`, so "Orange County" and "Orange County Library
-  // System" both reduce to the single token "orange" and tie at 1.0 — and the
-  // spatial check passes for both, since the rival spellings sit in the same
-  // town. Left unarbitrated it produced two rows for one system, the smaller of
-  // which told mappers to tag 14 OCLS branches `operator=Orange County`, and
-  // made the augment pass query Overpass twice for the same system.
+  // Name similarity can't settle who "owns" the PLS system — normSystem strips
+  // `library`, `system`, `county` and `district`, so "Orange County" and
+  // "Orange County Library System" both reduce to the single token "orange" and
+  // tie at 1.0 — so rank by evidence of actual correspondence: how many of the
+  // PLS system's outlets each spelling really matched.
   //
-  // So rank by evidence of actual correspondence: how many of the PLS system's
-  // outlets this spelling really matched. Everything else is a tiebreak.
+  // Crucially, the rivals are fragments of ONE real-world system, so the winner
+  // is classified against the MERGED membership (see mergeClaimLibs): every
+  // rival's libraries, plus any system sharing a rival's dominant QID that
+  // never got to claim (below MIN_LIBS_FOR_PLS, or an unscorable name).
+  // Classifying against only the winning fragment called every other
+  // fragment's library "untagged" — e.g. Goldendale, tagged operator=Fort
+  // Vancouver Regional Libraries + the right QID, was flagged as a conflict
+  // because the wikidata-keyed fragment won WA0058.
   const byFscs = new Map();
   for (const c of claims) {
     if (!byFscs.has(c.cw.fscskey)) byFscs.set(c.cw.fscskey, []);
     byFscs.get(c.cw.fscskey).push(c);
   }
+  const libsByQid = buildLibsByQid(sysKeys, sysMap, systems);
   const results = [];
   const crosswalks = [];   // winners only, for the augment pass to reuse
   let folded = 0;
@@ -1297,29 +1331,40 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
       (a.sysKey < b.sysKey ? -1 : 1));
     const [win, ...lost] = rivals;
     folded += lost.length;
-    // The losers aren't noise — they're the other spellings of this operator,
-    // which is a more precise statement of the problem than counting their
-    // libraries as "untagged". Carry them on the row instead of dropping them.
-    const variants = lost.map(l => l.name).sort((a, b) => a.localeCompare(b));
+
+    const mergedLibs = mergeClaimLibs(rivals, sysMap, systems, libsByQid);
+
+    // Report under a human name when one exists — a wikidata-keyed fragment may
+    // hold the most libraries, but "Q5472215" is no name for a system row. The
+    // other name-keyed rivals are its spelling variants, carried on the row.
+    const disp = rivals.find(r => !r.sysKey.startsWith('wd:')) ?? win;
+    const variants = rivals
+      .filter(r => r !== disp && !r.sysKey.startsWith('wd:'))
+      .map(l => l.name).sort((a, b) => a.localeCompare(b));
     if (lost.length) {
       console.log(`  PLS ${win.cw.fscskey}: "${win.name}" (${win.cls.matched} matched) wins over ` +
-        lost.map(l => `"${l.name}" (${l.cls.matched})`).join(', '));
+        lost.map(l => `"${l.name}" (${l.cls.matched})`).join(', ') +
+        ` — classified as "${disp.name}" against ${mergedLibs.length} merged libraries`);
     }
+
+    // Re-classify against the merged membership (skip when nothing merged in).
+    const cls = mergedLibs.length > sysMap.get(win.sysKey).libs.length || disp !== win
+      ? classify(win.plsSystem.outlets, mergedLibs, disp.name, nearbyLib)
+      : win.cls;
 
     // Record the crosswalk so buildAugment can fetch this system's live OSM tags
     // and compute augmentation suggestions without re-deriving the match.
-    crosswalks.push({ sysIdx: win.sysIdx, sysKey: win.sysKey, fscskey: win.cw.fscskey, state: win.plsSystem.state });
+    crosswalks.push({ sysIdx: disp.sysIdx, sysKey: disp.sysKey, fscskey: win.cw.fscskey, state: win.plsSystem.state });
 
-    const cls = win.cls;
     // Only surface systems where PLS reveals something actionable.
     if (cls.untagged.length === 0 && cls.missing.length === 0 && cls.discrepancies.length === 0) continue;
 
     results.push({
-      sysKey: win.sysKey,
+      sysKey: disp.sysKey,
       fscskey: win.cw.fscskey,
       state: win.plsSystem.state,   // 2-letter PLS state, for the state filter
       plsCount: cls.plsCount,
-      osmCount: win.osmCount,
+      osmCount: mergedLibs.length,
       matched: cls.matched,
       ...(variants.length ? { variants } : {}),
       untagged: cls.untagged.map(u => ({
