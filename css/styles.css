@@ -525,6 +525,16 @@ body.qa-page { height: auto; background: var(--bg); }
   background: #fff; font-size: 12px; cursor: pointer;
 }
 .qm-editor-hint { font-size: 11px; }
+/* Overpass field, restyled for the white panel (the shared rules assume the blue header) */
+.qm-endpoint { margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.qm-endpoint input {
+  flex: 1; min-width: 0; padding: 3px 8px; border: 1px solid var(--border); border-radius: 7px;
+  background: #fff; color: var(--text); font-size: 12px; outline: none;
+}
+.qm-endpoint input:focus { border-color: var(--accent); }
+.qm-endpoint input::placeholder { color: var(--closed); }
+.qm-endpoint .qa-endpoint-hint { color: var(--muted); font-size: 11px; }
+.qm-endpoint .qa-endpoint-hint.qa-endpoint-custom { color: var(--visited); }
 .qm-meta { margin: 8px 0 0; font-size: 11px; color: var(--muted); }
 
 .qm-body { display: flex; flex-direction: column; min-height: 0; flex: 1; }

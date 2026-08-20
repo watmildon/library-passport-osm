@@ -16,7 +16,8 @@
 // shareable (#map=z/lat/lon&t=missing,operator&g=phone,website).
 
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/+esm';
-import { MAP_STYLE, overpassEndpoints } from './config.js';
+import { MAP_STYLE, overpassEndpoint } from './config.js';
+import { setupOverpassPicker, withBusy } from './controls.js';
 import { JOSM, bboxAround, josmSend, buildOsmXml, loadData, webEditObjectUrl, webEditAtUrl } from './josm.js';
 
 const $ = sel => document.querySelector(sel);
@@ -140,12 +141,21 @@ function toast(msg, isError = false) {
 // ---------------- Build issue lists from qa-data.json ----------------
 function sysInfo(sysIdx) {
   const s = state.data.systems[sysIdx];
-  if (!s) return { name: '', qid: null, qidConfirmed: false };
-  return { name: s.n, qid: s.w || s.sw || null, qidConfirmed: !!s.w };
+  if (!s) return { sysName: '', qid: null, qidConfirmed: false };
+  return { sysName: s.n, qid: s.w || s.sw || null, qidConfirmed: !!s.w };
 }
 
 function buildIssues() {
   const d = state.data;
+
+  // The file references systems by stable string KEY (the operator name, or
+  // "wd:Q…") rather than array position — resolve keys to indices once,
+  // mirroring qa.js's resolveSystemKeys(). Older data already ships numbers.
+  const byKey = new Map(d.systems.map((s, i) => [s.k ?? s.n, i]));
+  for (const l of d.libs) l[0] = typeof l[0] === 'number' ? l[0] : (byKey.get(l[0]) ?? -1);
+  for (const p of d.pls || []) p.sysIdx ??= byKey.get(p.sysKey) ?? -1;
+  for (const a of d.augment || []) a.sysIdx ??= byKey.get(a.sysKey) ?? -1;
+
   const issues = { missing: [], operator: [], augment: [], loc: [], unmatched: [], gaps: [] };
 
   for (const p of d.pls || []) {
@@ -173,7 +183,7 @@ function buildIssues() {
       type: 'augment', lon: b.lon, lat: b.lat,
       name: b.plsName, osm: b.osm, tags: b.tags || {}, conflicts: b.conflicts || [],
       qid: a.qid || sys.qid, qidConfirmed: a.qidConfirmed ?? sys.qidConfirmed,
-      state: a.state, sysName: sys.name
+      state: a.state, sysName: sys.sysName
     });
   }
 
@@ -221,7 +231,8 @@ function rebuildGaps() {
       out.push({
         type: 'gaps', lon, lat,
         name: name || '(unnamed library)', osm: type + id, missing,
-        sysName: sysIdx >= 0 ? d.systems[sysIdx].n : ''
+        // sysIdx is null (older builds: -1) when the library has no system.
+        sysName: d.systems[sysIdx]?.n ?? ''
       });
     }
   }
@@ -489,22 +500,21 @@ function openIssue(type, i, opts = {}) {
 // Send one branch's fill-blank tags to JOSM as a review layer (same load_data
 // flow as the Augment page, scoped to a single object). Conflicts never go.
 async function sendFillsToJosm(it, btn) {
-  btn.disabled = true;
-  toast('Reading the current object from Overpass…');
-  let skipped = null;
-  try {
-    const xml = await buildOsmXml(
-      [{ osm: it.osm, tags: it.tags }], [],
-      { overpassEndpoints: overpassEndpoints(), onSkip: (_b, why) => { skipped = why; } }
-    );
-    if (skipped) throw new Error(skipped);
-    const ok = await loadData(xml, `PLS augment · ${it.sysName || it.name}`);
-    if (ok) toast('Sent to JOSM – review the new layer, then upload from JOSM.');
-    else toast('JOSM didn’t respond – is it running with Remote Control enabled?', true);
-  } catch (e) {
-    toast('Could not prepare the JOSM layer (' + e.message + ').', true);
-  }
-  btn.disabled = false;
+  await withBusy(btn, 'Sending…', async () => {
+    let skipped = null;
+    try {
+      const xml = await buildOsmXml(
+        [{ osm: it.osm, tags: it.tags }], [],
+        { endpoint: overpassEndpoint(), onSkip: (_b, why) => { skipped = why; } }
+      );
+      if (skipped) throw new Error(skipped);
+      const ok = await loadData(xml, `PLS augment · ${it.sysName || it.name}`);
+      if (ok) toast('Sent to JOSM – review the new layer, then upload from JOSM.');
+      else toast('JOSM didn’t respond – is it running with Remote Control enabled?', true);
+    } catch (e) {
+      toast('Could not prepare the JOSM layer (' + e.message + ').', true);
+    }
+  });
 }
 
 // ---------------- Filter chips ----------------
@@ -672,6 +682,7 @@ function setupCollapse() {
 // ---------------- Boot ----------------
 async function boot() {
   setupEditorPicker();
+  setupOverpassPicker();
   setupCollapse();
 
   let data;
