@@ -14,7 +14,11 @@
 //   gaps       libraries missing basic tags (phone, website,
 //              hours, address…) from the flags bitmask          (libs[])
 //   unmatched  a whole multi-outlet PLS system the crosswalk
-//              couldn't find in OSM (bbox centroid pin)         (plsUnmatched[])
+//              couldn't find, with NO operator tags on any
+//              matched building — additive work                 (plsUnmatched[])
+//   sysmixed   same, but matched buildings already carry OTHER
+//              operator tags — cooperative membership, renames,
+//              or fragmented spellings; a person judges         (plsUnmatched[])
 //
 // PLS tag fills and location discrepancies are deliberately NOT map layers —
 // the Augment page and the QA dashboard's PLS section own those workflows.
@@ -24,7 +28,7 @@
 
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/+esm';
 import { MAP_STYLE, OVERPASS_TIMEOUT_MS } from './config.js';
-import { JOSM, bboxAround, josmSend, webEditObjectUrl, webEditAtUrl } from './josm.js';
+import { JOSM, bboxAround, josmSend, fetchTagsBatch, webEditObjectUrl, webEditAtUrl } from './josm.js';
 
 const $ = sel => document.querySelector(sel);
 
@@ -65,7 +69,9 @@ const TYPES = [
   { id: 'gaps',     label: 'Incomplete Tags',  color: '#2f8f85', on: false,
     hint: 'Libraries missing everyday tags – choose which tags below' },
   { id: 'unmatched', label: 'System not in OSM', color: '#8c5a3c', on: false,
-    hint: 'A multi-outlet PLS system the crosswalk found no OSM operator for – fragmented tags or unmapped' }
+    hint: 'A multi-outlet PLS system with NO operator tags on any of its branches – unmapped, or purely additive tagging work' },
+  { id: 'sysmixed', label: 'System ambiguous', color: '#5a7d9a', on: false,
+    hint: 'A multi-outlet PLS system whose branches already carry OTHER operator tags – a federated cooperative, a rename, or fragmented spellings. Needs a person to judge' }
 ];
 const TYPE_BY_ID = new Map(TYPES.map(t => [t.id, t]));
 const priority = id => TYPES.findIndex(t => t.id === id);
@@ -170,7 +176,7 @@ function buildIssues() {
   for (const l of d.libs) l[0] = typeof l[0] === 'number' ? l[0] : (byKey.get(l[0]) ?? -1);
   for (const p of d.pls || []) p.sysIdx ??= byKey.get(p.sysKey) ?? -1;
 
-  const issues = { missing: [], operator: [], opconflict: [], unnamed: [], unmatched: [], gaps: [] };
+  const issues = { missing: [], operator: [], opconflict: [], unnamed: [], unmatched: [], sysmixed: [], gaps: [] };
 
   // Wikidata-sourced operator additions: the library's own wikidata= item names
   // the system that runs it, and OSM has no operator tag — a sourced suggestion.
@@ -239,15 +245,24 @@ function buildIssues() {
     // dashboard's PLS section lists the few there are.)
   }
 
+  // Unmatched PLS systems split into two kinds of work: when any matched
+  // building already carries an operator identity (its libs row resolved to a
+  // system), a person has to JUDGE — cooperative membership, a rename, or
+  // fragmented spellings. When none does, the work is purely additive.
+  const libSys = new Map(d.libs.map(l => [l[1] + l[2], l[0]]));
   for (const u of d.plsUnmatched || []) {
     // Pin at the outlet bbox centre; older data may only carry a centroid.
     const lon = u.bb ? (u.bb[0] + u.bb[2]) / 2 : u.lon;
     const lat = u.bb ? (u.bb[1] + u.bb[3]) / 2 : u.lat;
     if (lon == null || lat == null) continue;
-    issues.unmatched.push({
-      type: 'unmatched', lon, lat,
+    const pts = u.pts || [];   // per-outlet points (older data predates them)
+    const ops = [...new Set(pts.map(p => p.osm && libSys.get(p.osm)).filter(i => i != null && i >= 0))]
+      .map(i => d.systems[i].n);
+    const type = ops.length ? 'sysmixed' : 'unmatched';
+    issues[type].push({
+      type, lon, lat,
       name: titleCase(u.name), state: u.state, outlets: u.outlets, near: u.near,
-      bb: u.bb || null, fscskey: u.fscskey
+      bb: u.bb || null, fscskey: u.fscskey, pts, ops
     });
   }
 
@@ -346,7 +361,7 @@ function initMap(view, sourceDateLabel) {
         id: layerId(t.id),
         type: 'circle',
         source: srcId(t.id),
-        paint: t.id === 'unmatched' ? {
+        paint: (t.id === 'unmatched' || t.id === 'sysmixed') ? {
           // Hollow pin: a whole system's area, not one building.
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 9],
           'circle-color': t.color,
@@ -377,6 +392,22 @@ function initMap(view, sourceDateLabel) {
       type: 'line',
       source: 'qm-bbox',
       paint: { 'line-color': TYPE_BY_ID.get('unmatched').color, 'line-width': 2, 'line-dasharray': [2, 2] }
+    });
+    // …and its individual suspected outlets, shown while the popup is open:
+    // gold = an OSM building likely already there (fix tags), red = not found
+    // (likely create).
+    state.map.addSource('qm-syspts', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    state.map.addLayer({
+      id: 'qm-syspts-pins',
+      type: 'circle',
+      source: 'qm-syspts',
+      paint: {
+        'circle-radius': 6,
+        'circle-color': ['case', ['get', 'inOsm'], '#9a7d00', '#d1434f'],
+        'circle-opacity': 0.9,
+        'circle-stroke-width': 1.5,
+        'circle-stroke-color': '#ffffff'
+      }
     });
 
     applyVisibility();
@@ -410,6 +441,21 @@ function setBboxHighlight(bb) {
       coordinates: [[bb[0], bb[1]], [bb[2], bb[1]], [bb[2], bb[3]], [bb[0], bb[3]], [bb[0], bb[1]]]
     },
     properties: {}
+  });
+}
+
+// Show/clear the selected unmatched system's outlet points. Pins sit on the OSM
+// object when one was found (that's where the edit happens), else the PLS spot.
+function setSysPts(pts) {
+  const src = state.map.getSource('qm-syspts');
+  if (!src) return;
+  src.setData({
+    type: 'FeatureCollection',
+    features: (pts || []).map(p => ({
+      type: 'Feature',
+      geometry: { type: 'Point', coordinates: [p.osmLon ?? p.lon, p.osmLat ?? p.lat] },
+      properties: { inOsm: !!p.osm }
+    }))
   });
 }
 
@@ -494,15 +540,27 @@ function popupHtml(type, it) {
       </div>`;
   }
 
-  if (type === 'unmatched') {
+  if (type === 'unmatched' || type === 'sysmixed') {
+    const note = type === 'sysmixed'
+      ? `Branches already carry operator tags – <b>${it.ops.slice(0, 3).map(escapeHtml).join('</b>, <b>')}</b>${it.ops.length > 3 ? ` +${it.ops.length - 3} more` : ''} – likely a federated cooperative, a rename, or fragmented spellings. Judge which tagging is right before changing anything.`
+      : it.near
+        ? 'Buildings are likely mapped but none carries an operator tag – straightforward additive tagging.'
+        : 'No outlet has an OSM library within 200 m – likely unmapped territory.';
     return head(it.near
       ? `<span class="qm-badge" style="--c:#9a7d00">${it.near}/${it.outlets} buildings likely in OSM</span>`
       : '<span class="qm-badge" style="--c:#d1434f">0 outlets found in OSM</span>') + `
       <div class="pop-body">
         <div class="r"><span class="k">📍</span><span>${escapeHtml(it.state)} · ${it.outlets} PLS outlets · <span class="pls-geo">${escapeHtml(it.fscskey)}</span></span></div>
-        <div class="qa-note" style="margin:8px 0 0">${it.near
-          ? 'Buildings are likely mapped but operator tags are missing or inconsistent across this system.'
-          : 'No outlet has an OSM library within 200 m – likely unmapped territory.'}</div>
+        <div class="qa-note" style="margin:8px 0 0">${note}</div>
+        ${it.pts.length ? `<div class="qm-outlet-list">${it.pts.map((p, i) => `
+          <div class="qm-outlet" data-i="${i}" title="Click to zoom here">
+            <span class="qm-dot" style="--c:${p.osm ? '#9a7d00' : '#d1434f'}"></span>
+            <span class="qm-outlet-n">${escapeHtml(titleCase(p.n))}</span>
+            <span class="qm-outlet-m">${p.osm ? `<span title="Nearby OSM object: ${escapeHtml(p.osmName || '(unnamed)')}">in OSM</span>` : 'not found'}</span>
+            <a class="qa-icon-link" target="_blank" rel="noopener"
+               title="${p.osm ? 'Fix tags in editor' : 'Create in editor'}"
+               href="${p.osm ? editObject(p.osm, p.osmLat, p.osmLon) : editAt(p.lat, p.lon)}">✏️</a>
+          </div>${p.osm ? `<div class="qm-outlet-tags" data-osm="${p.osm}">…</div>` : ''}`).join('')}</div>` : ''}
         <div class="qm-actions">
           <button class="qm-act-btn" id="qm-zoom-bbox">🔍 Zoom to area</button>
           ${it.bb ? `<a class="qm-act" href="${turboLibsBboxUrl(it.bb)}" target="_blank" rel="noopener">All libraries here (Turbo)</a>` : ''}
@@ -606,6 +664,35 @@ function opCardHtml(tags, note) {
   </div>`;
 }
 
+// Inline operator-tag summary for one matched outlet in the unmatched-system
+// popup. "No operator tags" is the load-bearing case — it confirms WHY the
+// crosswalk couldn't see this system.
+function opTagsInline(tags) {
+  if (!tags) return '<span class="qm-outlet-tags-none">tags unavailable</span>';
+  const keys = Object.keys(tags).filter(k => OP_KEY_RE.test(k)).sort();
+  if (!keys.length) return '<span class="qm-outlet-tags-none">no operator tags</span>';
+  return keys.map(k => {
+    const v = /wikidata$/.test(k)
+      ? tags[k].split(';').map(q => q.trim())
+          .map(q => /^Q\d+$/.test(q) ? wdLink(q) : escapeHtml(q)).join('; ')
+      : escapeHtml(tags[k]);
+    return `<span class="qm-otag"><code>${escapeHtml(k)}</code>=${v}</span>`;
+  }).join(' ');
+}
+
+// Lazily annotate an unmatched system's matched outlets with their current
+// operator tags — one OSM API multi-fetch per element type, on popup open.
+async function fillOutletTags(it, popup) {
+  const keys = it.pts.filter(p => p.osm).map(p => p.osm);
+  if (!keys.length) return;
+  let tagsByKey = null;
+  try { tagsByKey = await fetchTagsBatch(keys); } catch { /* leave unavailable */ }
+  if (state.popup !== popup || !popup.isOpen()) return;
+  popup.getElement()?.querySelectorAll('.qm-outlet-tags').forEach(div => {
+    div.innerHTML = opTagsInline(tagsByKey?.get(div.dataset.osm) ?? null);
+  });
+}
+
 async function fillOpCard(it, popup) {
   const tags = await fetchOsmTags(it.osm);
   if (state.popup !== popup || !popup.isOpen()) return;
@@ -638,8 +725,9 @@ function openIssue(type, i, opts = {}) {
   const it = state.issues[type]?.[i];
   if (!it) return;
 
+  const isSys = type === 'unmatched' || type === 'sysmixed';
   if (opts.fly) {
-    if (type === 'unmatched' && it.bb) {
+    if (isSys && it.bb) {
       state.map.fitBounds([[it.bb[0], it.bb[1]], [it.bb[2], it.bb[3]]], { padding: 60, duration: 700 });
     } else {
       state.map.flyTo({ center: [it.lon, it.lat], zoom: Math.max(state.map.getZoom(), 14), duration: 700 });
@@ -647,20 +735,28 @@ function openIssue(type, i, opts = {}) {
   }
 
   if (state.popup) state.popup.remove();
-  setBboxHighlight(type === 'unmatched' ? it.bb : null);
+  setBboxHighlight(isSys ? it.bb : null);
+  setSysPts(isSys ? it.pts : null);
 
   state.popup = new maplibregl.Popup({ closeButton: true, maxWidth: '300px' })
     .setLngLat([it.lon, it.lat])
     .setHTML(`<div class="pop qm-pop">${popupHtml(type, it)}</div>`)
     .addTo(state.map);
-  state.popup.on('close', () => setBboxHighlight(null));
+  state.popup.on('close', () => { setBboxHighlight(null); setSysPts(null); });
 
   const el = state.popup.getElement();
   el.querySelector('#qm-zoom-bbox')?.addEventListener('click', () => {
     if (it.bb) state.map.fitBounds([[it.bb[0], it.bb[1]], [it.bb[2], it.bb[3]]], { padding: 60, duration: 700 });
   });
+  // Outlet rows zoom to the suspected library (the edit link inside still works).
+  el.querySelectorAll('.qm-outlet').forEach(row => row.addEventListener('click', e => {
+    if (e.target.closest('a')) return;
+    const p = it.pts[+row.dataset.i];
+    if (p) state.map.flyTo({ center: [p.osmLon ?? p.lon, p.osmLat ?? p.lat], zoom: 16, duration: 700 });
+  }));
   if (type === 'gaps' || type === 'unnamed') fillLiveTagCard(it, state.popup);
   if (type === 'opconflict') fillOpCard(it, state.popup);
+  if (isSys) fillOutletTags(it, state.popup);
 }
 
 // ---------------- Filter chips ----------------
@@ -733,6 +829,7 @@ function renderList() {
       : `operator differs from PLS match “${it.sysName}”`;
     if (t.id === 'unnamed') return [it.sysName, 'needs a name'].filter(Boolean).join(' · ');
     if (t.id === 'unmatched') return `${it.state} · ${it.outlets} outlets · ${it.near}/${it.outlets} in OSM`;
+    if (t.id === 'sysmixed') return `${it.state} · tagged as ${it.ops.slice(0, 2).join(', ')}${it.ops.length > 2 ? ` +${it.ops.length - 2}` : ''}`;
     return 'missing ' + it.missing.join(', ');
   };
 

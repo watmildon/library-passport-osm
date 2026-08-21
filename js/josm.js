@@ -105,6 +105,22 @@ async function apiMultiFetch(type, ids) {
   return out;
 }
 
+// Current TAGS for a batch of objects — one multi-fetch request per element
+// type, no geometry recursion. Returns Map(elKey -> tags); deleted objects are
+// simply absent. Used by the QA map to annotate matched outlets lazily.
+export async function fetchTagsBatch(osmKeys) {
+  const byType = { node: [], way: [], relation: [] };
+  for (const k of osmKeys) byType[OSM_TYPE[k[0]]]?.push(k.slice(1));
+  const map = new Map();
+  for (const [type, ids] of Object.entries(byType)) {
+    if (!ids.length) continue;
+    for (const el of await apiMultiFetch(type, [...new Set(ids)])) {
+      map.set(el.type[0] + el.id, el.tags || {});
+    }
+  }
+  return map;
+}
+
 async function fetchObjects(osmKeys) {
   if (!osmKeys.length) return new Map();
   const map = new Map();

@@ -1496,18 +1496,29 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
   const crosswalkedKeys = new Set(crosswalks.map(c => c.fscskey));
   const unmatched = [];
   const r3 = x => Math.round(x * 1e3) / 1e3;
+  const r5 = x => Math.round(x * 1e5) / 1e5;
   for (const ps of plsIndex.byKey.values()) {
     if (ps.outlets.length < 2 || crosswalkedKeys.has(ps.fscskey)) continue;
     let near = 0;
     let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
+    // Per-outlet points, so the pages can navigate to each suspected library
+    // rather than just naming the system: the PLS name + coordinate, and — when
+    // some OSM library (any operator) sits within 200 m — that object's id,
+    // name and coordinate, ready for an edit link.
+    const pts = [];
     for (const o of ps.outlets) {
-      if (nearbyLib(o.lat, o.lon)) near++;
+      const nb = nearbyLib(o.lat, o.lon);
+      if (nb) near++;
       if (o.lon < w) w = o.lon; if (o.lon > e) e = o.lon;
       if (o.lat < s) s = o.lat; if (o.lat > n) n = o.lat;
+      pts.push({
+        n: o.name, lat: r5(o.lat), lon: r5(o.lon),
+        ...(nb ? { osm: nb.id, osmName: nb.name, osmLat: r5(nb.lat), osmLon: r5(nb.lon) } : {})
+      });
     }
     unmatched.push({
       name: ps.name, fscskey: ps.fscskey, state: ps.state,
-      outlets: ps.outlets.length, near,
+      outlets: ps.outlets.length, near, pts,
       // padded outlet bbox [west, south, east, north] for an area-scoped
       // Overpass query (~5km margin so 2-outlet systems still show an area)
       bb: [r3(w - 0.05), r3(s - 0.05), r3(e + 0.05), r3(n + 0.05)]

@@ -125,6 +125,9 @@ Either way the Node script normalizes the rows into one compact file:
   libs[] }`. Overpass-only, like `wdOperators`.
 - `pls` — per-system IMLS PLS cross-reference (see below): `{ sysKey, fscskey,
   plsCount, osmCount, matched, closed?, variants?, untagged[], missing[], discrepancies[] }`.
+  `plsUnmatched[]` rows carry `pts[]` — one point per PLS outlet (`n`, `lat`,
+  `lon`, plus `osm`/`osmName`/`osmLat`/`osmLon` when some OSM library sits
+  within 200 m) so the pages can navigate to each suspected library.
   One row per PLS system; `variants` lists the other OSM operator spellings that
   crosswalked to it.
 - `augment` — per-system, ready-to-apply PLS tag **suggestions** for the JOSM-first

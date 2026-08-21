@@ -584,6 +584,27 @@ body.qa-page { height: auto; background: var(--bg); }
 .qm-act-btn:disabled { opacity: 0.6; cursor: default; }
 .qm-tagcard-note { color: var(--muted); font-weight: 400; }
 
+/* Per-outlet list in the unmatched-system popup */
+.qm-outlet-list {
+  margin-top: 10px; max-height: 180px; overflow-y: auto;
+  border-top: 1px solid var(--border); padding-top: 6px;
+}
+.qm-outlet {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 2px; font-size: 12px; cursor: pointer; border-radius: 6px;
+}
+.qm-outlet:hover { background: #f6f8fb; }
+.qm-outlet-n { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qm-outlet-m { flex-shrink: 0; font-size: 11px; color: var(--muted); }
+/* Lazy-loaded operator tags under each matched outlet */
+.qm-outlet-tags { margin: -2px 0 5px 20px; font-size: 11px; color: var(--muted); line-height: 1.5; word-break: break-word; }
+.qm-outlet-tags code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px;
+  background: #eef1f5; padding: 0 3px; border-radius: 3px;
+}
+.qm-otag { margin-right: 6px; }
+.qm-outlet-tags-none { font-style: italic; }
+
 @media (max-width: 560px) {
   #qm-panel { width: calc(100vw - 24px); max-height: 52vh; }
 }
