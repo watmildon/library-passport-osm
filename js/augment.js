@@ -3,8 +3,7 @@
 // layers via Remote Control. Additive-only; the mapper reviews before uploading.
 
 import { searchSystems } from './systems.js';
-import { overpassEndpoint } from './config.js';
-import { setupOverpassPicker, withBusy } from './controls.js';
+import { withBusy } from './controls.js';
 import { josmSend, buildOsmXml, loadData, webEditObjectUrl } from './josm.js';
 
 const $ = sel => document.querySelector(sel);
@@ -61,12 +60,11 @@ async function sendBranches(branches, layerName, { label } = {}) {
   const skips = [];
   toast(`Preparing ${fillable.length === 1 ? 'suggestion' : fillable.length + ' suggestions'} for JOSM…`);
 
-  // Read each object's current geometry and version from the configured Overpass
-  // server. This is the slow step — see the note in josm.js.
+  // Read each object's current geometry and version straight from the OSM API —
+  // authoritative and queue-free; a stale version would upload-conflict in JOSM.
   let xml;
   try {
     xml = await buildOsmXml(fillable, [], {
-      endpoint: overpassEndpoint(),
       onSkip: (b, why) => skips.push(`${b.plsName}: ${why}`)
     });
   } catch (e) {
@@ -113,7 +111,6 @@ let currentSys = -1;
 
 async function boot() {
   // A setting, not a feature of the data — wire it before anything can bail out.
-  setupOverpassPicker();
   try {
     const res = await fetch('./data/qa-data.json');
     if (!res.ok) throw new Error('HTTP ' + res.status);

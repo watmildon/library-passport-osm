@@ -124,7 +124,7 @@ Either way the Node script normalizes the rows into one compact file:
   item, grouped by the `(tagged → asserted)` pair: `{ tw, tn, tk, pq, pn, pk, st,
   libs[] }`. Overpass-only, like `wdOperators`.
 - `pls` — per-system IMLS PLS cross-reference (see below): `{ sysKey, fscskey,
-  plsCount, osmCount, matched, variants?, untagged[], missing[], discrepancies[] }`.
+  plsCount, osmCount, matched, closed?, variants?, untagged[], missing[], discrepancies[] }`.
   One row per PLS system; `variants` lists the other OSM operator spellings that
   crosswalked to it.
 - `augment` — per-system, ready-to-apply PLS tag **suggestions** for the JOSM-first
@@ -221,6 +221,23 @@ conflict because the wikidata-keyed fragment won WA0058. The row is reported
 under the best *human-named* fragment (never a bare Q-id), the other name-keyed
 spellings ride along as `variants`, and `osmCount` is the merged size. Unit
 tests: `npm run test:pls`.
+
+**Closed branches.** PLS lags ~2 years, so a branch that closes after the survey
+keeps generating missing/untagged findings until the next fiscal year drops it.
+Closure is recorded in **open data, never in this repo** (the same philosophy as
+the `not:` assertions), and either signal alone suppresses the finding:
+
+- **Wikidata** — the branch item carries `P3999` (date of official closure) or
+  `P576` (dissolved), anchored by its `P625` coordinate. Recording the closure
+  on the item — and pruning the system's `P527` branch list, which self-heals
+  the branch-count pane — is the curated route. Malformed dates are ignored and
+  a *future* date keeps the branch flagged until it passes.
+- **OSM** — the object was retagged `disused:amenity=library` /
+  `was:amenity=library` (fetched with one small Overpass query, fails soft). A
+  deleted object needs no OSM signal; the Wikidata route covers it.
+
+A PLS outlet within ~250 m of either point is counted on the row as `closed`
+(shown as a badge on the QA page) instead of appearing as missing/untagged.
 
 **Wikidata branch counts.** Systems whose Wikidata item enumerates its branches
 (`P527` parts typed as library branch) get that count attached as `wb` (one

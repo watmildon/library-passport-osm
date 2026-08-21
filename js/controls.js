@@ -4,14 +4,12 @@ import { customOverpass, setCustomOverpass, DEFAULT_ENDPOINT } from './config.js
 
 // ---------------- Overpass server picker ----------------
 //
-// Both pages talk to Overpass — the system explorer's live view, and every
-// "Send to JOSM", which reads each object's current geometry and version before
-// building the layer. The default is a public server, and public servers do not
-// refuse work when they are busy: they QUEUE it, holding the connection open.
-// That is what a mysterious 40-second button press usually is.
-//
-// So the endpoint is a visible setting rather than a buried one, and the hint
-// says which server is in play — a slow send should be attributable.
+// The QA page's live system view reads from Overpass. The default is a public
+// server, and public servers do not refuse work when they are busy: they QUEUE
+// it, holding the connection open — that is what a mysteriously slow load
+// usually is. So the endpoint is a visible setting rather than a buried one,
+// and the hint says which server is in play. (Sends to JOSM read current
+// objects straight from the OSM API and don't touch Overpass at all.)
 export function setupOverpassPicker(onChange) {
   const input = document.querySelector('#overpass-url');
   const hint = document.querySelector('#overpass-hint');
@@ -23,7 +21,7 @@ export function setupOverpassPicker(onChange) {
     if (!hint) return;
     hint.textContent = custom
       ? 'Using your server.'
-      : 'Using the public server – it queues when busy, which is why a send can stall.';
+      : 'Using the public server – it queues when busy, so the live view can stall.';
     hint.classList.toggle('qa-endpoint-custom', !!custom);
   };
 

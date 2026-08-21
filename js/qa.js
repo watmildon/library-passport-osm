@@ -7,7 +7,6 @@ import { searchSystems } from './systems.js';
 import { fetchLibrariesMeta } from './overpass.js';
 import { TRACKED_TAGS } from './completeness.js';
 import { JOSM, bboxAround, josmSend, buildOsmXml, loadData, webEditObjectUrl, webEditAtUrl } from './josm.js';
-import { overpassEndpoint } from './config.js';
 import { setupOverpassPicker, withBusy } from './controls.js';
 
 const $ = sel => document.querySelector(sel);
@@ -722,6 +721,7 @@ function renderPls() {
           ${p.missing.length ? `<b class="qa-delta-miss">${p.missing.length} missing</b>` : ''}
           ${p.missing.length && p.untagged.length ? ' · ' : ''}
           ${p.untagged.length ? `<b class="pls-untagged-n">${p.untagged.length} untagged</b>` : ''}
+          ${p.closed ? `<span class="qa-badge qa-badge-not" title="PLS outlets recorded as closed – via the branch's Wikidata item (date of official closure) or a disused:/was: lifecycle tag in OSM – and therefore not counted as missing">${p.closed} closed</span>` : ''}
           <button class="qa-link-btn" data-sys="${p.sysIdx}">Explore →</button></span>
       </div>
       ${qidNote ? `<div class="pls-qid-row">${qidNote}</div>` : ''}
@@ -1153,7 +1153,6 @@ async function sendFixToJosm(g, mode) {
   let xml;
   try {
     xml = await buildOsmXml(g.libs.map(l => ({ osm: l.osm, tags })), [], {
-      endpoint: overpassEndpoint(),
       onSkip: (b, why) => skips.push(`${b.osm}: ${why}`),
       overwrite
     });

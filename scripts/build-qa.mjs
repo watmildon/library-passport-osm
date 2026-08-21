@@ -313,6 +313,91 @@ async function sparqlBatched(qids, buildQuery, what) {
   return out;
 }
 
+// ---- Closed libraries ------------------------------------------------------
+//
+// PLS lags ~2 years, so a branch that closes after the survey keeps generating
+// missing/untagged findings until the next fiscal year drops it. Closure is
+// recorded in OPEN DATA, never in this repo (the not:-assertion philosophy),
+// and either signal alone suppresses:
+//   • Wikidata: the branch item carries P3999 (date of official closure) or
+//     P576 (dissolved), anchored by its P625 coordinate. Recording the closure
+//     on the item — and pruning the system's P527 branch list, which self-heals
+//     the branch-count pane — is the curated route.
+//   • OSM: the object was retagged disused:amenity=library / was:amenity=library.
+//     (A deleted object needs no signal of its own; the Wikidata route covers it.)
+// A PLS outlet within CLOSED_RADIUS_M of either point is counted as closed and
+// dropped from the findings; the system row carries the count.
+const CLOSED_RADIUS_M = 250;
+
+// Parse WDQS closure rows into points, defensively: closure "dates" in the wild
+// include wrong-datatype values (one item carries a URL), and a FUTURE date is
+// an announced closure — the branch still operates, so it keeps being flagged
+// until the date passes.
+export function parseWdClosures(rows, now = new Date()) {
+  const out = [];
+  for (const r of rows ?? []) {
+    const date = r.closed?.value ?? '';
+    if (!/^\d{4}/.test(date) || new Date(date) > now) continue;
+    const m = /^Point\((-?[\d.]+) (-?[\d.]+)\)$/.exec(r.coord?.value ?? '');
+    if (!m) continue;
+    out.push({ qid: qidOf(r.item), lon: +m[1], lat: +m[2] });
+  }
+  return out;
+}
+
+async function fetchWikidataClosures() {
+  const rows = await sparqlRows(`SELECT ?item ?closed ?coord WHERE {
+  VALUES ?cls { wd:Q11396180 wd:Q28564 wd:Q856584 }
+  ?item wdt:P31 ?cls .
+  ?item wdt:P17 wd:Q30 .
+  { ?item wdt:P3999 ?closed } UNION { ?item wdt:P576 ?closed }
+  ?item wdt:P625 ?coord .
+}`, 'closure fetch');
+  return parseWdClosures(rows);
+}
+
+// Former libraries still mapped in OSM under a lifecycle prefix. Fails soft.
+async function fetchOsmClosedLibraries() {
+  const q = `[out:json][timeout:60];
+area(3600148838)->.us;
+(
+  nwr["disused:amenity"=library](area.us);
+  nwr["was:amenity"=library](area.us);
+);
+out center;`;
+  for (const [i, url] of OVERPASS_ENDPOINTS.entries()) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+        body: 'data=' + encodeURIComponent(q)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return ((await res.json()).elements || [])
+        .map(el => ({ lat: el.lat ?? el.center?.lat, lon: el.lon ?? el.center?.lon }))
+        .filter(p => p.lat != null);
+    } catch (e) {
+      console.warn(`  closed-library fetch failed on endpoint #${i}: ${e.cause?.code ?? e.message}`);
+    }
+  }
+  console.warn('  proceeding without OSM lifecycle closures');
+  return [];
+}
+
+// Drop findings that sit on a closure signal; returns how many were dropped.
+// Mutates cls.missing / cls.untagged in place. Matched and discrepancy entries
+// are left alone — those have a live OSM object, so "closed" is a question for
+// the mapper, not this pass.
+export function suppressClosedFindings(cls, nearClosure) {
+  let closed = 0;
+  const keepM = [], keepU = [];
+  for (const o of cls.missing) { if (nearClosure(o.lat, o.lon)) closed++; else keepM.push(o); }
+  for (const u of cls.untagged) { if (nearClosure(u.p.lat, u.p.lon)) closed++; else keepU.push(u); }
+  cls.missing = keepM;
+  cls.untagged = keepU;
+  return closed;
+}
+
 // ---- Wikidata branch counts ----------------------------------------------
 //
 // Many US library-system items on Wikidata list their branches (P527 "has part"
@@ -672,8 +757,14 @@ async function main() {
   // ---- Wikidata-sourced operators, from each library's own item.
   const wdOps = await buildWikidataOperators(rawLibs, notAssert, systems, sysKeys, stateIdx);
 
+  // ---- Closed-library signals: PLS lags ~2 years, so a branch closed since
+  // the survey keeps generating findings unless open data says it's gone.
+  console.log('Fetching closed-library signals (Wikidata + OSM lifecycle)…');
+  const closures = [...await fetchWikidataClosures(), ...await fetchOsmClosedLibraries()];
+  console.log(`  ${closures.length} closed-library points`);
+
   // ---- IMLS PLS matching: find branches missing / untagged vs the federal census.
-  const pls = matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases);
+  const pls = matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases, closures);
 
   // ---- IMLS PLS augmentation: per-crosswalked-system live tag fetch + suggestions.
   const augment = await buildAugment(pls, systems);
@@ -1212,7 +1303,7 @@ export function mergeClaimLibs(rivals, sysMap, systems, libsByQid) {
   return [...byId.values()];
 }
 
-function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new Map()) {
+function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new Map(), closures = []) {
   let plsData;
   try {
     plsData = JSON.parse(readFileSync(PLS_FILE, 'utf8'));
@@ -1320,9 +1411,13 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
     byFscs.get(c.cw.fscskey).push(c);
   }
   const libsByQid = buildLibsByQid(sysKeys, sysMap, systems);
+  // Closure signals are few (tens of Wikidata items + lifecycle-tagged objects),
+  // so a linear scan per finding is plenty.
+  const nearClosure = (lat, lon) =>
+    closures.some(c => haversineM(lat, lon, c.lat, c.lon) <= CLOSED_RADIUS_M);
   const results = [];
   const crosswalks = [];   // winners only, for the augment pass to reuse
-  let folded = 0;
+  let folded = 0, closedTotal = 0;
   for (const rivals of byFscs.values()) {
     rivals.sort((a, b) =>
       b.cls.matched - a.cls.matched ||
@@ -1352,6 +1447,10 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
       ? classify(win.plsSystem.outlets, mergedLibs, disp.name, nearbyLib)
       : win.cls;
 
+    // Outlets sitting on a closure signal are closed, not findings.
+    const closedCount = suppressClosedFindings(cls, nearClosure);
+    closedTotal += closedCount;
+
     // Record the crosswalk so buildAugment can fetch this system's live OSM tags
     // and compute augmentation suggestions without re-deriving the match.
     crosswalks.push({ sysIdx: disp.sysIdx, sysKey: disp.sysKey, fscskey: win.cw.fscskey, state: win.plsSystem.state });
@@ -1366,6 +1465,7 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
       plsCount: cls.plsCount,
       osmCount: mergedLibs.length,
       matched: cls.matched,
+      ...(closedCount ? { closed: closedCount } : {}),
       ...(variants.length ? { variants } : {}),
       untagged: cls.untagged.map(u => ({
         name: u.p.name, addr: u.p.addr, city: u.p.city, lat: u.p.lat, lon: u.p.lon,
@@ -1416,7 +1516,8 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
   unmatched.sort((a, b) => b.outlets - a.outlets || a.name.localeCompare(b.name));
 
   console.log(`  PLS: ${checked} OSM systems checked, ${crosswalked} claims over ${byFscs.size} PLS systems, ` +
-    `${results.length} with findings, ${unmatched.length} multi-outlet PLS systems unmatched`);
+    `${results.length} with findings, ${closedTotal} outlet(s) suppressed as closed, ` +
+    `${unmatched.length} multi-outlet PLS systems unmatched`);
   return { meta: plsData.meta, results, crosswalks, plsIndex, unmatched };
 }
 

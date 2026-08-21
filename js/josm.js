@@ -51,8 +51,8 @@ export async function josmSend(url) {
 // Modifying an EXISTING object in that document requires its current version and
 // full geometry (for ways/relations, all referenced members must be present or
 // JOSM treats the way as incomplete and can't edit/upload it). So existing
-// objects are read from Overpass (one query, `out meta` + recursion), the
-// suggested tags are merged in, and the target element is marked action="modify".
+// objects are read straight from the OSM API (see fetchObjects), the suggested
+// tags are merged in, and the target element is marked action="modify".
 // (buildOsmXml can also emit brand-new nodes with negative ids — a generic
 // capability; the augmentation page only ever fills existing objects.)
 
@@ -68,38 +68,65 @@ function tagsXml(tags) {
     .join('');
 }
 
-// Fetch ALL of a system's existing objects + their geometry in ONE Overpass
-// query (`out meta` gives versions; `>;` recurses ways down to their nodes with
-// coords). Using Overpass — the same source the augment data was built from —
-// keeps us off the tightly rate-limited OSM API.
+// Fetch ALL of a system's existing objects + their geometry at their CURRENT
+// version, straight from the OSM API's multi-fetch endpoints (CORS-enabled).
+// Overpass would be one request, but public mirrors QUEUE under load — the
+// mysterious 40-second send — and replication lag can hand back a STALE
+// version, which becomes an upload conflict in JOSM. The API returns the
+// object exactly as it is right now, which is what an edit layer must start
+// from; a whole-system send is a handful of bounded GETs.
 //
-// This is the slow half of "Send to JOSM", and the recursion is why: a 49-branch
-// system's 49 objects expand to ~930 elements, nearly all of them child nodes.
-// JOSM needs them — a way without its nodes is incomplete and can't be edited or
-// uploaded — but it means the request is worth a real timeout rather than an
-// open-ended wait on a queued public mirror.
+// The recursion is the bulk of the data: a way without its nodes is incomplete
+// in JOSM and can't be edited or uploaded, so way nodes and relation members
+// are pulled in batches too. (A relation member that is itself a relation is
+// left incomplete — vanishingly rare for libraries, and JOSM fetches such
+// members on demand.) Deleted objects come back visible:false from multi-fetch
+// (a single-object GET would 410) and are simply not returned, so callers
+// report them via onSkip.
 //
 // Returns a Map(elKey -> element) covering every target and referenced member.
-async function fetchObjects(endpoint, osmKeys) {
+const OSM_API = 'https://api.openstreetmap.org/api/0.6';
+const API_CHUNK = 350;   // ids per multi-fetch request (URL-length safety)
+
+async function apiMultiFetch(type, ids) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += API_CHUNK) {
+    const chunk = ids.slice(i, i + API_CHUNK);
+    // The API 429s requests without a User-Agent. Browsers send their own (and
+    // may drop this header), but naming ourselves is politeness where it sticks
+    // — and it lets the fetch run outside a browser (tests).
+    const res = await fetch(`${OSM_API}/${type}s.json?${type}s=${chunk.join(',')}`, {
+      headers: { 'User-Agent': 'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm)' },
+      signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS)
+    });
+    if (!res.ok) throw new Error(`OSM API returned ${res.status} for ${type}s`);
+    out.push(...((await res.json()).elements || []).filter(el => el.visible !== false));
+  }
+  return out;
+}
+
+async function fetchObjects(osmKeys) {
   if (!osmKeys.length) return new Map();
-  // Group ids by type into id-lists: node(1,2,3); way(4,5); relation(6);
+  const map = new Map();
+  const add = els => { for (const el of els) map.set(el.type[0] + el.id, el); };
+
   const byType = { node: [], way: [], relation: [] };
   for (const k of osmKeys) byType[OSM_TYPE[k[0]]].push(k.slice(1));
-  const sel = Object.entries(byType)
-    .filter(([, ids]) => ids.length)
-    .map(([t, ids]) => `${t}(id:${ids.join(',')});`)
-    .join('');
-  const q = `[out:json][timeout:90];(${sel});(._;>;);out meta;`;
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: 'data=' + encodeURIComponent(q),
-    signal: AbortSignal.timeout(OVERPASS_TIMEOUT_MS)
-  });
-  if (!res.ok) throw new Error('Overpass returned ' + res.status);
-  const map = new Map();
-  for (const el of (await res.json()).elements || []) map.set(el.type[0] + el.id, el);
+  if (byType.relation.length) {
+    const rels = await apiMultiFetch('relation', [...new Set(byType.relation)]);
+    add(rels);
+    for (const r of rels) for (const m of r.members || []) {
+      if (m.type === 'way') byType.way.push(String(m.ref));
+      else if (m.type === 'node') byType.node.push(String(m.ref));
+    }
+  }
+  if (byType.way.length) {
+    const ways = await apiMultiFetch('way', [...new Set(byType.way)]);
+    add(ways);
+    for (const w of ways) for (const n of w.nodes || []) byType.node.push(String(n));
+  }
+  if (byType.node.length) add(await apiMultiFetch('node', [...new Set(byType.node)]));
   return map;
 }
 
@@ -128,10 +155,10 @@ function elementXml(el, targetKey) {
 //   existing: [{ osm, tags }]  — current objects fetched from Overpass, the
 //                                suggested tags merged onto the target (modify)
 //   created:  [{ lat, lon, tags }] — emitted as new nodes with negative ids
-// `endpoint` is the Overpass instance to read current objects from. Returns the
-// XML string. Existing objects that Overpass doesn't return are skipped
-// (reported via onSkip); if Overpass fails outright, existing edits are skipped
-// but any new nodes are still emitted so the send isn't a total loss.
+// Current objects are read from the OSM API (fetchObjects). Ones the API
+// doesn't return — deleted since the data was built — are skipped (reported
+// via onSkip); if the fetch fails outright, existing edits are skipped but any
+// new nodes are still emitted so the send isn't a total loss.
 //
 // Tags are merged ADDITIVELY by default — an existing value is never clobbered,
 // which is what the PLS augmentation wants (it only ever fills blanks). Pass
@@ -139,13 +166,13 @@ function elementXml(el, targetKey) {
 // rather than missing, e.g. an operator:wikidata that contradicts the library's
 // own Wikidata item. Either way JOSM shows the result as an unsaved layer, so
 // the mapper still reviews every change before upload.
-export async function buildOsmXml(existing, created, { endpoint, onSkip, overwrite = false } = {}) {
+export async function buildOsmXml(existing, created, { onSkip, overwrite = false } = {}) {
   const parts = [];
   const seen = new Set();
 
   let objs = new Map();
-  if (existing.length && endpoint) {
-    try { objs = await fetchObjects(endpoint, existing.map(b => b.osm)); }
+  if (existing.length) {
+    try { objs = await fetchObjects(existing.map(b => b.osm)); }
     catch (e) { for (const b of existing) onSkip?.(b, e.message); }
   }
 
