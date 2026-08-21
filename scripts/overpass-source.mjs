@@ -16,12 +16,10 @@
 import { readFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { country } from '../js/countries.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
-
-// Overpass area id for the US boundary (relation 148838 + 3600000000).
-export const US_AREA_ID = 3600148838;
 
 const DEFAULT_USER_AGENT = process.env.USER_AGENT ||
   'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; data build)';
@@ -64,28 +62,31 @@ export async function overpassTimestamp(endpoint) {
   return json.osm3s?.timestamp_osm_base || null;
 }
 
-// Every US library with full tags and a point coordinate (`out center` gives
-// ways/relations their centroid). Returns { elements, timestamp }. ~19k
-// elements / ~9 MB / ~2 minutes as of 2026-08.
-export async function fetchUsLibraryElements(endpoint) {
+// Every library in a country with full tags and a point coordinate (`out
+// center` gives ways/relations their centroid). Returns { elements, timestamp }.
+// US: ~19k elements / ~9 MB / ~2 minutes as of 2026-08.
+export async function fetchLibraryElements(endpoint, countryCode = 'US') {
+  const c = country(countryCode);
   const q = `[out:json][timeout:300];
-area(${US_AREA_ID})->.us;
+area(${c.areaId})->.us;
 nwr[amenity=library](area.us);
 out center tags;`;
   const json = await overpassQuery(endpoint, q, { maxSeconds: 330 });
   return { elements: json.elements || [], timestamp: json.osm3s?.timestamp_osm_base || null };
 }
 
-// State assignment for every US library: Map('n123'|'w456'|'r789' -> state name,
-// e.g. "Washington"). One foreach query over the 56 admin_level=4 areas that
-// carry a US-* ISO3166-2 code (50 states + DC + PR/GU/AS/VI/MP); each iteration
-// emits the state area as a marker, then the ids of the libraries inside it.
-// A borderline library contained by two state polygons keeps the
-// alphabetically-first name, mirroring the Layercake SQL's min(state).
-// ~2.5 minutes as of 2026-08.
-export async function fetchStateAssignments(endpoint) {
+// State/province assignment for every library in a country:
+// Map('n123'|'w456'|'r789' -> region name, e.g. "Washington" or "Ontario").
+// One foreach query over the admin_level=4 areas that carry the country's
+// ISO3166-2 prefix (US: 50 states + DC + PR/GU/AS/VI/MP; CA: 13 provinces and
+// territories); each iteration emits the region area as a marker, then the ids
+// of the libraries inside it. A borderline library contained by two region
+// polygons keeps the alphabetically-first name, mirroring the Layercake SQL's
+// min(state). US: ~2.5 minutes as of 2026-08.
+export async function fetchStateAssignments(endpoint, countryCode = 'US') {
+  const c = country(countryCode);
   const q = `[out:json][timeout:480];
-area[boundary=administrative][admin_level=4]["ISO3166-2"~"^US-"]->.states;
+area[boundary=administrative][admin_level=4]["ISO3166-2"~"^${c.iso3166Prefix}"]->.states;
 foreach.states->.st(
   .st out;
   nwr[amenity=library](area.st);

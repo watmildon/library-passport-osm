@@ -1,8 +1,8 @@
 name: Update library data
 
-# Refresh data/us-library-systems.json and data/qa-data.json daily from the
-# private Overpass instance (minutely OSM replication), so the picker and the
-# QA page keep pace with mappers' work. The instance URL is the
+# Refresh data/us-library-systems.json, data/ca-library-systems.json and
+# data/qa-data.json daily from the private Overpass instance (minutely OSM
+# replication), so the picker and the QA page keep pace with mappers' work. The instance URL is the
 # OVERPASS_PRIMARY_URL repository secret; the scripts read it as OVERPASS_URL
 # and are careful never to print it (GitHub only masks the exact secret string,
 # so even the hostname would leak).
@@ -47,9 +47,11 @@ jobs:
         run: |
           OLD=$(node -p "require('./data/us-library-systems.json').systems.length")
           echo "count=$OLD" >> "$GITHUB_OUTPUT"
+          OLD_CA=$(node -p "try { require('./data/ca-library-systems.json').systems.length } catch { 0 }")
+          echo "cacount=$OLD_CA" >> "$GITHUB_OUTPUT"
           OLD_QA=$(node -p "try { require('./data/qa-data.json').libs.length } catch { 0 }")
           echo "qacount=$OLD_QA" >> "$GITHUB_OUTPUT"
-          echo "Currently committed: $OLD systems, $OLD_QA QA libraries."
+          echo "Currently committed: $OLD US systems, $OLD_CA CA systems, $OLD_QA QA libraries."
 
       - name: Freshness gate
         id: gate
@@ -72,18 +74,19 @@ jobs:
           fi
           LIVE_DATE="${TS:0:10}"
           SYS=$(node -p "const m=require('./data/us-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
+          CASYS=$(node -p "const m=require('./data/ca-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
           QA=$(node -p "const m=require('./data/qa-data.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
           echo "Overpass data: $TS"
-          echo "Committed sourceDate — systems: '${SYS:-none}', qa: '${QA:-none}'"
+          echo "Committed sourceDate — us systems: '${SYS:-none}', ca systems: '${CASYS:-none}', qa: '${QA:-none}'"
           echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
           echo "Private Overpass instance — data timestamp: $TS" >> "$GITHUB_STEP_SUMMARY"
 
           RUN=yes
-          # Skip only if BOTH committed files are already at least as fresh as live.
+          # Skip only if ALL committed files are already at least as fresh as live.
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             echo "Forced rebuild requested."
-          elif [ -n "$SYS" ] && [ -n "$QA" ] \
-               && [ ! "$SYS" \< "$LIVE_DATE" ] && [ ! "$QA" \< "$LIVE_DATE" ]; then
+          elif [ -n "$SYS" ] && [ -n "$CASYS" ] && [ -n "$QA" ] \
+               && [ ! "$SYS" \< "$LIVE_DATE" ] && [ ! "$CASYS" \< "$LIVE_DATE" ] && [ ! "$QA" \< "$LIVE_DATE" ]; then
             echo "Committed data is not older than the Overpass snapshot — skipping rebuild."
             echo "Up to date (committed sourceDate >= ${LIVE_DATE})." >> "$GITHUB_STEP_SUMMARY"
             RUN=no
@@ -112,10 +115,15 @@ jobs:
           curl -fsSL https://install.duckdb.org | sh
           echo "$HOME/.duckdb/cli/latest" >> "$GITHUB_PATH"
 
-      - name: Regenerate systems list (Overpass)
+      - name: Regenerate US systems list (Overpass)
         if: steps.gate.outputs.run == 'yes'
         run: |
           node scripts/refresh-systems.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      - name: Regenerate Canada systems list (Overpass)
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          node scripts/refresh-systems.mjs --country=CA ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Refresh IMLS PLS data
         if: steps.gate.outputs.run == 'yes'
@@ -132,15 +140,21 @@ jobs:
         if: steps.gate.outputs.run == 'yes'
         env:
           OLD: ${{ steps.before.outputs.count }}
+          OLD_CA: ${{ steps.before.outputs.cacount }}
           OLD_QA: ${{ steps.before.outputs.qacount }}
         run: |
           NEW=$(node -p "require('./data/us-library-systems.json').systems.length")
+          NEW_CA=$(node -p "try { require('./data/ca-library-systems.json').systems.length } catch { 0 }")
           NEW_QA=$(node -p "require('./data/qa-data.json').libs.length")
-          echo "Generated $NEW systems (was $OLD), $NEW_QA QA libraries (was $OLD_QA)."
+          echo "Generated $NEW US systems (was $OLD), $NEW_CA CA systems (was $OLD_CA), $NEW_QA QA libraries (was $OLD_QA)."
 
-          # Guard against a broken/empty upstream response gutting either file.
+          # Guard against a broken/empty upstream response gutting any file.
           if [ "$NEW" -lt 1000 ]; then
-            echo "::error::Only $NEW systems generated (expected >= 1000). Refusing to commit."
+            echo "::error::Only $NEW US systems generated (expected >= 1000). Refusing to commit."
+            exit 1
+          fi
+          if [ "$NEW_CA" -lt 100 ]; then
+            echo "::error::Only $NEW_CA CA systems generated (expected >= 100). Refusing to commit."
             exit 1
           fi
           if [ "$NEW_QA" -lt 10000 ]; then
@@ -159,7 +173,8 @@ jobs:
               fi
             fi
           }
-          check_band "System" "$OLD" "$NEW"
+          check_band "US system" "$OLD" "$NEW"
+          check_band "CA system" "$OLD_CA" "$NEW_CA"
           check_band "QA library" "$OLD_QA" "$NEW_QA"
 
       - name: Commit and push if changed
@@ -167,7 +182,9 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data/us-library-systems.json data/qa-data.json data/pls-outlets.json; then
+          # git diff ignores untracked files (a country's first-ever systems
+          # file), so use status --porcelain to detect changes.
+          if [ -z "$(git status --porcelain -- data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/pls-outlets.json)" ]; then
             echo "No changes to the data files."
             exit 0
           fi
@@ -186,7 +203,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          git add data/us-library-systems.json data/qa-data.json data/pls-outlets.json
+          git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/pls-outlets.json
           if [ -n "$SUMMARY" ]; then
             git commit -m "chore: daily refresh of library data ($COUNT systems)" -m "$SUMMARY"
           else

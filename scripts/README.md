@@ -34,20 +34,29 @@ to override), so a rerun or an out-of-order job never clobbers fresher data.
 The [`update-systems`](../.github/workflows/update-systems.yml) workflow
 applies the same gate up front (`force: true` input overrides).
 
-## `refresh-systems.mjs` — systems list (Overpass, primary)
+## `refresh-systems.mjs` — systems lists (Overpass, primary)
 
-Regenerates `../data/us-library-systems.json` from live OSM, sharing all
-aggregation/labelling/output with `build-systems.mjs` (via `systems-core.mjs`)
-so the file shape is identical regardless of path.
+Regenerates a country's systems file — `../data/us-library-systems.json` by
+default, `../data/ca-library-systems.json` with `--country=CA` — from live OSM,
+sharing all aggregation/labelling/output with `build-systems.mjs` (via
+`systems-core.mjs`) so the file shape is identical regardless of path.
 
 ```sh
-npm run refresh:systems           # gated on data freshness
-node scripts/refresh-systems.mjs --force   # ignore the gate
+npm run refresh:systems           # gated on data freshness (US)
+node scripts/refresh-systems.mjs --force        # ignore the gate
+node scripts/refresh-systems.mjs --country=CA   # Canada
 ```
 
-- US-scoped with `area(3600148838)` (the same US boundary relation Layercake
-  uses), so counts stay consistent across source paths.
-- Refuses to write when fewer than 10,000 libraries come back (gutted response).
+- Country-scoped with `area(<boundary relation + 3600000000>)`; per-country
+  boundary relations, file paths, and sanity floors live in
+  [`../js/countries.js`](../js/countries.js) (US: relation 148838, matching
+  Layercake, so counts stay consistent across source paths; CA: relation
+  1428125).
+- Refuses to write when fewer libraries come back than the country's
+  `minLibraries` floor (US 10,000, CA 1,000) — a gutted response, not a real
+  shrink.
+- Wikidata label enrichment prefers English labels and falls back to French
+  (many Quebec systems only have a French label).
 
 ## `build-pls.mjs` — IMLS PLS outlet data
 
@@ -414,5 +423,7 @@ picker searches `name`; `mode` + `value` become the Overpass selector on load.
   library systems (e.g. a county government). That reflects the raw OSM data; the
   list surfaces whatever is tagged.
 - To refresh, just re-run — the `meta.generated` date updates automatically.
-- To target a different country, change the boundary relation id in the SQL and
-  the longitude/latitude prefilter ranges to match.
+- This Layercake path is **US-only** (the extract covers the US). Other
+  countries are served by the Overpass path: add an entry to
+  [`../js/countries.js`](../js/countries.js) and run
+  `node scripts/refresh-systems.mjs --country=XX`.

@@ -1,4 +1,5 @@
-// systems-core.mjs — shared pipeline for data/us-library-systems.json.
+// systems-core.mjs — shared pipeline for the per-country systems files
+// (data/us-library-systems.json, data/ca-library-systems.json).
 //
 // Both build paths — build-systems.mjs (Layercake/DuckDB) and refresh-systems.mjs
 // (dev Overpass) — produce the same `{ operator, wikidata, count }` rows and hand
@@ -8,10 +9,16 @@
 import { writeFileSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { country } from '../js/countries.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const ROOT = join(HERE, '..');
-export const DEST = join(ROOT, 'data', 'us-library-systems.json');
+
+// Absolute path of a country's systems file (data/us-library-systems.json,
+// data/ca-library-systems.json, …).
+export function systemsPath(countryCode = 'US') {
+  return join(ROOT, ...country(countryCode).systemsFile.split('/'));
+}
 
 export const USER_AGENT = process.env.USER_AGENT ||
   'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; systems-list build)';
@@ -42,7 +49,7 @@ export function toISODate(value) {
 // The sourceDate already committed to a data file (YYYY-MM-DD), or null. Reads
 // meta.sourceDate, falling back to a parseable meta.sourceModified for files
 // written before sourceDate existed.
-export function committedSourceDate(file = DEST) {
+export function committedSourceDate(file = systemsPath('US')) {
   try {
     const meta = JSON.parse(readFileSync(file, 'utf8')).meta || {};
     return meta.sourceDate || toISODate(meta.sourceModified) || null;
@@ -51,16 +58,17 @@ export function committedSourceDate(file = DEST) {
   }
 }
 
-// English labels for a set of Q-ids from the Wikidata Query Service.
+// Labels for a set of Q-ids from the Wikidata Query Service. English preferred,
+// French as a fallback — many Quebec library systems carry only a French label.
 export async function wikidataLabels(qids) {
   if (!qids.length) return {};
   const values = qids.map(q => 'wd:' + q).join(' ');
   const query = `
 PREFIX wd: <http://www.wikidata.org/entity/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-SELECT ?item ?label WHERE {
+SELECT ?item ?label ?lang WHERE {
   VALUES ?item { ${values} }
-  ?item rdfs:label ?label . FILTER(LANG(?label) = 'en')
+  ?item rdfs:label ?label . BIND(LANG(?label) AS ?lang) FILTER(?lang IN ('en','fr'))
 }`;
 
   let lastErr;
@@ -78,7 +86,10 @@ SELECT ?item ?label WHERE {
       if (!res.ok) throw new Error(`Wikidata -> HTTP ${res.status}`);
       const rows = (await res.json()).results.bindings;
       const out = {};
-      for (const r of rows) out[r.item.value.split('/').pop()] = r.label.value;
+      for (const r of rows) {
+        const qid = r.item.value.split('/').pop();
+        if (r.lang?.value === 'en' || !(qid in out)) out[qid] = r.label.value;
+      }
       return out;
     } catch (e) {
       lastErr = e;
@@ -94,8 +105,10 @@ SELECT ?item ?label WHERE {
   return {};
 }
 
-// Aggregate rows, enrich, rank, and write data/us-library-systems.json.
+// Aggregate rows, enrich, rank, and write a country's systems file
+// (data/us-library-systems.json, data/ca-library-systems.json, …).
 // `rows`: Array<{ operator: string|null, wikidata: string|null, count: number }>
+// `country`: 2-letter country code from js/countries.js (default US).
 // `source`: provenance string stored in meta.source (a generic name is fine).
 // `sourceDate`: REQUIRED. The snapshot date of the source data (YYYY-MM-DD) —
 //   Layercake's Last-Modified, Overpass's timestamp_osm_base, etc. Writers must
@@ -106,12 +119,14 @@ SELECT ?item ?label WHERE {
 //
 // Returns the systems count on write, or null when skipped because the committed
 // data is already at least as fresh (nothing to contribute).
-export async function writeSystems(rows, { source, sourceDate, sourceModified, force = false }) {
+export async function writeSystems(rows, { country: countryCode = 'US', source, sourceDate, sourceModified, force = false }) {
+  const c = country(countryCode);
+  const dest = systemsPath(c.code);
   const incoming = toISODate(sourceDate);
   if (!incoming) throw new Error(`writeSystems: a valid sourceDate is required (got ${JSON.stringify(sourceDate)})`);
 
   // Freshness gate: don't overwrite data built from an equal-or-newer source.
-  const committed = committedSourceDate();
+  const committed = committedSourceDate(dest);
   if (!force && committed && committed >= incoming) {
     console.log(`  committed data source ${committed} is not older than ${incoming} — skipping write (use force to override).`);
     return null;
@@ -162,7 +177,7 @@ export async function writeSystems(rows, { source, sourceDate, sourceModified, f
     generated: new Date().toISOString().slice(0, 10),
     sourceDate: incoming,
     ...(sourceModified ? { sourceModified } : {}),
-    boundary: 'United States (OSM relation 148838)',
+    boundary: `${c.name} (OSM relation ${c.boundaryRelation})`,
     totalSystems: systems.length
   };
   // One system per line (still valid JSON) so daily git diffs touch only the
@@ -172,7 +187,7 @@ export async function writeSystems(rows, { source, sourceDate, sourceModified, f
     '"systems": [\n' +
     systems.map(s => JSON.stringify(s)).join(',\n') +
     '\n]\n}\n';
-  writeFileSync(DEST, json);
-  console.log(`Wrote ${systems.length} systems -> ${DEST}`);
+  writeFileSync(dest, json);
+  console.log(`Wrote ${systems.length} systems -> ${dest}`);
   return systems.length;
 }

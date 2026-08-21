@@ -54,6 +54,13 @@ const FILES = [
     sections: {
       systems: s => `${s.mode} ${s.value}`
     }
+  },
+  {
+    path: 'data/ca-library-systems.json',
+    label: 'ca-library-systems',
+    sections: {
+      systems: s => `${s.mode} ${s.value}`
+    }
   }
 ];
 
@@ -61,8 +68,11 @@ const FILES = [
 // shallow checkout, not a git repo — all fine, we just have nothing to compare).
 function committed(path) {
   try {
+    // stderr is piped (not inherited) so a file new to the ref doesn't print
+    // git's "exists on disk, but not in HEAD" noise — it's an expected case.
     return JSON.parse(execFileSync('git', ['show', `${REF}:${path}`], {
-      cwd: ROOT, encoding: 'utf8', maxBuffer: 512 * 1024 * 1024
+      cwd: ROOT, encoding: 'utf8', maxBuffer: 512 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe']
     }));
   } catch {
     return null;

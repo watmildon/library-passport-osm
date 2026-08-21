@@ -33,6 +33,7 @@ import { indexPls, classify } from './pls-match.mjs';
 import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment.mjs';
 import { serializeLinewise } from './build-qa.mjs';
 import { overpassEndpoint } from './overpass-source.mjs';
+import { country } from '../js/countries.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -66,7 +67,7 @@ const MIN_LIBS_FOR_PLS = 3;   // same threshold as build-qa.mjs's PLS matching
 async function fetchSystemTags(endpoint, mode, value) {
   const esc = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const sel = mode === 'wikidata' ? `["operator:wikidata"="${esc}"]` : `["operator"="${esc}"]`;
-  const q = `[out:json][timeout:90];\narea(3600148838)->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
+  const q = `[out:json][timeout:90];\narea(${country('US').areaId})->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
   try {
     const res = await fetch(endpoint, {
       method: 'POST',

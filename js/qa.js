@@ -8,6 +8,10 @@ import { fetchLibrariesMeta } from './overpass.js';
 import { TRACKED_TAGS } from './completeness.js';
 import { JOSM, bboxAround, josmSend, buildOsmXml, loadData, webEditObjectUrl, webEditAtUrl } from './josm.js';
 import { setupOverpassPicker, withBusy } from './controls.js';
+import { country } from './countries.js';
+
+// The QA pages are US-only for now (data/qa-data.json is a US build).
+const QA_AREA_ID = country('US').areaId;
 
 const $ = sel => document.querySelector(sel);
 
@@ -197,7 +201,7 @@ function wdSearchLink(term) {
 function turboUrl(mode, value) {
   const esc = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const sel = mode === 'wikidata' ? `["operator:wikidata"="${esc}"]` : `["operator"="${esc}"]`;
-  const q = `[out:json][timeout:60];\narea(3600148838)->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
+  const q = `[out:json][timeout:60];\narea(${QA_AREA_ID})->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
   return 'https://overpass-turbo.eu/?Q=' + encodeURIComponent(q) + '&R';
 }
 
@@ -900,7 +904,7 @@ function renderBranchCounts() {
 // filter comes LAST: regex matching is expensive for Overpass, so the cheap
 // amenity filter narrows the set first.
 function turboDomainUrl(domain) {
-  const q = `[out:json][timeout:60];\narea(3600148838)->.us;\nnwr[amenity=library]["website"~"${domain}",i](area.us);\nout center tags;`;
+  const q = `[out:json][timeout:60];\narea(${QA_AREA_ID})->.us;\nnwr[amenity=library]["website"~"${domain}",i](area.us);\nout center tags;`;
   return 'https://overpass-turbo.eu/?Q=' + encodeURIComponent(q) + '&R';
 }
 

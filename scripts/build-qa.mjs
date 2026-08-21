@@ -36,7 +36,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { layercakeModified, toISODate, committedSourceDate } from './systems-core.mjs';
-import { overpassEndpoint, overpassTimestamp, fetchUsLibraryElements, fetchStateAssignments } from './overpass-source.mjs';
+import { overpassEndpoint, overpassTimestamp, fetchLibraryElements, fetchStateAssignments } from './overpass-source.mjs';
+import { country } from '../js/countries.js';
 import { indexPls, crosswalk, classify, haversineM } from './pls-match.mjs';
 import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment.mjs';
 
@@ -48,6 +49,9 @@ const PLS_FILE = join(ROOT, 'data', 'pls-outlets.json');
 const DUCKDB = process.env.DUCKDB || 'duckdb';
 const FORCE = process.argv.includes('--force');
 const USE_LAYERCAKE = process.argv.includes('--layercake');
+// The QA build is US-only for now; this is the single switch a future
+// per-country build would parameterize (see js/countries.js).
+const COUNTRY = country('US');
 const USER_AGENT = process.env.USER_AGENT ||
   'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; QA build)';
 
@@ -107,7 +111,7 @@ function queryLayercake() {
 // columns).
 async function queryOverpass(endpoint) {
   console.log('Querying Overpass for per-library QA data…');
-  const { elements } = await fetchUsLibraryElements(endpoint);
+  const { elements } = await fetchLibraryElements(endpoint, COUNTRY.code);
   console.log(`  ${elements.length} US libraries; assigning states…`);
   const stateOf = await fetchStateAssignments(endpoint);
   const libs = [];
@@ -232,7 +236,7 @@ const OVERPASS_ENDPOINTS = [
 // Overpass failure the maps are empty and suggestions are simply unfiltered.
 async function fetchNotAssertions() {
   const q = `[out:json][timeout:60];
-area(3600148838)->.us;
+area(${COUNTRY.areaId})->.us;
 (
   nwr[amenity=library]["not:operator:wikidata"](area.us);
   nwr[amenity=library]["not:operator"](area.us);
@@ -359,7 +363,7 @@ async function fetchWikidataClosures() {
 // Former libraries still mapped in OSM under a lifecycle prefix. Fails soft.
 async function fetchOsmClosedLibraries() {
   const q = `[out:json][timeout:60];
-area(3600148838)->.us;
+area(${COUNTRY.areaId})->.us;
 (
   nwr["disused:amenity"=library](area.us);
   nwr["was:amenity"=library](area.us);
@@ -1553,7 +1557,7 @@ const AUGMENT_SLEEP_MS = Number(process.env.AUGMENT_SLEEP_MS || (overpassEndpoin
 async function fetchSystemTags(mode, value) {
   const esc = value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
   const sel = mode === 'wikidata' ? `["operator:wikidata"="${esc}"]` : `["operator"="${esc}"]`;
-  const q = `[out:json][timeout:90];\narea(3600148838)->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
+  const q = `[out:json][timeout:90];\narea(${COUNTRY.areaId})->.us;\nnwr${sel}[amenity=library](area.us);\nout center tags;`;
   for (const [i, url] of OVERPASS_ENDPOINTS.entries()) {
     try {
       const res = await fetch(url, {
