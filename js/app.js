@@ -6,6 +6,7 @@ import { MAP_STYLE, customOverpass, setCustomOverpass } from './config.js';
 import { openState, nextChangeLabel, resetHoursCache } from './hours.js';
 import { tagBreakdown, isComplete } from './completeness.js';
 import { loadSystems, searchSystems } from './systems.js';
+import { country, DEFAULT_COUNTRY } from './countries.js';
 import {
   loadConfig, saveConfig, loadData, saveData,
   loadVisits, saveVisits, clearSystem, DATA_VERSION
@@ -13,7 +14,7 @@ import {
 
 // ---------------- State ----------------
 const state = {
-  config: null,          // { mode, value, systemName }
+  config: null,          // { mode, value, systemName, country }
   features: [],          // GeoJSON features
   visits: {},            // { [id]: true }
   filterOpenNow: false,  // grey out closed
@@ -22,7 +23,8 @@ const state = {
   map: null,
   popup: null,
   onboardMode: 'operator',
-  systems: [],           // curated US library-systems list
+  country: DEFAULT_COUNTRY, // active country in the onboarding picker
+  systems: [],           // curated library-systems list for the active country
   selectedSystem: null   // system chosen from the picker
 };
 
@@ -352,18 +354,38 @@ function setupOnboard() {
     $(sel).addEventListener('keydown', e => { if (e.key === 'Enter') doLoad(); }));
 }
 
-// Autocomplete over the curated US library-systems list.
+// Autocomplete over the active country's curated library-systems list.
 function setupPicker() {
   const input = $('#in-search');
   const box = $('#suggest');
   let results = [];
   let active = -1;
 
-  loadSystems().then(list => {
-    state.systems = list;
-    if (list.length) $('#picker-hint').textContent = `Searching ${list.length.toLocaleString()} US library systems from OpenStreetMap.`;
-    else $('#picker-hint').textContent = 'System list unavailable — use manual entry below.';
-  });
+  // Load (or re-load, on a country switch) the picker's systems list.
+  function loadPickerList() {
+    const c = country(state.country);
+    loadSystems(c.code).then(list => {
+      if (state.country !== c.code) return; // a later switch won the race
+      state.systems = list;
+      if (list.length) $('#picker-hint').textContent = `Searching ${list.length.toLocaleString()} ${c.name} library systems from OpenStreetMap.`;
+      else $('#picker-hint').textContent = 'System list unavailable — use manual entry below.';
+    });
+  }
+  loadPickerList();
+
+  // Country toggle: swap the systems list and clear any pending pick.
+  const cseg = $('#country-seg');
+  cseg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+    if (state.country === b.dataset.country) return;
+    state.country = b.dataset.country;
+    cseg.querySelectorAll('button').forEach(x => x.classList.toggle('active', x === b));
+    state.selectedSystem = null;
+    input.value = '';
+    results = [];
+    active = -1;
+    render();
+    loadPickerList();
+  }));
 
   function close() { box.classList.remove('show'); input.setAttribute('aria-expanded', 'false'); active = -1; }
 
@@ -446,7 +468,7 @@ async function doLoad(sys) {
   showLoading('Fetching libraries from OpenStreetMap…');
 
   try {
-    const feats = await fetchLibraries(mode, value);
+    const feats = await fetchLibraries(mode, value, state.country);
     if (!feats.length) {
       errEl.textContent = 'No libraries found for that system. Double-check the value.';
       hideLoading();
@@ -455,7 +477,7 @@ async function doLoad(sys) {
     }
     state.features = feats;
     const systemName = chosenName || feats[0].properties.operator || value;
-    state.config = { mode, value, systemName };
+    state.config = { mode, value, systemName, country: state.country };
     state.visits = loadVisits(state.config);
     saveConfig(state.config);
     saveData({ type: 'FeatureCollection', features: feats });
@@ -473,6 +495,17 @@ function launchApp() {
   $('#sidebar').style.display = 'flex';
   $('#system-name').textContent = state.config.systemName;
   $('#system-name').title = state.config.systemName;
+
+  // Point the QA links at the loaded system's country; the Augment page is
+  // backed by the US-only PLS census, so hide it elsewhere.
+  const cc = state.config.country || DEFAULT_COUNTRY;
+  const qaLink = document.querySelector('.sb-foot a[href*="qa.html"]');
+  const qaMapLink = document.querySelector('.sb-foot a[href*="qa-map.html"]');
+  const augLink = document.querySelector('.sb-foot a[href*="augment.html"]');
+  if (qaLink) qaLink.href = cc === 'US' ? './qa.html' : `./qa.html?country=${cc}`;
+  if (qaMapLink) qaMapLink.href = cc === 'US' ? './qa-map.html' : `./qa-map.html?country=${cc}`;
+  if (augLink) augLink.style.display = cc === 'US' ? '' : 'none';
+
   hideLoading();
 
   if (!state.map) initMap();
@@ -484,10 +517,11 @@ function launchApp() {
 // Re-fetch libraries for an already-chosen system (stale cache or version bump).
 async function reloadFromConfig(cfg) {
   state.config = cfg;
+  state.country = cfg.country || DEFAULT_COUNTRY; // configs predating countries have none
   state.visits = loadVisits(cfg);
   showLoading('Refreshing library data…');
   try {
-    const feats = await fetchLibraries(cfg.mode, cfg.value);
+    const feats = await fetchLibraries(cfg.mode, cfg.value, cfg.country);
     if (feats.length) {
       state.features = feats;
       saveData({ type: 'FeatureCollection', features: feats });
@@ -546,6 +580,7 @@ function boot() {
   const data = loadData();
   if (cfg && data && data.features && data.features.length && data.version === DATA_VERSION) {
     state.config = cfg;
+    state.country = cfg.country || DEFAULT_COUNTRY;
     state.features = data.features;
     state.visits = loadVisits(cfg);
     launchApp();

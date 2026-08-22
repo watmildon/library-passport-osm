@@ -18,17 +18,23 @@
       <h1>📚 Library Passport</h1>
       <p class="sub">Track every library you've visited. Start typing your library system's name to find it.</p>
 
-      <!-- Searchable picker over US library systems -->
+      <!-- Country selector: swaps which systems list the picker searches -->
+      <div class="seg" id="country-seg">
+        <button type="button" data-country="US" class="active">🇺🇸 United States</button>
+        <button type="button" data-country="CA">🇨🇦 Canada</button>
+      </div>
+
+      <!-- Searchable picker over the selected country's library systems -->
       <div class="field" id="field-picker">
         <label>Find your library system</label>
         <div class="combo">
           <input id="in-search" type="text" placeholder="e.g. Seattle, King County, New York…" autocomplete="off" role="combobox" aria-expanded="false" aria-controls="suggest" />
           <div id="suggest" class="suggest" role="listbox"></div>
         </div>
-        <div class="hint" id="picker-hint">Searching US library systems from OpenStreetMap.</div>
+        <div class="hint" id="picker-hint">Searching library systems from OpenStreetMap.</div>
       </div>
 
-      <!-- Manual fallback for systems not in the list (or outside the US) -->
+      <!-- Manual fallback for systems not in the list (or in another country) -->
       <details class="manual" id="manual">
         <summary>Can't find it? Enter it manually</summary>
         <div class="seg" id="mode-seg">

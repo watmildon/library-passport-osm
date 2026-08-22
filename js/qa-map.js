@@ -29,6 +29,14 @@
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/+esm';
 import { MAP_STYLE, OVERPASS_TIMEOUT_MS } from './config.js';
 import { JOSM, bboxAround, josmSend, fetchTagsBatch, webEditObjectUrl, webEditAtUrl } from './josm.js';
+import { country } from './countries.js';
+
+// Active country: ?country=CA loads the Canadian QA dataset. An unknown code
+// falls back to the default (US) rather than breaking the page.
+const COUNTRY = (() => {
+  try { return country(new URL(location.href).searchParams.get('country')?.toUpperCase()); }
+  catch { return country(); }
+})();
 
 const $ = sel => document.querySelector(sel);
 
@@ -57,21 +65,24 @@ const fmt = n => n.toLocaleString();
 // ---------------- Issue types ----------------
 // Array order is also click/list priority (topmost pin type wins a click).
 // `on` is the default; the URL hash overrides it.
+// CENSUS names the country's outlet census in hints (IMLS PLS for the US,
+// provincial open data for Canada).
+const CENSUS = COUNTRY.census;
 const TYPES = [
   { id: 'unnamed',  label: 'Unnamed',          color: '#a98307', on: true,
     hint: 'A library with no name tag at all – needs a person to find the real name (system branch list, website, imagery, or a visit)' },
   { id: 'missing',  label: 'Missing',          color: '#d1434f', on: true,
-    hint: 'IMLS PLS lists a branch here but OSM has no library within 200 m – likely needs creating' },
+    hint: `${CENSUS.name} lists a branch here but OSM has no library within 200 m – likely needs creating` },
   { id: 'opconflict', label: 'Operator conflict', color: '#c23a94', on: true,
-    hint: 'Signals disagree – the existing operator tag conflicts with the PLS match, or operator:wikidata contradicts the library’s own Wikidata item. Needs a person to judge' },
+    hint: `Signals disagree – the existing operator tag conflicts with the ${CENSUS.short} match, or operator:wikidata contradicts the library’s own Wikidata item. Needs a person to judge` },
   { id: 'operator', label: 'Add operator', color: '#e8872e', on: true,
-    hint: 'No operator tag, with a high-probability suggestion – from the IMLS PLS crosswalk or the library’s own Wikidata item' },
+    hint: `No operator tag, with a high-probability suggestion – from the ${CENSUS.name} crosswalk or the library’s own Wikidata item` },
   { id: 'gaps',     label: 'Incomplete Tags',  color: '#2f8f85', on: false,
     hint: 'Libraries missing everyday tags – choose which tags below' },
   { id: 'unmatched', label: 'System not in OSM', color: '#8c5a3c', on: false,
-    hint: 'A multi-outlet PLS system with NO operator tags on any of its branches – unmapped, or purely additive tagging work' },
+    hint: `A multi-outlet ${CENSUS.short} system with NO operator tags on any of its branches – unmapped, or purely additive tagging work` },
   { id: 'sysmixed', label: 'System ambiguous', color: '#5a7d9a', on: false,
-    hint: 'A multi-outlet PLS system whose branches already carry OTHER operator tags – a federated cooperative, a rename, or fragmented spellings. Needs a person to judge' }
+    hint: `A multi-outlet ${CENSUS.short} system whose branches already carry OTHER operator tags – a federated cooperative, a rename, or fragmented spellings. Needs a person to judge` }
 ];
 const TYPE_BY_ID = new Map(TYPES.map(t => [t.id, t]));
 const priority = id => TYPES.findIndex(t => t.id === id);
@@ -340,8 +351,8 @@ function initMap(view, sourceDateLabel) {
   state.map = new maplibregl.Map({
     container: 'map',
     style: MAP_STYLE,
-    center: view ? [view.lon, view.lat] : [-98, 40],
-    zoom: view ? view.z : 4,
+    center: view ? [view.lon, view.lat] : COUNTRY.mapCenter,
+    zoom: view ? view.z : COUNTRY.mapZoom,
     // The issue data's snapshot date lives with the other data credits.
     attributionControl: sourceDateLabel
       ? { customAttribution: `Issue data as of ${sourceDateLabel}` }
@@ -513,7 +524,7 @@ function popupHtml(type, it) {
       if (it.sysName && !/^Q\d+$/.test(it.sysName)) sug.operator = it.sysName;
       if (it.qid && it.qidConfirmed) sug['operator:wikidata'] = it.qid;
       source = (it.plsName && it.plsName !== it.name
-        ? `<div class="r"><span class="k">PLS</span><span>${escapeHtml(it.plsName)}</span></div>` : '') + qidRow(it);
+        ? `<div class="r"><span class="k">${escapeHtml(CENSUS.short)}</span><span>${escapeHtml(it.plsName)}</span></div>` : '') + qidRow(it);
     }
     return head('<span class="qm-badge" style="--c:#e8872e">no operator tag</span>') + `
       <div class="pop-body">
@@ -531,7 +542,7 @@ function popupHtml(type, it) {
          <div class="r"><span class="k">item</span><span>But its own item ${wdLink(it.ownQ)} says
           ${escapeHtml(it.prop)}: ${escapeHtml(it.parentName || '')} ${wdLink(it.parentQ)}</span></div>`
       : `<div class="r"><span class="k">⚠</span><span>OSM already has a different operator tag,
-          but PLS matches this library to “${escapeHtml(it.sysName)}”. Check which is right.</span></div>` + qidRow(it);
+          but the ${escapeHtml(CENSUS.short)} matches this library to “${escapeHtml(it.sysName)}”. Check which is right.</span></div>` + qidRow(it);
     return head('<span class="qm-badge" style="--c:#c23a94">conflicting signals</span>') + `
       <div class="pop-body">
         ${body}
@@ -550,7 +561,7 @@ function popupHtml(type, it) {
       ? `<span class="qm-badge" style="--c:#9a7d00">${it.near}/${it.outlets} buildings likely in OSM</span>`
       : '<span class="qm-badge" style="--c:#d1434f">0 outlets found in OSM</span>') + `
       <div class="pop-body">
-        <div class="r"><span class="k">📍</span><span>${escapeHtml(it.state)} · ${it.outlets} PLS outlets · <span class="pls-geo">${escapeHtml(it.fscskey)}</span></span></div>
+        <div class="r"><span class="k">📍</span><span>${escapeHtml(it.state)} · ${it.outlets} ${escapeHtml(CENSUS.short)} outlets · <span class="pls-geo">${escapeHtml(it.fscskey)}</span></span></div>
         <div class="qa-note" style="margin:8px 0 0">${note}</div>
         ${it.pts.length ? `<div class="qm-outlet-list">${it.pts.map((p, i) => `
           <div class="qm-outlet" data-i="${i}" title="Click to zoom here">
@@ -826,7 +837,7 @@ function renderList() {
     if (t.id === 'operator') return it.sysName ? `add operator → ${it.sysName}` : 'add operator tag';
     if (t.id === 'opconflict') return it.kind === 'wdc'
       ? `tagged “${it.taggedName || it.taggedQ}”, item says “${it.parentName || it.parentQ}”`
-      : `operator differs from PLS match “${it.sysName}”`;
+      : `operator differs from ${CENSUS.short} match “${it.sysName}”`;
     if (t.id === 'unnamed') return [it.sysName, 'needs a name'].filter(Boolean).join(' · ');
     if (t.id === 'unmatched') return `${it.state} · ${it.outlets} outlets · ${it.near}/${it.outlets} in OSM`;
     if (t.id === 'sysmixed') return `${it.state} · tagged as ${it.ops.slice(0, 2).join(', ')}${it.ops.length > 2 ? ` +${it.ops.length - 2}` : ''}`;
@@ -937,9 +948,18 @@ async function boot() {
   setupPrefs();
   setupCollapse();
 
+  // Keep the dashboard link on the same country; the Augment page is backed by
+  // the US-only PLS census, so hide it elsewhere.
+  if (COUNTRY.code !== 'US') {
+    const dash = document.querySelector('a[href="./qa.html"]');
+    if (dash) dash.href = `./qa.html?country=${COUNTRY.code}`;
+    const aug = document.querySelector('a[href="./augment.html"]');
+    if (aug) aug.style.display = 'none';
+  }
+
   let data;
   try {
-    const res = await fetch('./data/qa-data.json');
+    const res = await fetch('./' + COUNTRY.qaFile);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     data = await res.json();
   } catch (e) {

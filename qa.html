@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Library Passport · Data QA</title>
-  <meta name="description" content="Data-quality dashboard for US library data in OpenStreetMap – find missing tags, wikidata gaps, and likely typos." />
+  <meta name="description" content="Data-quality dashboard for library data in OpenStreetMap – find missing tags, wikidata gaps, and likely typos." />
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔧</text></svg>" />
   <link rel="stylesheet" href="./css/styles.css" />
 </head>
@@ -14,9 +14,13 @@
     <div class="qa-head-inner">
       <div class="qa-title">
         <h1>🔧 Library Data QA</h1>
+        <div class="qa-country" id="country-toggle">
+          <a href="./qa.html" data-country="US">🇺🇸 US</a>
+          <a href="./qa.html?country=CA" data-country="CA">🇨🇦 Canada</a>
+        </div>
         <a class="qa-back" href="./index.html">← Library Passport</a>
       </div>
-      <p class="qa-sub">Help improve US library data in <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap</a>.
+      <p class="qa-sub">Help improve library data in <a href="https://www.openstreetmap.org/" target="_blank" rel="noopener">OpenStreetMap</a>.
         Find missing tags, wikidata gaps, and likely typos – then fix them in the editor.</p>
       <div class="qa-editor-pick">
         <label for="editor-select">Open edit links in:</label>
@@ -59,7 +63,7 @@
       <summary><h2>Overview</h2></summary>
       <div class="qa-tiles" id="tiles"></div>
 
-      <h3>Tag completion – all US libraries</h3>
+      <h3>Tag completion – all libraries</h3>
       <div class="qa-meters" id="us-meters"></div>
       <p class="qa-note">Use <a href="#explorer">System explorer → Load live details</a> to see a
         system's current tag values live from OSM.</p>
@@ -95,7 +99,8 @@
       <summary><h2>Shared operators, different places</h2></summary>
       <p class="qa-note"><code>operator</code> values whose libraries form well-separated geographic groups – likely
         <em>distinct systems sharing an operator name</em>, making them the highest-value
-        <code>operator:wikidata</code> targets. (Groups are split when branches sit more than ~120&nbsp;km apart;
+        <code>operator:wikidata</code> targets. (Groups are split when branches sit unusually far apart
+        for the country – ~120&nbsp;km in the US, ~300&nbsp;km or a provincial border in Canada;
         a few may be genuine multi-region operators – judge each.)</p>
       <div id="ambiguous-list"></div>
     </details>
@@ -258,6 +263,7 @@
   <footer class="qa-foot">
     Data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> ·
     refreshed daily via <a href="https://wiki.openstreetmap.org/wiki/Overpass_API" target="_blank" rel="noopener">Overpass</a> ·
+    <a href="https://github.com/watmildon/library-passport-osm/blob/main/ATTRIBUTION.md" target="_blank" rel="noopener">data sources &amp; licences</a> ·
     <a href="./index.html">Library Passport</a>
   </footer>
 

@@ -31,26 +31,39 @@ const REF = refArg >= 0 ? process.argv[refArg + 1] : 'HEAD';
 
 // Per-file, per-section identity. Every key must be derived from the record's
 // own content, never from its position in the array.
+const QA_SECTIONS = {
+  systems:      s => s.k ?? s.n,
+  libs:         r => r[1] + r[2],              // OSM type + id
+  collisions:   c => `${c.a} ${c.b}`,
+  ambiguous:    a => a.n,
+  domains:      d => d.d,
+  wdOperators:  g => g.pq,
+  wdConflicts:  g => `${g.tw} ${g.pq}`,
+  pls:          p => p.sysKey,
+  plsUnmatched: u => u.fscskey,
+  augment:      a => a.sysKey
+};
+
 const FILES = [
+  { path: 'data/qa-data.json',    label: 'qa-data',    sections: QA_SECTIONS },
+  { path: 'data/ca-qa-data.json', label: 'ca-qa-data', sections: QA_SECTIONS },
   {
-    path: 'data/qa-data.json',
-    label: 'qa-data',
+    path: 'data/ca-library-outlets.json',
+    label: 'ca-library-outlets',
     sections: {
-      systems:      s => s.k ?? s.n,
-      libs:         r => r[1] + r[2],              // OSM type + id
-      collisions:   c => `${c.a} ${c.b}`,
-      ambiguous:    a => a.n,
-      domains:      d => d.d,
-      wdOperators:  g => g.pq,
-      wdConflicts:  g => `${g.tw} ${g.pq}`,
-      pls:          p => p.sysKey,
-      plsUnmatched: u => u.fscskey,
-      augment:      a => a.sysKey
+      outlets: o => o.id
     }
   },
   {
     path: 'data/us-library-systems.json',
     label: 'us-library-systems',
+    sections: {
+      systems: s => `${s.mode} ${s.value}`
+    }
+  },
+  {
+    path: 'data/ca-library-systems.json',
+    label: 'ca-library-systems',
     sections: {
       systems: s => `${s.mode} ${s.value}`
     }
@@ -61,8 +74,11 @@ const FILES = [
 // shallow checkout, not a git repo — all fine, we just have nothing to compare).
 function committed(path) {
   try {
+    // stderr is piped (not inherited) so a file new to the ref doesn't print
+    // git's "exists on disk, but not in HEAD" noise — it's an expected case.
     return JSON.parse(execFileSync('git', ['show', `${REF}:${path}`], {
-      cwd: ROOT, encoding: 'utf8', maxBuffer: 512 * 1024 * 1024
+      cwd: ROOT, encoding: 'utf8', maxBuffer: 512 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe']
     }));
   } catch {
     return null;

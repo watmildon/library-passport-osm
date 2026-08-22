@@ -34,20 +34,29 @@ to override), so a rerun or an out-of-order job never clobbers fresher data.
 The [`update-systems`](../.github/workflows/update-systems.yml) workflow
 applies the same gate up front (`force: true` input overrides).
 
-## `refresh-systems.mjs` — systems list (Overpass, primary)
+## `refresh-systems.mjs` — systems lists (Overpass, primary)
 
-Regenerates `../data/us-library-systems.json` from live OSM, sharing all
-aggregation/labelling/output with `build-systems.mjs` (via `systems-core.mjs`)
-so the file shape is identical regardless of path.
+Regenerates a country's systems file — `../data/us-library-systems.json` by
+default, `../data/ca-library-systems.json` with `--country=CA` — from live OSM,
+sharing all aggregation/labelling/output with `build-systems.mjs` (via
+`systems-core.mjs`) so the file shape is identical regardless of path.
 
 ```sh
-npm run refresh:systems           # gated on data freshness
-node scripts/refresh-systems.mjs --force   # ignore the gate
+npm run refresh:systems           # gated on data freshness (US)
+node scripts/refresh-systems.mjs --force        # ignore the gate
+node scripts/refresh-systems.mjs --country=CA   # Canada
 ```
 
-- US-scoped with `area(3600148838)` (the same US boundary relation Layercake
-  uses), so counts stay consistent across source paths.
-- Refuses to write when fewer than 10,000 libraries come back (gutted response).
+- Country-scoped with `area(<boundary relation + 3600000000>)`; per-country
+  boundary relations, file paths, and sanity floors live in
+  [`../js/countries.js`](../js/countries.js) (US: relation 148838, matching
+  Layercake, so counts stay consistent across source paths; CA: relation
+  1428125).
+- Refuses to write when fewer libraries come back than the country's
+  `minLibraries` floor (US 10,000, CA 1,000) — a gutted response, not a real
+  shrink.
+- Wikidata label enrichment prefers English labels and falls back to French
+  (many Quebec systems only have a French label).
 
 ## `build-pls.mjs` — IMLS PLS outlet data
 
@@ -68,15 +77,62 @@ Aug 2025); the build is gated on the fiscal year, so a rerun on the same release
 is a no-op. When a new FY is published, bump `PLS_FY` and `PLS_ZIP_URL` in
 `build-pls.mjs`.
 
+## `build-ca-outlets.mjs` — Canadian outlet data
+
+Regenerates `../data/ca-library-outlets.json`, the Canadian counterpart of
+`pls-outlets.json` (Canada has no federal IMLS-PLS equivalent; library data is
+provincial). Assembled per province from open data; only provinces with
+authoritative per-branch coordinates are included:
+
+- **BC** — the BC Geographic Warehouse's Geographic Sites Registry layer of
+  public-library service points (`GSR_PUBLIC_LIBRARY_LOCS_SV`, ~250 points,
+  continuously maintained), fetched as GeoJSON over WFS. Licence: Open
+  Government Licence – British Columbia.
+- **ON** — the single-location systems from the Annual Survey of Public
+  Libraries (system-level rows carry a street address but no coordinates, so
+  systems reporting exactly one service point are ingested with their address
+  geocoded; multi-branch systems wait for a branch-level source). Licence:
+  Open Government Licence – Ontario.
+- **QC/AB/NS** — blocked on data: Quebec's survey has no addresses, Alberta
+  publishes a PDF directory, Nova Scotia retired its branches dataset.
+
+**Geocoding** is one-time via OpenCage into the committed cache
+`../data/ca-geocode-cache.json` — reruns (including CI, which has no key) make
+no API calls. The key is a secret: `OPENCAGE_KEY` env var or the gitignored
+`.opencage-key` file, never printed or committed. Only point-precision results
+(a building or a matched POI; road-level as a fallback) become outlets — an
+area centroid would fabricate false "missing branch" findings.
+
+```sh
+npm run build:outlets:ca
+node scripts/build-ca-outlets.mjs --force   # ignore the freshness gate
+```
+
+The output shape mirrors `pls-outlets.json` so `pls-match.mjs`/`build-qa.mjs`
+consume it unchanged. `fscskey` holds a stable synthetic system key
+(`BC-<system-slug>`), not a US FSCS id — the matcher only uses it as an opaque
+grouping key. `geo`/`geomtype` are `'E'`/`'POINTADDRESS'` for registry points,
+which `isPreciseGeocode()` accepts, enabling addr suggestions.
+
 ## `build-qa.mjs` — Data QA dataset
 
-Regenerates [`../data/qa-data.json`](../data/qa-data.json), the dataset behind
-[`qa.html`](../qa.html) (the Data QA page).
+Regenerates a country's QA dataset — [`../data/qa-data.json`](../data/qa-data.json)
+by default, `../data/ca-qa-data.json` with `--country=CA` — the data behind
+[`qa.html`](../qa.html) (the Data QA page, `?country=CA` for the Canadian view).
 
 ```sh
 node scripts/build-qa.mjs               # Overpass (primary) when an endpoint is configured
-node scripts/build-qa.mjs --layercake   # force the Layercake/DuckDB fallback
+node scripts/build-qa.mjs --country=CA  # Canada (Overpass only)
+node scripts/build-qa.mjs --layercake   # force the Layercake/DuckDB fallback (US only)
 ```
+
+The outlet-census stages (PLS matching + augment) run against the country's
+`outletsFile` from [`../js/countries.js`](../js/countries.js): the IMLS PLS
+census for the US, the provincially-assembled `ca-library-outlets.json` for
+Canada (BC only so far — Canadian findings cover just the provinces ingested).
+A country with `outletsFile: null` skips those stages; the `pls`,
+`plsUnmatched`, and `augment` sections come out empty and the QA page hides
+those panes.
 
 **Primary path (Overpass):** two queries — every US library with full tags
 (`out center tags`, ~19k elements) and a per-state assignment (one `foreach`
@@ -414,5 +470,7 @@ picker searches `name`; `mode` + `value` become the Overpass selector on load.
   library systems (e.g. a county government). That reflects the raw OSM data; the
   list surfaces whatever is tagged.
 - To refresh, just re-run — the `meta.generated` date updates automatically.
-- To target a different country, change the boundary relation id in the SQL and
-  the longitude/latitude prefilter ranges to match.
+- This Layercake path is **US-only** (the extract covers the US). Other
+  countries are served by the Overpass path: add an entry to
+  [`../js/countries.js`](../js/countries.js) and run
+  `node scripts/refresh-systems.mjs --country=XX`.
