@@ -229,6 +229,14 @@ body.qa-page { height: auto; background: var(--bg); }
 }
 .qa-country a:hover { color: #fff; border-color: rgba(255,255,255,0.7); }
 .qa-country a.active { background: rgba(255,255,255,0.18); color: #fff; border-color: #fff; }
+/* Same toggle on the QA map's light floating panel. */
+.qm-country { display: inline-flex; gap: 6px; margin-top: 6px; }
+.qm-country a {
+  padding: 2px 10px; border: 1px solid var(--border); border-radius: 999px;
+  font-size: 12px; font-weight: 600; text-decoration: none; color: var(--muted);
+}
+.qm-country a:hover { color: var(--accent); border-color: var(--accent); }
+.qm-country a.active { color: var(--accent); border-color: var(--accent); background: rgba(0,119,187,0.06); }
 .qa-sub { margin: 8px 0 4px; max-width: 640px; font-size: 15px; line-height: 1.45; color: rgba(255,255,255,0.92); }
 .qa-sub a { color: #fff; }
 .qa-editor-pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 8px 0 6px; font-size: 13px; color: rgba(255,255,255,0.9); }
