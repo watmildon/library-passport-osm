@@ -1,0 +1,986 @@
+{
+ "- P.O. Box 160, Gogama, Ontario, P0M1W0, Canada": {
+  "lat": 47.69299,
+  "lon": -81.69378,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "1 27th St 250, Virginiatown, Ontario, P0K1X0, Canada": {
+  "lat": 48.13304,
+  "lon": -79.58421,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "1 John Street Box 100, Killaloe, Ontario, K0J2A0, Canada": {
+  "lat": 45.57558,
+  "lon": -77.45839,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "10 Anderson Lane, Niagara-on-the-Lake, Ontario, L0S1J0, Canada": {
+  "lat": 43.21614,
+  "lon": -79.11329,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "10 Kirkland Street East, Kirkland Lake, Ontario, P2N1P1, Canada": {
+  "lat": 48.15101,
+  "lon": -80.03046,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "10 Main Street, Iron Bridge, Ontario, P0R1H0, Canada": {
+  "lat": 46.27638,
+  "lon": -83.26315,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "100 Park Street, Gananoque, Ontario, K7G2Y5, Canada": {
+  "lat": 44.32812,
+  "lon": -76.16499,
+  "conf": 9,
+  "type": "library"
+ },
+ "101 Beckwith Street, Carleton Place, Ontario, K7C2T3, Canada": {
+  "lat": 45.1397,
+  "lon": -76.14394,
+  "conf": 9,
+  "type": "library"
+ },
+ "105 St. Andrew St., Mitchell, Ontario, N0K1N0, Canada": {
+  "lat": 43.46622,
+  "lon": -81.19648,
+  "conf": 9,
+  "type": "library"
+ },
+ "106 Government Rd, Val Rita, Ontario, P0L2G0, Canada": {
+  "lat": 49.44231,
+  "lon": -82.53595,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "11 Sykes St North, Meaford, Ontario, N4L1V6, Canada": {
+  "lat": 44.60657,
+  "lon": -80.59144,
+  "conf": 10,
+  "type": "building"
+ },
+ "110 Main Street, Sundridge, Ontario, P0A1Z0, Canada": {
+  "lat": 45.77183,
+  "lon": -79.38895,
+  "conf": 10,
+  "type": "building"
+ },
+ "120 Glenwood Drive, Wasaga Beach, Ontario, L9Z2K5, Canada": {
+  "lat": 44.51949,
+  "lon": -80.01743,
+  "conf": 10,
+  "type": "building"
+ },
+ "120 rue Magpie, Dubreuilville, Ontario, P0S1B0, Canada": {
+  "lat": 48.34794,
+  "lon": -84.55119,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "123 Superior Street, White River, Ontario, P0M3G0, Canada": {
+  "lat": 48.59774,
+  "lon": -85.27682,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "124 Fort Stewart Road, Bancroft, Ontario, K0L1C0, Canada": {
+  "lat": 45.11368,
+  "lon": -77.63077,
+  "conf": 9,
+  "type": "school"
+ },
+ "1240 Richards Street, Richards Landing, Ontario, P0R1J0, Canada": {
+  "lat": 46.29125,
+  "lon": -84.03414,
+  "conf": 10,
+  "type": "building"
+ },
+ "1257 Village Road, Astorville, Ontario, P0H1B0, Canada": {
+  "lat": 46.18016,
+  "lon": -79.26547,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "12629 Lanark Road P.O. Box 160, Calabogie, Ontario, K0J1H0, Canada": {
+  "lat": 45.30146,
+  "lon": -76.72307,
+  "conf": 9,
+  "type": "school"
+ },
+ "13 Railway Avenue, Renfrew, Ontario, K7V3A9, Canada": {
+  "lat": 45.47261,
+  "lon": -76.68451,
+  "conf": 9,
+  "type": "library"
+ },
+ "13 Selkirk Avenue, Terrace Bay, Ontario, P0T2W0, Canada": {
+  "lat": 48.78488,
+  "lon": -87.09979,
+  "conf": 10,
+  "type": "building"
+ },
+ "136 Tecumseh Road, Wallaceburg, Ontario, N8A4K9, Canada": {
+  "lat": 42.59632,
+  "lon": -82.49416,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "14 Flint Street, Bancroft, Ontario, K0L1C0, Canada": {
+  "lat": 45.06296,
+  "lon": -77.88062,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "148 Village Rd., Blind River, Ontario, P0R1B0, Canada": {
+  "lat": 46.20037,
+  "lon": -82.95116,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "15 Church St. North, St. Marys, Ontario, N4X1B4, Canada": {
+  "lat": 43.2582,
+  "lon": -81.13829,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "15 Low Avenue, Gogama, Ontario, P0M1W0, Canada": {
+  "lat": 47.67603,
+  "lon": -81.71956,
+  "conf": 10,
+  "type": "building"
+ },
+ "15 Township Hall Road, Stonecliffe, Ontario, K0J2K0, Canada": {
+  "lat": 46.20556,
+  "lon": -77.88609,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "15 Water Street, Gore Bay, Ontario, P0P1H0, Canada": {
+  "lat": 45.9167,
+  "lon": -82.46351,
+  "conf": 10,
+  "type": "building"
+ },
+ "150 Mkade Kegwin MIIkan, Christian Island, Ontario, L9M0A9, Canada": {
+  "lat": 44.82213,
+  "lon": -80.18297,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "1508 Lane G Geewadin Rd, Parry Sound, Ontario, P2A2X4, Canada": {
+  "lat": 45.3264,
+  "lon": -80.04036,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "153 Curtis Street, St. Thomas, Ontario, N5P3Z7, Canada": {
+  "lat": 42.78,
+  "lon": -81.1926,
+  "conf": 9,
+  "type": "library"
+ },
+ "16 Civic Centre Road, Petawawa, Ontario, K8H3H5, Canada": {
+  "lat": 45.89395,
+  "lon": -77.25991,
+  "conf": 9,
+  "type": "dog_park"
+ },
+ "1657 A Mishomis Inamo, Golden Lake, Ontario, K0J1X0, Canada": {
+  "lat": 45.60099,
+  "lon": -77.2996,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "1658 York Road, Tyendinaga Mohawk Territory, Ontario, K0K1X0, Canada": {
+  "lat": 44.19439,
+  "lon": -77.08352,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "1679 Chiefswood Road, Ohsweken, Ontario, N0A1M0, Canada": {
+  "lat": 43.06973,
+  "lon": -80.11767,
+  "conf": 10,
+  "type": "building"
+ },
+ "170 Dorion Loop Road, Dorion, Ontario, P0T1K0, Canada": {
+  "lat": 48.82856,
+  "lon": -88.5352,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "173 Bruce Street South, Thornbury, Ontario, N0H2P0, Canada": {
+  "lat": 44.55424,
+  "lon": -80.4604,
+  "conf": 9,
+  "type": "library"
+ },
+ "178 Fourth Avenue, Cochrane, Ontario, P0L1C0, Canada": {
+  "lat": 49.07004,
+  "lon": -81.02018,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "18 Carnegie Lane, Grimsby, Ontario, L3M1Y1, Canada": {
+  "lat": 43.19529,
+  "lon": -79.55939,
+  "conf": 10,
+  "type": "building"
+ },
+ "18 Lakeview Drive, M'Chigeeng First Nation, Ontario, P0P1G0, Canada": {
+  "lat": 45.81264,
+  "lon": -82.16425,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "18 Upper Street P.O. Box 37, Kagawong, Ontario, P0P1J0, Canada": {
+  "lat": 45.90667,
+  "lon": -82.25819,
+  "conf": 10,
+  "type": "building"
+ },
+ "180 Sharpe Street West, Gravenhurst, Ontario, P1P1J1, Canada": {
+  "lat": 44.91768,
+  "lon": -79.37442,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "181 Pickerel River Road, Pickerel, Ontario, P0G1J0, Canada": {
+  "lat": 45.91206,
+  "lon": -80.47522,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "187 Main Street, Thessalon, Ontario, P0R1L0, Canada": {
+  "lat": 46.25692,
+  "lon": -83.55639,
+  "conf": 9,
+  "type": "townhall"
+ },
+ "189 Balmoral Ave, Mattice, Ontario, P0L1T0, Canada": {
+  "lat": 49.60922,
+  "lon": -83.26151,
+  "conf": 9,
+  "type": "school"
+ },
+ "19 Mill Street East, Milverton, Ontario, N0K1M0, Canada": {
+  "lat": 43.56447,
+  "lon": -80.92025,
+  "conf": 9,
+  "type": "library"
+ },
+ "19 St. Andrew Street, Stratford, Ontario, N5A1A2, Canada": {
+  "lat": 43.37091,
+  "lon": -80.98525,
+  "conf": 9,
+  "type": "library"
+ },
+ "19474 Opeongo Line, Barry's Bay, Ontario, K0J1B0, Canada": {
+  "lat": 45.48797,
+  "lon": -77.67464,
+  "conf": 9,
+  "type": "library"
+ },
+ "195 Village Road, Cutler, Ontario, P0P1B0, Canada": {
+  "lat": 46.20491,
+  "lon": -82.46936,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "2 Manitou Rd, Manitouwadge, Ontario, P0T2C0, Canada": {
+  "lat": 49.12625,
+  "lon": -85.83397,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "2 Park Drive, Stouffville, Ontario, L4A4K1, Canada": {
+  "lat": 43.96699,
+  "lon": -79.24457,
+  "conf": 10,
+  "type": "building"
+ },
+ "2 Willow Crescent, Ear Falls, Ontario, P0V1T0, Canada": {
+  "lat": 50.64226,
+  "lon": -93.2416,
+  "conf": 9,
+  "type": "townhall"
+ },
+ "20 Davidson Street, Madoc, Ontario, K0K2K0, Canada": {
+  "lat": 44.50637,
+  "lon": -77.47146,
+  "conf": 10,
+  "type": "building"
+ },
+ "20 Pine West 910, Chapleau, Ontario, P0M1K0, Canada": {
+  "lat": 47.84443,
+  "lon": -83.40424,
+  "conf": 10,
+  "type": "building"
+ },
+ "201 Owen Sound St., Shelburne, Ontario, L9V3L2, Canada": {
+  "lat": 44.07948,
+  "lon": -80.20481,
+  "conf": 9,
+  "type": "retail"
+ },
+ "21 Fifth Avenue, Sioux Lookout, Ontario, P8T1B3, Canada": {
+  "lat": 50.10031,
+  "lon": -91.91589,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "21 Madawaska Street, Arnprior, Ontario, K7S1R6, Canada": {
+  "lat": 45.435,
+  "lon": -76.35221,
+  "conf": 9,
+  "type": "library"
+ },
+ "21 Rabbit Drive, Heron Bay, Ontario, P0T1R0, Canada": {
+  "lat": 48.63299,
+  "lon": -86.27395,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "214 Sykes St., Atikokan, Ontario, P0T1C0, Canada": {
+  "lat": 48.76226,
+  "lon": -91.61471,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "2149 Hwy 620, Coe Hill, Ontario, K0L1P0, Canada": {
+  "lat": 44.86252,
+  "lon": -77.83106,
+  "conf": 9,
+  "type": "school"
+ },
+ "22 Peninsula Road, Marathon, Ontario, P0T2E0, Canada": {
+  "lat": 48.71782,
+  "lon": -86.3781,
+  "conf": 10,
+  "type": "building"
+ },
+ "22 St Anne St, Fabien Gauthier Business Ctr, St. Charles, Ontario, P0M2W0, Canada": {
+  "lat": 46.35084,
+  "lon": -80.42533,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "2206 Highway 124, Dunchurch, Ontario, P0A1G0, Canada": {
+  "lat": 45.64592,
+  "lon": -79.8539,
+  "conf": 10,
+  "type": "building"
+ },
+ "23 Buell Street, Brockville, Ontario, K6V5T7, Canada": {
+  "lat": 44.58935,
+  "lon": -75.68626,
+  "conf": 9,
+  "type": "library"
+ },
+ "230 Metcalf Street, Tweed, Ontario, K0K3J0, Canada": {
+  "lat": 44.47655,
+  "lon": -77.31378,
+  "conf": 10,
+  "type": "building"
+ },
+ "231 Water Street, Port Perry, Ontario, L9L1A8, Canada": {
+  "lat": 44.10751,
+  "lon": -78.94262,
+  "conf": 10,
+  "type": "building"
+ },
+ "237 Victoria Street, Pembroke, Ontario, K8A4K5, Canada": {
+  "lat": 45.82538,
+  "lon": -77.11286,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "24 Semo Road, Garden Village, Ontario, P2B3K2, Canada": {
+  "lat": 46.3236,
+  "lon": -79.87136,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "24 Simcoe Street, Penetanguishene, Ontario, L9M1R6, Canada": {
+  "lat": 44.77008,
+  "lon": -79.93259,
+  "conf": 10,
+  "type": "building"
+ },
+ "245 Avery Drive, Espanola, Ontario, P5E1S4, Canada": {
+  "lat": 46.26098,
+  "lon": -81.76959,
+  "conf": 9,
+  "type": "library"
+ },
+ "25 chemin Grzela, Fauquier, Ontario, P0L1G0, Canada": {
+  "lat": 49.31047,
+  "lon": -82.03651,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "25 Joseph St, Emsdale, Ontario, P0A1J0, Canada": {
+  "lat": 45.51816,
+  "lon": -79.29275,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "25 reserve road, Whitefish First Nation, Ontario, P0M2M0, Canada": {
+  "lat": 46.39823,
+  "lon": -81.19954,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "254 Pinnacle Street, Belleville, Ontario, K8N3B1, Canada": {
+  "lat": 44.1653,
+  "lon": -77.38367,
+  "conf": 9,
+  "type": "library"
+ },
+ "25A Spragge Street Box 280, Manitowaning, Ontario, P0P1N0, Canada": {
+  "lat": 45.74576,
+  "lon": -81.83196,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "2664 Muskoka Road 38, Bala, Ontario, P0C1A0, Canada": {
+  "lat": 45.02263,
+  "lon": -79.621,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "271 Worthington Street East, North Bay, Ontario, P1B1H1, Canada": {
+  "lat": 46.3099,
+  "lon": -79.46057,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "285 Whitewood Ave. West 668, Temiskaming Shores, Ontario, P0J1P0, Canada": {
+  "lat": 47.52321,
+  "lon": -79.6797,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "29 Mary Street, Parry Sound, Ontario, P2A1E3, Canada": {
+  "lat": 45.34591,
+  "lon": -80.03558,
+  "conf": 9,
+  "type": "library"
+ },
+ "30 Catherine Street P. O. Box 149, Callander, Ontario, P0H1H0, Canada": {
+  "lat": 46.22348,
+  "lon": -79.36595,
+  "conf": 9,
+  "type": "library"
+ },
+ "3042 Second Line West RR6, Prince Township, Ontario, P6A6K4, Canada": {
+  "lat": 46.53001,
+  "lon": -84.51802,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "3085 Marks Street, Hilton Beach, Ontario, P0R1G0, Canada": {
+  "lat": 46.25726,
+  "lon": -83.89028,
+  "conf": 10,
+  "type": "building"
+ },
+ "31 Coldwater Road, Coldwater, Ontario, L0K1E0, Canada": {
+  "lat": 44.69508,
+  "lon": -79.62672,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "314 Scotia Street, Schreiber, Ontario, P0T2S0, Canada": {
+  "lat": 48.80817,
+  "lon": -87.2684,
+  "conf": 10,
+  "type": "building"
+ },
+ "31909 Park Street, Wainfleet, Ontario, L0S1V0, Canada": {
+  "lat": 42.90859,
+  "lon": -79.38151,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "32 Dunnette Landing Road, Roseneath, Ontario, K0K2X0, Canada": {
+  "lat": 44.17972,
+  "lon": -78.07833,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "324 Clark Street, Powassan, Ontario, P0H1Z0, Canada": {
+  "lat": 46.08186,
+  "lon": -79.36537,
+  "conf": 9,
+  "type": "library"
+ },
+ "33 Desbarats Street, Bruce Mines, Ontario, P0R1C0, Canada": {
+  "lat": 46.30222,
+  "lon": -83.78913,
+  "conf": 10,
+  "type": "building"
+ },
+ "33011 Hwy. #62 North, Maynooth, Ontario, K0L2S0, Canada": {
+  "lat": 45.21809,
+  "lon": -77.93013,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "345 Aylmer Street North, Peterborough, Ontario, K9H3V7, Canada": {
+  "lat": 44.30365,
+  "lon": -78.32328,
+  "conf": 10,
+  "type": "building"
+ },
+ "35 10th Street C.P. 39, Earlton, Ontario, P0J1E0, Canada": {
+  "lat": 47.7134,
+  "lon": -79.815,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "358 Main Street   P.O. Box 302, Deseronto, Ontario, K0K1X0, Canada": {
+  "lat": 44.19538,
+  "lon": -77.04739,
+  "conf": 10,
+  "type": "building"
+ },
+ "36 Main Street, Ignace, Ontario, P0T1T0, Canada": {
+  "lat": 49.40962,
+  "lon": -91.65895,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "36 Mississaga St W, Orillia, Ontario, L3V3A6, Canada": {
+  "lat": 44.60795,
+  "lon": -79.4208,
+  "conf": 10,
+  "type": "building"
+ },
+ "360 Dibble Street West, Prescott, Ontario, K0E1T0, Canada": {
+  "lat": 44.70942,
+  "lon": -75.5189,
+  "conf": 9,
+  "type": "library"
+ },
+ "365 Highway 531, Bonfield, Ontario, P0H1E0, Canada": {
+  "lat": 46.24285,
+  "lon": -79.14466,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "37 Forsyth Street, Marmora, Ontario, K0K2M0, Canada": {
+  "lat": 44.48258,
+  "lon": -77.68228,
+  "conf": 10,
+  "type": "building"
+ },
+ "370 Pine St., Mattawa, Ontario, P0H1V0, Canada": {
+  "lat": 46.31627,
+  "lon": -78.70469,
+  "conf": 9,
+  "type": "school"
+ },
+ "371 Weslemkoon Lake Road, Gilmour, Ontario, K0L1W0, Canada": {
+  "lat": 44.81972,
+  "lon": -77.61452,
+  "conf": 9,
+  "type": "townhall"
+ },
+ "39 Copeland Street, Burk's Falls, Ontario, P0A1C0, Canada": {
+  "lat": 45.61896,
+  "lon": -79.40667,
+  "conf": 10,
+  "type": "building"
+ },
+ "4 Amaranth Street East, Grand Valley, Ontario, L9W5L2, Canada": {
+  "lat": 43.89922,
+  "lon": -80.31501,
+  "conf": 10,
+  "type": "building"
+ },
+ "4-40 Hillside Drive South, Elliot Lake, Ontario, P5A1M7, Canada": {
+  "lat": 46.3833,
+  "lon": -82.64923,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "40 Broadway Ave, Wawa, Ontario, P0S1K0, Canada": {
+  "lat": 47.99641,
+  "lon": -84.77125,
+  "conf": 10,
+  "type": "building"
+ },
+ "40 Sugarbush Rd., Thessalon, Ontario, P0R1L0, Canada": {
+  "lat": 46.28033,
+  "lon": -83.5183,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "42 Salls Street, Red Rock, Ontario, P0T2P0, Canada": {
+  "lat": 48.94022,
+  "lon": -88.2607,
+  "conf": 10,
+  "type": "building"
+ },
+ "425 Holland Street West, Bradford, Ontario, L3Z0J2, Canada": {
+  "lat": 44.11294,
+  "lon": -79.58731,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "43 West Front St., Stirling, Ontario, K0K3E0, Canada": {
+  "lat": 44.29559,
+  "lon": -77.54904,
+  "conf": 10,
+  "type": "building"
+ },
+ "4304 N. Sparks St, Magnetawan, Ontario, P0A1P0, Canada": {
+  "lat": 45.64681,
+  "lon": -79.66432,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "435 4th Line Douro, Douro, Ontario, K0L1S0, Canada": {
+  "lat": 44.3693,
+  "lon": -78.19145,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "445 Hunter Street, Woodstock, Ontario, N4S4G7, Canada": {
+  "lat": 43.13165,
+  "lon": -80.75889,
+  "conf": 10,
+  "type": "building"
+ },
+ "446 Main St. W P.O. Box 460, Merrickville, Ontario, K0G1N0, Canada": {
+  "lat": 44.91612,
+  "lon": -75.84372,
+  "conf": 9,
+  "type": "library"
+ },
+ "45 Second Street East, Cornwall, Ontario, K6H1Y2, Canada": {
+  "lat": 45.01909,
+  "lon": -74.72714,
+  "conf": 9,
+  "type": "library"
+ },
+ "4500 County Rd 15, Brockville, Ontario, K6V5T2, Canada": {
+  "lat": 44.68114,
+  "lon": -75.67936,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "451 10th Avenue, Hanover, Ontario, N4N2P1, Canada": {
+  "lat": 44.15209,
+  "lon": -81.02634,
+  "conf": 10,
+  "type": "building"
+ },
+ "456 Hwy 542A, Tehkummah, Ontario, P0P2C0, Canada": {
+  "lat": 45.6399,
+  "lon": -82.0011,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "48 Syrette Lake Road, Garden River, Ontario, P6A5K9, Canada": {
+  "lat": 46.52063,
+  "lon": -84.21587,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "5 Central Street, Athens, Ontario, K0E1B0, Canada": {
+  "lat": 44.62518,
+  "lon": -75.95022,
+  "conf": 9,
+  "type": "library"
+ },
+ "50 Meredith Street West, Little Current On, Ontario, P0P1K0, Canada": {
+  "lat": 45.94092,
+  "lon": -81.97549,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "513 Beach Rd., Morson, Ontario, P0W1J0, Canada": {
+  "lat": 49.10627,
+  "lon": -94.32205,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "52 Bay of Islands Road, Birch Island, Ontario, P0P1A0, Canada": {
+  "lat": 46.06475,
+  "lon": -81.77179,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "52 Front Street, Nipigon, Ontario, P0T2J0, Canada": {
+  "lat": 49.01217,
+  "lon": -88.26322,
+  "conf": 10,
+  "type": "building"
+ },
+ "53 Avenue St-Aubin, Moonbeam, Ontario, P0L1V0, Canada": {
+  "lat": 49.34382,
+  "lon": -82.15286,
+  "conf": 10,
+  "type": "building"
+ },
+ "5346 Highway 60, Douglas, Ontario, K0J1S0, Canada": {
+  "lat": 45.5148,
+  "lon": -76.94472,
+  "conf": 9,
+  "type": "school"
+ },
+ "55 Ridge Road, Deep River, Ontario, K0J1P0, Canada": {
+  "lat": 46.10298,
+  "lon": -77.48911,
+  "conf": 9,
+  "type": "library"
+ },
+ "55 St. Marie Street, Collingwood, Ontario, L9Y0W6, Canada": {
+  "lat": 44.50094,
+  "lon": -80.2153,
+  "conf": 10,
+  "type": "building"
+ },
+ "55 Wa-Wa-Te Ave, Bear Island, Ontario, P0H1C0, Canada": {
+  "lat": 45.52526,
+  "lon": -79.61191,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "6 St Antoine Street, Opasatika, Ontario, P0L1Z0, Canada": {
+  "lat": 49.52581,
+  "lon": -82.86481,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "601 Reid Avenue, Fort Frances, Ontario, P9A0A2, Canada": {
+  "lat": 48.61159,
+  "lon": -93.38443,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "6020 Hwy 542, Mindemoya, Ontario, P0P1S0, Canada": {
+  "lat": 45.73263,
+  "lon": -82.16082,
+  "conf": 9,
+  "type": "townhall"
+ },
+ "6147 Rama Road, Rama, Ontario, L3V6H6, Canada": {
+  "lat": 44.65747,
+  "lon": -79.34947,
+  "conf": 10,
+  "type": "building"
+ },
+ "6265 Indian Lane #5, Kettle and Stony Point, Ontario, N0N1J1, Canada": {
+  "lat": 43.20029,
+  "lon": -82.00598,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "63 Marie Street, South River, Ontario, P0A1X0, Canada": {
+  "lat": 45.84102,
+  "lon": -79.38314,
+  "conf": 10,
+  "type": "building"
+ },
+ "65 Chemong Street S., Curve Lake,ON, Ontario, K0L1R0, Canada": {
+  "lat": 44.45816,
+  "lon": -78.37059,
+  "conf": 10,
+  "type": "building"
+ },
+ "68 Front Street, Hornepayne, Ontario, P0M1Z0, Canada": {
+  "lat": 49.21629,
+  "lon": -84.77792,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "69 Fourth Avenue, Larder Lake, Ontario, P0K1L0, Canada": {
+  "lat": 48.09803,
+  "lon": -79.7134,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "7 Lakeshore Drive,, Temagami, Ontario, P0H2H0, Canada": {
+  "lat": 47.0655,
+  "lon": -79.79041,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "7 Minerva Street East, Huntsville, Ontario, P1H1W4, Canada": {
+  "lat": 45.32469,
+  "lon": -79.21973,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "701 Highway 124, McKellar, Ontario, P0G1C0, Canada": {
+  "lat": 45.51085,
+  "lon": -79.92103,
+  "conf": 10,
+  "type": "building"
+ },
+ "71 Fourth Avenue, Englehart, Ontario, P0J1H0, Canada": {
+  "lat": 47.82348,
+  "lon": -79.87608,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "725 Synagogue Avenue, Iroquois Falls, Ontario, P0K1G0, Canada": {
+  "lat": 48.76056,
+  "lon": -80.71379,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "74 A Maple Street, Eganville, Ontario, K0J1T0, Canada": {
+  "lat": 45.52213,
+  "lon": -77.12117,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "75 George Street, Lanark, Ontario, K0G1K0, Canada": {
+  "lat": 45.01805,
+  "lon": -76.36469,
+  "conf": 9,
+  "type": "townhall"
+ },
+ "76 County Road 5 S., Mallorytown, Ontario, K0E1R0, Canada": {
+  "lat": 44.48551,
+  "lon": -75.88383,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "764 rue Brebeuf C.P. 340, Casselman, Ontario, K0A1M0, Canada": {
+  "lat": 45.31572,
+  "lon": -75.08592,
+  "conf": 9,
+  "type": "sports_centre"
+ },
+ "8 Trunk Road, Spanish, Ontario, P0P2A0, Canada": {
+  "lat": 46.19228,
+  "lon": -82.34609,
+  "conf": 10,
+  "type": "building"
+ },
+ "8 Woodward Avenue, Blind River, Ontario, P0R1B0, Canada": {
+  "lat": 46.18577,
+  "lon": -82.95433,
+  "conf": 10,
+  "type": "building"
+ },
+ "80 Proton St. N., Dundalk, Ontario, N0C1B0, Canada": {
+  "lat": 44.16878,
+  "lon": -80.39383,
+  "conf": 10,
+  "type": "building"
+ },
+ "801 George Street, Hearst, Ontario, P0L1N0, Canada": {
+  "lat": 49.68869,
+  "lon": -83.66273,
+  "conf": 10,
+  "type": "building"
+ },
+ "812 French Bay Road, Southampton, Ontario, N0H2L0, Canada": {
+  "lat": 44.50388,
+  "lon": -81.35878,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "830 Chief Joseph Snake Road, Sutton West, Ontario, L0E1R0, Canada": {
+  "lat": 44.30137,
+  "lon": -79.35141,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "930 Main Street Box 3, Dokis First Nation, Ontario, P0M2N1, Canada": {
+  "lat": 46.13306,
+  "lon": -80.03774,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "9311 Highway 63, Redbridge, Ontario, P0H2A0, Canada": {
+  "lat": 46.40122,
+  "lon": -79.23454,
+  "conf": 9,
+  "type": "library"
+ },
+ "94 Main Street East, Vankleek Hill, Ontario, K0B1R0, Canada": {
+  "lat": 45.51877,
+  "lon": -74.6495,
+  "conf": 9,
+  "type": "library"
+ },
+ "94 Manitoba Street, Bracebridge, Ontario, P1L2B5, Canada": {
+  "lat": 45.04176,
+  "lon": -79.31228,
+  "conf": 9,
+  "type": "library"
+ },
+ "Indian Bay road P.O. Box 5, Shoal Lake, Ontario, P0X1E0, Canada": {
+  "lat": 49.62547,
+  "lon": -95.10333,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "JESSIE STREET, Emo, Ontario, P0W1E0, Canada": {
+  "lat": 48.67911,
+  "lon": -93.84632,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "Learning Centre Road, Seine River FN, Ontario, P0W1H0, Canada": {
+  "lat": 48.72122,
+  "lon": -92.4209,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "Mikinaak Rd, 212 Mikinaak Onigaming Sch., Nestor Falls, Ontario, P0X1K0, Canada": {
+  "lat": 49.19125,
+  "lon": -93.95026,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "Mundy Avenue, Kapuskasing, Ontario, P5N1P9, Canada": {
+  "lat": 49.41597,
+  "lon": -82.43116,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "n/a Box 2230, Sagamok, Ontario, P0P2L0, Canada": {
+  "lat": 46.18283,
+  "lon": -82.00875,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "n/a P.O. Box 220, Kearney, Ontario, P0A1M0, Canada": {
+  "lat": 45.60101,
+  "lon": -79.20142,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "P.O. Box 170, Cobalt, Ontario, P0J1C0, Canada": {
+  "lat": 47.39048,
+  "lon": -79.70935,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "Spring St. P.O. Box 28, Westport, Ontario, K0G1X0, Canada": {
+  "lat": 44.67627,
+  "lon": -76.40194,
+  "conf": 10,
+  "type": "postcode"
+ },
+ "Yonge Street, Aurora, Ontario, L4G1M1, Canada": {
+  "lat": 43.99758,
+  "lon": -79.4665,
+  "conf": 10,
+  "type": "postcode"
+ }
+}

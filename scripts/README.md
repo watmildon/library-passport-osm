@@ -77,6 +77,43 @@ Aug 2025); the build is gated on the fiscal year, so a rerun on the same release
 is a no-op. When a new FY is published, bump `PLS_FY` and `PLS_ZIP_URL` in
 `build-pls.mjs`.
 
+## `build-ca-outlets.mjs` — Canadian outlet data
+
+Regenerates `../data/ca-library-outlets.json`, the Canadian counterpart of
+`pls-outlets.json` (Canada has no federal IMLS-PLS equivalent; library data is
+provincial). Assembled per province from open data; only provinces with
+authoritative per-branch coordinates are included:
+
+- **BC** — the BC Geographic Warehouse's Geographic Sites Registry layer of
+  public-library service points (`GSR_PUBLIC_LIBRARY_LOCS_SV`, ~250 points,
+  continuously maintained), fetched as GeoJSON over WFS. Licence: Open
+  Government Licence – British Columbia.
+- **ON** — the single-location systems from the Annual Survey of Public
+  Libraries (system-level rows carry a street address but no coordinates, so
+  systems reporting exactly one service point are ingested with their address
+  geocoded; multi-branch systems wait for a branch-level source). Licence:
+  Open Government Licence – Ontario.
+- **QC/AB/NS** — blocked on data: Quebec's survey has no addresses, Alberta
+  publishes a PDF directory, Nova Scotia retired its branches dataset.
+
+**Geocoding** is one-time via OpenCage into the committed cache
+`../data/ca-geocode-cache.json` — reruns (including CI, which has no key) make
+no API calls. The key is a secret: `OPENCAGE_KEY` env var or the gitignored
+`.opencage-key` file, never printed or committed. Only point-precision results
+(a building or a matched POI; road-level as a fallback) become outlets — an
+area centroid would fabricate false "missing branch" findings.
+
+```sh
+npm run build:outlets:ca
+node scripts/build-ca-outlets.mjs --force   # ignore the freshness gate
+```
+
+The output shape mirrors `pls-outlets.json` so `pls-match.mjs`/`build-qa.mjs`
+consume it unchanged. `fscskey` holds a stable synthetic system key
+(`BC-<system-slug>`), not a US FSCS id — the matcher only uses it as an opaque
+grouping key. `geo`/`geomtype` are `'E'`/`'POINTADDRESS'` for registry points,
+which `isPreciseGeocode()` accepts, enabling addr suggestions.
+
 ## `build-qa.mjs` — Data QA dataset
 
 Regenerates a country's QA dataset — [`../data/qa-data.json`](../data/qa-data.json)
@@ -89,10 +126,13 @@ node scripts/build-qa.mjs --country=CA  # Canada (Overpass only)
 node scripts/build-qa.mjs --layercake   # force the Layercake/DuckDB fallback (US only)
 ```
 
-Countries without a per-outlet census configured in
-[`../js/countries.js`](../js/countries.js) (`outletsFile: null` — currently
-Canada) skip the PLS matching and augment stages; the `pls`, `plsUnmatched`,
-and `augment` sections come out empty and the QA page hides those panes.
+The outlet-census stages (PLS matching + augment) run against the country's
+`outletsFile` from [`../js/countries.js`](../js/countries.js): the IMLS PLS
+census for the US, the provincially-assembled `ca-library-outlets.json` for
+Canada (BC only so far — Canadian findings cover just the provinces ingested).
+A country with `outletsFile: null` skips those stages; the `pls`,
+`plsUnmatched`, and `augment` sections come out empty and the QA page hides
+those panes.
 
 **Primary path (Overpass):** two queries — every US library with full tags
 (`out center tags`, ~19k elements) and a per-state assignment (one `foreach`

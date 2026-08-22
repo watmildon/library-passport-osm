@@ -22,6 +22,13 @@ export const COUNTRIES = {
     // National per-outlet census backing the PLS matching/augment stages.
     // Countries without one skip those stages (the QA build handles that).
     outletsFile: 'data/pls-outlets.json',
+    // How the QA pages name that census in labels and tooltips.
+    census: { name: 'IMLS PLS', short: 'PLS' },
+    // Outlet-census matching thresholds: the smallest OSM system that may
+    // claim a census system, and the smallest unmatched census system worth
+    // listing. PLS has ~7.7k single-outlet systems — noise at this scale.
+    matchMinOsmLibs: 2,
+    unmatchedMinOutlets: 2,
     // Default QA-map view when the URL carries none.
     mapCenter: [-98, 40],
     mapZoom: 4,
@@ -71,9 +78,16 @@ export const COUNTRIES = {
     wikidataQid: 'Q16',
     systemsFile: 'data/ca-library-systems.json',
     qaFile: 'data/ca-qa-data.json',
-    // No national per-outlet census (nothing like IMLS PLS exists federally);
-    // a province-assembled outlets file is planned — see the repo docs.
-    outletsFile: null,
+    // No federal IMLS-PLS equivalent exists; this file is assembled from
+    // provincial open data by scripts/build-ca-outlets.mjs (BC's live registry
+    // + Ontario's geocoded single-outlet systems; more provinces as their
+    // sources allow).
+    outletsFile: 'data/ca-library-outlets.json',
+    census: { name: 'provincial open data', short: 'census' },
+    // Canada's assembled census is small and curated, and single-location
+    // town libraries are most of it — let them match and be listed.
+    matchMinOsmLibs: 1,
+    unmatchedMinOutlets: 1,
     mapCenter: [-96, 55],
     mapZoom: 3.5,
     // Canadian regional/provincial systems legitimately space branches far

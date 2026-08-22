@@ -48,6 +48,13 @@ const FILES = [
   { path: 'data/qa-data.json',    label: 'qa-data',    sections: QA_SECTIONS },
   { path: 'data/ca-qa-data.json', label: 'ca-qa-data', sections: QA_SECTIONS },
   {
+    path: 'data/ca-library-outlets.json',
+    label: 'ca-library-outlets',
+    sections: {
+      outlets: o => o.id
+    }
+  },
+  {
     path: 'data/us-library-systems.json',
     label: 'us-library-systems',
     sections: {

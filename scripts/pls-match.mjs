@@ -42,7 +42,13 @@ function normOutlet(name, operatorTokens) {
 }
 // asymmetric: fraction of the smaller token set covered by the larger
 function outletSim(a, b, opTokens) {
-  const ta = tokenSet(normOutlet(a, opTokens)), tb = tokenSet(normOutlet(b, opTokens));
+  let ta = tokenSet(normOutlet(a, opTokens)), tb = tokenSet(normOutlet(b, opTokens));
+  // A name that IS the operator name (typical for a single-outlet system's
+  // main branch: outlet "Petawawa" under system "Petawawa Public Library")
+  // strips to nothing, silently disabling name matching for exactly the pairs
+  // where it's most certain. When that happens, compare both names with only
+  // the generic words stripped instead.
+  if (!ta.size || !tb.size) { ta = tokenSet(normOutlet(a, [])); tb = tokenSet(normOutlet(b, [])); }
   if (!ta.size || !tb.size) return 0;
   const [small, big] = ta.size <= tb.size ? [ta, tb] : [tb, ta];
   let inter = 0; for (const t of small) if (big.has(t)) inter++;

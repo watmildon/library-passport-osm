@@ -17,6 +17,8 @@ const COUNTRY = (() => {
   catch { return country(); }
 })();
 const QA_AREA_ID = COUNTRY.areaId;
+// How this country's outlet census is named in labels/tooltips.
+const CENSUS = COUNTRY.census;
 
 const $ = sel => document.querySelector(sel);
 
@@ -246,6 +248,44 @@ function hidePlsSections() {
   });
 }
 
+// The census panes' static copy describes the US IMLS PLS; countries whose
+// outlet data is assembled from provincial sources get their own wording here.
+// (The Augment link stays hidden — that page is still US-only.)
+function localizeCensusSections() {
+  // The Augment page is still US-only — hide its nav link.
+  document.querySelectorAll('.qa-nav a').forEach(a => {
+    if ((a.getAttribute('href') || '').endsWith('augment.html')) a.hidden = true;
+  });
+  const pls = document.getElementById('pls');
+  if (pls) {
+    const h2 = pls.querySelector('summary h2');
+    if (h2) h2.textContent = 'Missing & untagged branches (provincial data)';
+    const notes = pls.querySelectorAll('.qa-note');
+    if (notes[0]) notes[0].innerHTML =
+      'Cross-referenced against provincial open data – currently BC’s ' +
+      '<a href="https://catalogue.data.gov.bc.ca/dataset/3d2318d4-8f5d-4208-88f5-995420d7c58f" target="_blank" rel="noopener">Geographic Sites Registry of public-library service points</a> ' +
+      'and the single-location systems from Ontario’s ' +
+      '<a href="https://data.ontario.ca/dataset/ontario-public-library-statistics" target="_blank" rel="noopener">Annual Survey of Public Libraries</a> ' +
+      '(geocoded addresses); other provinces will join as their datasets allow. ' +
+      'For systems that match, the census reveals branches that are <strong>missing from OSM entirely</strong> ' +
+      '(create them) or <strong>present but not tagged with the operator</strong> (add the tag). ' +
+      '<em>Verify on the ground or against imagery before adding.</em>';
+    if (notes[1]) notes[1].hidden = true;   // the Augment cross-link (US-only)
+  }
+  const plsu = document.getElementById('pls-unmatched');
+  if (plsu) {
+    const h2 = plsu.querySelector('summary h2');
+    if (h2) h2.textContent = 'Provincial systems not found in OSM';
+    const note = plsu.querySelector('.qa-note');
+    if (note) note.innerHTML =
+      'Multi-outlet library systems from the provincial registries that matched <strong>no OSM ' +
+      'system</strong> – usually because their branches’ <code>operator</code> tags are missing or split ' +
+      'across inconsistent spellings, or the branches aren’t mapped at all. <em>“in OSM”</em> counts ' +
+      'outlets with <em>some</em> library mapped within 200 m, whatever its tags: a high count means the ' +
+      'buildings exist and the operator tags need fixing; zero means likely unmapped territory.';
+  }
+}
+
 // ---------------- Load & boot ----------------
 async function boot() {
   setupCountryToggle();
@@ -267,8 +307,10 @@ async function boot() {
     `${fmt(m.totalLibraries)} ${COUNTRY.code} libraries · ${fmt(m.totalSystems)} systems · data as of ` +
     `${src ? new Date(src).toLocaleDateString() : m.generated} (updated daily)`;
 
-  // Countries without an outlets census have no PLS sections to show.
+  // Countries without an outlets census have no PLS sections to show; countries
+  // with a non-PLS census get their own section copy.
   if (!data.pls?.length && !data.plsUnmatched?.length) hidePlsSections();
+  else if (COUNTRY.code !== 'US') localizeCensusSections();
 
   searchable = data.systems.map((s, i) => ({
     name: s.n,
@@ -374,9 +416,9 @@ function renderTiles() {
     tile('Have operator:wikidata', pct(withWd, total) + '%', `${fmt(withWd)} of ${fmt(total)}`) +
     (data.pls && data.pls.length ? (
       tile('Branches missing from OSM', `<span class="qa-delta-miss">${fmt(plsMissing)}</span>`,
-        'IMLS PLS branches with no OSM library nearby – likely need creating', '#pls') +
+        `${CENSUS.name} branches with no OSM library nearby – likely need creating`, '#pls') +
       tile('Branches untagged in OSM', `<span class="pls-untagged-n">${fmt(plsUntagged)}</span>`,
-        'IMLS PLS branches present in OSM but missing the operator tag', '#pls')
+        `${CENSUS.name} branches present in OSM but missing the operator tag`, '#pls')
     ) : '') +
     (wdOpLibs ? tile('Operator sourced from Wikidata', `<span class="pls-untagged-n">${fmt(wdOpLibs)}</span>`,
       'Operator-less libraries whose own Wikidata item names the system that runs them', '#wd-operators') : '') +
@@ -672,7 +714,7 @@ function setupPlsStateFilter() {
 function renderPls() {
   const list = $('#pls-list');
   if (!data.pls || !data.pls.length) {
-    list.innerHTML = '<p class="qa-note">No PLS findings (dataset unavailable, or every matched system is complete). 🎉</p>';
+    list.innerHTML = `<p class="qa-note">No ${escapeHtml(CENSUS.short)} findings (dataset unavailable, or every matched system is complete). 🎉</p>`;
     $('#pls-more').hidden = true;
     return;
   }
@@ -711,14 +753,14 @@ function renderPls() {
       osm ? editObject(osm[0], osm.slice(1), lat, lon) : editAt(fbLat, fbLon);
     const missing = p.missing.map(m => row('pls-missing', titleCase(m.name),
       escapeHtml([titleCase(m.addr), titleCase(m.city)].filter(Boolean).join(', ')),
-      `<span class="pls-geo" title="IMLS geocode precision">${escapeHtml(m.geo || '')}</span>`,
+      `<span class="pls-geo" title="${escapeHtml(CENSUS.short)} geocode precision">${escapeHtml(m.geo || '')}</span>`,
       editAt(m.lat, m.lon), 'Create in OSM editor')).join('');
     const untagged = p.untagged.map(u => row('pls-untagged', titleCase(u.name),
       `↳ OSM: “${escapeHtml(u.osmName)}”`,
       u.osmHasOperator ? '<span class="qa-badge qa-badge-mixed">wrong operator?</span>' : '<span class="qa-badge qa-badge-miss">no operator tag</span>',
       editRef(u.osm, u.osmLat, u.osmLon, u.lat, u.lon), 'Fix tags in OSM editor')).join('');
     const disc = p.discrepancies.map(dd => row('pls-disc', titleCase(dd.name),
-      `OSM coordinate is ~${fmt(dd.dist)}m from the PLS location – verify`,
+      `OSM coordinate is ~${fmt(dd.dist)}m from the ${escapeHtml(CENSUS.short)} location – verify`,
       '', editRef(dd.osmId, dd.osmLat, dd.osmLon, dd.lat, dd.lon), 'Check location in OSM editor')).join('');
 
     // Show the system's operator:wikidata so it's handy to copy when tagging the
@@ -735,17 +777,17 @@ function renderPls() {
     // than the branches merely showing up as untagged.
     const variants = p.variants?.length
       ? `<div class="pls-qid-row"><span class="pls-qid pls-qid-suggested"
-          title="These libraries belong to the same PLS system but carry a different operator value – consolidating the spelling is the underlying fix">also tagged as ${
+          title="These libraries belong to the same ${escapeHtml(CENSUS.short)} system but carry a different operator value – consolidating the spelling is the underlying fix">also tagged as ${
         p.variants.map(v => `“${escapeHtml(v)}”`).join(' · ')}</span></div>`
       : '';
     return `<div class="pls-sys">
       <div class="pls-sys-head">
         <span class="qa-coll-name">${escapeHtml(name)}</span>
-        <span class="qa-coll-meta">PLS ${fmt(p.plsCount)} · OSM ${fmt(p.osmCount)} ·
+        <span class="qa-coll-meta">${escapeHtml(CENSUS.short)} ${fmt(p.plsCount)} · OSM ${fmt(p.osmCount)} ·
           ${p.missing.length ? `<b class="qa-delta-miss">${p.missing.length} missing</b>` : ''}
           ${p.missing.length && p.untagged.length ? ' · ' : ''}
           ${p.untagged.length ? `<b class="pls-untagged-n">${p.untagged.length} untagged</b>` : ''}
-          ${p.closed ? `<span class="qa-badge qa-badge-not" title="PLS outlets recorded as closed – via the branch's Wikidata item (date of official closure) or a disused:/was: lifecycle tag in OSM – and therefore not counted as missing">${p.closed} closed</span>` : ''}
+          ${p.closed ? `<span class="qa-badge qa-badge-not" title="${escapeHtml(CENSUS.short)} outlets recorded as closed – via the branch's Wikidata item (date of official closure) or a disused:/was: lifecycle tag in OSM – and therefore not counted as missing">${p.closed} closed</span>` : ''}
           <button class="qa-link-btn" data-sys="${p.sysIdx}">Explore →</button></span>
       </div>
       ${qidNote ? `<div class="pls-qid-row">${qidNote}</div>` : ''}
@@ -783,7 +825,7 @@ function renderPlsUnmatched() {
   const list = $('#plsu-list');
   if (!list) return;
   if (!data.plsUnmatched || !data.plsUnmatched.length) {
-    list.innerHTML = '<p class="qa-note">No unmatched PLS systems (dataset predates this report, or every multi-outlet system crosswalked). Regenerated daily.</p>';
+    list.innerHTML = `<p class="qa-note">No unmatched ${escapeHtml(CENSUS.short)} systems (dataset predates this report, or every multi-outlet system crosswalked). Regenerated daily.</p>`;
     $('#plsu-more').hidden = true;
     return;
   }
@@ -811,7 +853,7 @@ function renderPlsUnmatched() {
       : `<a class="qa-icon-link" href="https://www.openstreetmap.org/#map=10/${u.lat}/${u.lon}" target="_blank" rel="noopener" title="View this system's area on OSM">🔍</a>`;
     return `<div class="pls-row">
       <span class="pls-name">${escapeHtml(titleCase(u.name))}</span>
-      <span class="pls-detail">${escapeHtml(u.state)} · ${u.outlets} outlets · PLS ${escapeHtml(u.fscskey)}</span>
+      <span class="pls-detail">${escapeHtml(u.state)} · ${u.outlets} outlets · ${escapeHtml(CENSUS.short)} ${escapeHtml(u.fscskey)}</span>
       <span class="pls-meta">${badge}</span>
       ${link}
     </div>`;

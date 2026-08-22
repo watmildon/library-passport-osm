@@ -1290,7 +1290,7 @@ function findDomainClusters(rawLibs, stateIdx, notAssert) {
 // the unmatched-report floor: a complete, correctly tagged 2-branch system
 // (the smallest the report can show) counts as found rather than sitting in
 // "not found in OSM" forever.
-const MIN_LIBS_FOR_PLS = 2;
+const MIN_LIBS_FOR_PLS = COUNTRY.matchMinOsmLibs;
 
 // Every system's libraries indexed by its dominant QID, so a crosswalk winner
 // can absorb same-QID fragments that never claimed the PLS system themselves
@@ -1520,7 +1520,7 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
   const r3 = x => Math.round(x * 1e3) / 1e3;
   const r5 = x => Math.round(x * 1e5) / 1e5;
   for (const ps of plsIndex.byKey.values()) {
-    if (ps.outlets.length < 2 || crosswalkedKeys.has(ps.fscskey)) continue;
+    if (ps.outlets.length < COUNTRY.unmatchedMinOutlets || crosswalkedKeys.has(ps.fscskey)) continue;
     let near = 0;
     let w = Infinity, s = Infinity, e = -Infinity, n = -Infinity;
     // Per-outlet points, so the pages can navigate to each suspected library

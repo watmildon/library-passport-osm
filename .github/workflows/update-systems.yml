@@ -140,6 +140,12 @@ jobs:
         run: |
           node scripts/build-qa.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
+      - name: Refresh Canada outlets (provincial open data)
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          # Self-gates on the provincial sources' as-of dates — usually a no-op.
+          node scripts/build-ca-outlets.mjs
+
       - name: Regenerate Canada QA dataset (Overpass)
         if: steps.gate.outputs.run == 'yes'
         run: |
@@ -200,7 +206,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # git diff ignores untracked files (a country's first-ever systems
           # file), so use status --porcelain to detect changes.
-          if [ -z "$(git status --porcelain -- data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json)" ]; then
+          if [ -z "$(git status --porcelain -- data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json data/ca-library-outlets.json)" ]; then
             echo "No changes to the data files."
             exit 0
           fi
@@ -219,7 +225,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json
+          git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json data/ca-library-outlets.json
           if [ -n "$SUMMARY" ]; then
             git commit -m "chore: daily refresh of library data ($COUNT systems)" -m "$SUMMARY"
           else
