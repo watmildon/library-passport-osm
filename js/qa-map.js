@@ -948,6 +948,15 @@ async function boot() {
   setupPrefs();
   setupCollapse();
 
+  // Country toggle: mark the active country and carry the current view/filter
+  // hash across the switch, so toggling keeps you looking at the same area.
+  document.querySelectorAll('#country-toggle a[data-country]').forEach(a => {
+    a.classList.toggle('active', a.dataset.country === COUNTRY.code);
+    a.addEventListener('click', () => {
+      if (location.hash) a.href = a.getAttribute('href').split('#')[0] + location.hash;
+    });
+  });
+
   // Keep the dashboard link on the same country; the Augment page is backed by
   // the US-only PLS census, so hide it elsewhere.
   if (COUNTRY.code !== 'US') {
