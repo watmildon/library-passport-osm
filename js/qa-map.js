@@ -29,6 +29,14 @@
 import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/+esm';
 import { MAP_STYLE, OVERPASS_TIMEOUT_MS } from './config.js';
 import { JOSM, bboxAround, josmSend, fetchTagsBatch, webEditObjectUrl, webEditAtUrl } from './josm.js';
+import { country } from './countries.js';
+
+// Active country: ?country=CA loads the Canadian QA dataset. An unknown code
+// falls back to the default (US) rather than breaking the page.
+const COUNTRY = (() => {
+  try { return country(new URL(location.href).searchParams.get('country')?.toUpperCase()); }
+  catch { return country(); }
+})();
 
 const $ = sel => document.querySelector(sel);
 
@@ -340,8 +348,8 @@ function initMap(view, sourceDateLabel) {
   state.map = new maplibregl.Map({
     container: 'map',
     style: MAP_STYLE,
-    center: view ? [view.lon, view.lat] : [-98, 40],
-    zoom: view ? view.z : 4,
+    center: view ? [view.lon, view.lat] : COUNTRY.mapCenter,
+    zoom: view ? view.z : COUNTRY.mapZoom,
     // The issue data's snapshot date lives with the other data credits.
     attributionControl: sourceDateLabel
       ? { customAttribution: `Issue data as of ${sourceDateLabel}` }
@@ -937,9 +945,18 @@ async function boot() {
   setupPrefs();
   setupCollapse();
 
+  // Keep the dashboard link on the same country; the Augment page is backed by
+  // the US-only PLS census, so hide it elsewhere.
+  if (COUNTRY.code !== 'US') {
+    const dash = document.querySelector('a[href="./qa.html"]');
+    if (dash) dash.href = `./qa.html?country=${COUNTRY.code}`;
+    const aug = document.querySelector('a[href="./augment.html"]');
+    if (aug) aug.style.display = 'none';
+  }
+
   let data;
   try {
-    const res = await fetch('./data/qa-data.json');
+    const res = await fetch('./' + COUNTRY.qaFile);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     data = await res.json();
   } catch (e) {

@@ -96,7 +96,11 @@ foreach.states->.st(
   const byEl = new Map();
   let state = null;
   for (const el of json.elements || []) {
-    if (el.type === 'area') { state = el.tags?.name || null; continue; }
+    // Prefer name:en — bilingual regions carry dual/multiscript `name` values
+    // ("New Brunswick / Nouveau-Brunswick", "ᓄᓇᕗᑦ Nunavut") that are a mess to
+    // display and to key abbreviation maps on. All US states and Canadian
+    // provinces carry name:en as of 2026-08.
+    if (el.type === 'area') { state = el.tags?.['name:en'] || el.tags?.name || null; continue; }
     if (!state) continue;
     const key = el.type[0] + el.id;
     const prev = byEl.get(key);

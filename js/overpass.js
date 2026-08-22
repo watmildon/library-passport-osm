@@ -76,7 +76,7 @@ export function elementsToFeatures(elements) {
       geometry: { type: 'Point', coordinates: [lon, lat] },
       properties: {
         id,
-        name: tags.name || tags['name:en'] || 'Unnamed library',
+        name: tags['name:en'] || tags.name || 'Unnamed library',
         operator: tags.operator || '',
         operatorWikidata: tags['operator:wikidata'] || '',
         opening_hours: tags.opening_hours || '',

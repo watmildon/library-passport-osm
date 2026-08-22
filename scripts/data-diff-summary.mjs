@@ -31,23 +31,22 @@ const REF = refArg >= 0 ? process.argv[refArg + 1] : 'HEAD';
 
 // Per-file, per-section identity. Every key must be derived from the record's
 // own content, never from its position in the array.
+const QA_SECTIONS = {
+  systems:      s => s.k ?? s.n,
+  libs:         r => r[1] + r[2],              // OSM type + id
+  collisions:   c => `${c.a} ${c.b}`,
+  ambiguous:    a => a.n,
+  domains:      d => d.d,
+  wdOperators:  g => g.pq,
+  wdConflicts:  g => `${g.tw} ${g.pq}`,
+  pls:          p => p.sysKey,
+  plsUnmatched: u => u.fscskey,
+  augment:      a => a.sysKey
+};
+
 const FILES = [
-  {
-    path: 'data/qa-data.json',
-    label: 'qa-data',
-    sections: {
-      systems:      s => s.k ?? s.n,
-      libs:         r => r[1] + r[2],              // OSM type + id
-      collisions:   c => `${c.a} ${c.b}`,
-      ambiguous:    a => a.n,
-      domains:      d => d.d,
-      wdOperators:  g => g.pq,
-      wdConflicts:  g => `${g.tw} ${g.pq}`,
-      pls:          p => p.sysKey,
-      plsUnmatched: u => u.fscskey,
-      augment:      a => a.sysKey
-    }
-  },
+  { path: 'data/qa-data.json',    label: 'qa-data',    sections: QA_SECTIONS },
+  { path: 'data/ca-qa-data.json', label: 'ca-qa-data', sections: QA_SECTIONS },
   {
     path: 'data/us-library-systems.json',
     label: 'us-library-systems',

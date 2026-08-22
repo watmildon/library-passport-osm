@@ -44,14 +44,16 @@ import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const SQL_FILE = join(HERE, 'qa-libraries.sql');
-const DEST = join(ROOT, 'data', 'qa-data.json');
-const PLS_FILE = join(ROOT, 'data', 'pls-outlets.json');
 const DUCKDB = process.env.DUCKDB || 'duckdb';
 const FORCE = process.argv.includes('--force');
 const USE_LAYERCAKE = process.argv.includes('--layercake');
-// The QA build is US-only for now; this is the single switch a future
-// per-country build would parameterize (see js/countries.js).
-const COUNTRY = country('US');
+// Per-country build: --country=CA writes data/ca-qa-data.json. Countries
+// without an outlets census (see js/countries.js) skip the PLS matching and
+// augment stages; everything else works the same.
+const countryArg = process.argv.find(a => a.startsWith('--country='));
+const COUNTRY = country((countryArg ? countryArg.split('=')[1] : 'US').toUpperCase());
+const DEST = join(ROOT, ...COUNTRY.qaFile.split('/'));
+const PLS_FILE = COUNTRY.outletsFile ? join(ROOT, ...COUNTRY.outletsFile.split('/')) : null;
 const USER_AGENT = process.env.USER_AGENT ||
   'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; QA build)';
 
@@ -112,8 +114,8 @@ function queryLayercake() {
 async function queryOverpass(endpoint) {
   console.log('Querying Overpass for per-library QA data…');
   const { elements } = await fetchLibraryElements(endpoint, COUNTRY.code);
-  console.log(`  ${elements.length} US libraries; assigning states…`);
-  const stateOf = await fetchStateAssignments(endpoint);
+  console.log(`  ${elements.length} ${COUNTRY.code} libraries; assigning states…`);
+  const stateOf = await fetchStateAssignments(endpoint, COUNTRY.code);
   const libs = [];
   for (const el of elements) {
     const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
@@ -122,7 +124,9 @@ async function queryOverpass(endpoint) {
     libs.push({
       type: el.type,
       id: el.id,
-      name: t.name ?? null,
+      // name:en preferred: bilingual names ("Bibliothèque X / X Library") read
+      // better in the English UI; most libraries only carry `name`.
+      name: t['name:en'] ?? t.name ?? null,
       state: stateOf.get(el.type[0] + el.id) ?? null,
       operator: t.operator ?? null,
       wikidata: t['operator:wikidata'] ?? null,
@@ -353,7 +357,7 @@ async function fetchWikidataClosures() {
   const rows = await sparqlRows(`SELECT ?item ?closed ?coord WHERE {
   VALUES ?cls { wd:Q11396180 wd:Q28564 wd:Q856584 }
   ?item wdt:P31 ?cls .
-  ?item wdt:P17 wd:Q30 .
+  ?item wdt:P17 wd:${COUNTRY.wikidataQid} .
   { ?item wdt:P3999 ?closed } UNION { ?item wdt:P576 ?closed }
   ?item wdt:P625 ?coord .
 }`, 'closure fetch');
@@ -411,7 +415,7 @@ export function suppressClosedFindings(cls, nearClosure) {
 async function fetchWikidataBranchCounts() {
   const rows = await sparqlRows(`SELECT ?system (COUNT(?branch) AS ?count) WHERE {
   ?system wdt:P31 wd:Q26271642.
-  ?system wdt:P17 wd:Q30.
+  ?system wdt:P17 wd:${COUNTRY.wikidataQid}.
   ?system wdt:P527 ?branch.
   ?branch wdt:P31 wd:Q11396180.
 } GROUP BY ?system`, 'branch-count fetch');
@@ -575,6 +579,9 @@ async function main() {
   // source's snapshot timestamp gates the whole rebuild: skip if the committed
   // QA dataset already comes from an equal-or-newer source.
   const endpoint = USE_LAYERCAKE ? null : overpassEndpoint();
+  if (!endpoint && COUNTRY.code !== 'US') {
+    throw new Error(`The Layercake fallback is US-only (US data extract); a ${COUNTRY.code} build needs a configured Overpass endpoint.`);
+  }
   const sourceName = endpoint ? 'Overpass' : 'Layercake';
   const sourceModified = endpoint ? await overpassTimestamp(endpoint) : await layercakeModified();
   const sourceDate = toISODate(sourceModified);
@@ -593,7 +600,7 @@ async function main() {
     console.log('Querying Layercake (via DuckDB) for per-library QA data…');
     ({ libs: rawLibs, collisions: rawColl } = queryLayercake());
   }
-  console.log(`  ${rawLibs.length} US libraries, ${rawColl.length} possible name collisions`);
+  console.log(`  ${rawLibs.length} ${COUNTRY.code} libraries, ${rawColl.length} possible name collisions`);
 
   // The addr:* flags only exist on the Overpass path; meta.tags records which
   // flags this build actually tracked so the QA page derives columns from data.
@@ -609,8 +616,8 @@ async function main() {
   const notAssert = await fetchNotAssertions();
   console.log(`  ${notAssert.wd.size} not:operator:wikidata, ${notAssert.op.size} not:operator elements`);
 
-  if (rawLibs.length < 10000) {
-    throw new Error(`Only ${rawLibs.length} libraries returned (expected >= 10000) — refusing to write a gutted dataset.`);
+  if (rawLibs.length < COUNTRY.minLibraries) {
+    throw new Error(`Only ${rawLibs.length} libraries returned (expected >= ${COUNTRY.minLibraries}) — refusing to write a gutted dataset.`);
   }
 
   // States, indexed.
@@ -781,9 +788,10 @@ async function main() {
     meta: {
       // Deliberately generic — never record the (private) Overpass instance URL.
       source: endpoint
-        ? 'Overpass, US boundary relation 148838'
-        : 'Layercake (OpenStreetMap US), US boundary relation 148838',
+        ? `Overpass, ${COUNTRY.code} boundary relation ${COUNTRY.boundaryRelation}`
+        : `Layercake (OpenStreetMap US), US boundary relation ${COUNTRY.boundaryRelation}`,
       generated: new Date().toISOString().slice(0, 10),
+      country: COUNTRY.code,
       sourceDate,
       sourceModified,
       totalLibraries: libs.length,
@@ -804,10 +812,9 @@ async function main() {
     augment
   };
 
-  const dest = join(ROOT, 'data', 'qa-data.json');
   const json = serializeLinewise(out);
-  writeFileSync(dest, json);
-  console.log(`Wrote ${libs.length} libraries, ${systems.length} systems, ${collisions.length} collisions (${Math.round(json.length / 1024)} KB) -> ${dest}`);
+  writeFileSync(DEST, json);
+  console.log(`Wrote ${libs.length} libraries, ${systems.length} systems, ${collisions.length} collisions (${Math.round(json.length / 1024)} KB) -> ${DEST}`);
 }
 
 // ---- Wikidata-sourced operators -------------------------------------------
@@ -1099,11 +1106,14 @@ async function suggestSystemQids(systems, sysKeys, systemVotes, pls) {
 // name's libraries (single-linkage): branches of one real system are close
 // together (or chained), while unrelated same-name systems sit far apart.
 //
-// CLUSTER_KM is a compromise: consolidated rural systems have branch spacing
-// well under 60 km (so single-linkage keeps them whole), while distinct
-// same-name systems are usually in different metros or states, hundreds of
-// km apart.
-const CLUSTER_KM = 120;
+// The linkage distance is a per-country compromise (COUNTRY.clusterKm): US
+// consolidated rural systems have branch spacing well under 60 km (so
+// single-linkage keeps them whole), while distinct same-name systems are
+// usually in different metros or states, hundreds of km apart. Canada's
+// regional systems space branches much further, so its threshold is larger —
+// and since one system never spans provinces there (COUNTRY.regionBoundSystems),
+// cross-province libraries are never linked at any distance.
+const CLUSTER_KM = COUNTRY.clusterKm;
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const rad = x => x * Math.PI / 180;
@@ -1118,8 +1128,12 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 function clusterByDistance(rows) {
   const parent = rows.map((_, i) => i);
   const find = i => parent[i] === i ? i : (parent[i] = find(parent[i]));
+  // A library with no region assigned (boundary gaps) links freely — isolating
+  // it would fabricate a split.
+  const sameRegion = (a, b) => !a.state || !b.state || a.state === b.state;
   for (let i = 0; i < rows.length; i++) {
     for (let j = i + 1; j < rows.length; j++) {
+      if (COUNTRY.regionBoundSystems && !sameRegion(rows[i], rows[j])) continue;
       if (haversineKm(rows[i].lat, rows[i].lon, rows[j].lat, rows[j].lon) <= CLUSTER_KM) {
         parent[find(i)] = find(j);
       }
@@ -1308,6 +1322,10 @@ export function mergeClaimLibs(rivals, sysMap, systems, libsByQid) {
 }
 
 function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new Map(), closures = []) {
+  if (!PLS_FILE) {
+    console.log(`  ${COUNTRY.code} has no outlets census configured — skipping PLS matching.`);
+    return null;
+  }
   let plsData;
   try {
     plsData = JSON.parse(readFileSync(PLS_FILE, 'utf8'));

@@ -495,6 +495,17 @@ function launchApp() {
   $('#sidebar').style.display = 'flex';
   $('#system-name').textContent = state.config.systemName;
   $('#system-name').title = state.config.systemName;
+
+  // Point the QA links at the loaded system's country; the Augment page is
+  // backed by the US-only PLS census, so hide it elsewhere.
+  const cc = state.config.country || DEFAULT_COUNTRY;
+  const qaLink = document.querySelector('.sb-foot a[href*="qa.html"]');
+  const qaMapLink = document.querySelector('.sb-foot a[href*="qa-map.html"]');
+  const augLink = document.querySelector('.sb-foot a[href*="augment.html"]');
+  if (qaLink) qaLink.href = cc === 'US' ? './qa.html' : `./qa.html?country=${cc}`;
+  if (qaMapLink) qaMapLink.href = cc === 'US' ? './qa-map.html' : `./qa-map.html?country=${cc}`;
+  if (augLink) augLink.style.display = cc === 'US' ? '' : 'none';
+
   hideLoading();
 
   if (!state.map) initMap();

@@ -51,7 +51,9 @@ jobs:
           echo "cacount=$OLD_CA" >> "$GITHUB_OUTPUT"
           OLD_QA=$(node -p "try { require('./data/qa-data.json').libs.length } catch { 0 }")
           echo "qacount=$OLD_QA" >> "$GITHUB_OUTPUT"
-          echo "Currently committed: $OLD US systems, $OLD_CA CA systems, $OLD_QA QA libraries."
+          OLD_CAQA=$(node -p "try { require('./data/ca-qa-data.json').libs.length } catch { 0 }")
+          echo "caqacount=$OLD_CAQA" >> "$GITHUB_OUTPUT"
+          echo "Currently committed: $OLD US systems, $OLD_CA CA systems, $OLD_QA US QA libraries, $OLD_CAQA CA QA libraries."
 
       - name: Freshness gate
         id: gate
@@ -76,8 +78,9 @@ jobs:
           SYS=$(node -p "const m=require('./data/us-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
           CASYS=$(node -p "const m=require('./data/ca-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
           QA=$(node -p "const m=require('./data/qa-data.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
+          CAQA=$(node -p "const m=require('./data/ca-qa-data.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
           echo "Overpass data: $TS"
-          echo "Committed sourceDate — us systems: '${SYS:-none}', ca systems: '${CASYS:-none}', qa: '${QA:-none}'"
+          echo "Committed sourceDate — us systems: '${SYS:-none}', ca systems: '${CASYS:-none}', us qa: '${QA:-none}', ca qa: '${CAQA:-none}'"
           echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
           echo "Private Overpass instance — data timestamp: $TS" >> "$GITHUB_STEP_SUMMARY"
 
@@ -85,8 +88,9 @@ jobs:
           # Skip only if ALL committed files are already at least as fresh as live.
           if [ "${{ github.event.inputs.force }}" = "true" ]; then
             echo "Forced rebuild requested."
-          elif [ -n "$SYS" ] && [ -n "$CASYS" ] && [ -n "$QA" ] \
-               && [ ! "$SYS" \< "$LIVE_DATE" ] && [ ! "$CASYS" \< "$LIVE_DATE" ] && [ ! "$QA" \< "$LIVE_DATE" ]; then
+          elif [ -n "$SYS" ] && [ -n "$CASYS" ] && [ -n "$QA" ] && [ -n "$CAQA" ] \
+               && [ ! "$SYS" \< "$LIVE_DATE" ] && [ ! "$CASYS" \< "$LIVE_DATE" ] \
+               && [ ! "$QA" \< "$LIVE_DATE" ] && [ ! "$CAQA" \< "$LIVE_DATE" ]; then
             echo "Committed data is not older than the Overpass snapshot — skipping rebuild."
             echo "Up to date (committed sourceDate >= ${LIVE_DATE})." >> "$GITHUB_STEP_SUMMARY"
             RUN=no
@@ -131,10 +135,15 @@ jobs:
           # Self-gates on fiscal year — a no-op unless a new PLS release is out.
           node scripts/build-pls.mjs
 
-      - name: Regenerate QA dataset (Overpass)
+      - name: Regenerate US QA dataset (Overpass)
         if: steps.gate.outputs.run == 'yes'
         run: |
           node scripts/build-qa.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      - name: Regenerate Canada QA dataset (Overpass)
+        if: steps.gate.outputs.run == 'yes'
+        run: |
+          node scripts/build-qa.mjs --country=CA ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Sanity-check the results
         if: steps.gate.outputs.run == 'yes'
@@ -142,11 +151,13 @@ jobs:
           OLD: ${{ steps.before.outputs.count }}
           OLD_CA: ${{ steps.before.outputs.cacount }}
           OLD_QA: ${{ steps.before.outputs.qacount }}
+          OLD_CAQA: ${{ steps.before.outputs.caqacount }}
         run: |
           NEW=$(node -p "require('./data/us-library-systems.json').systems.length")
           NEW_CA=$(node -p "try { require('./data/ca-library-systems.json').systems.length } catch { 0 }")
           NEW_QA=$(node -p "require('./data/qa-data.json').libs.length")
-          echo "Generated $NEW US systems (was $OLD), $NEW_CA CA systems (was $OLD_CA), $NEW_QA QA libraries (was $OLD_QA)."
+          NEW_CAQA=$(node -p "try { require('./data/ca-qa-data.json').libs.length } catch { 0 }")
+          echo "Generated $NEW US systems (was $OLD), $NEW_CA CA systems (was $OLD_CA), $NEW_QA US QA libraries (was $OLD_QA), $NEW_CAQA CA QA libraries (was $OLD_CAQA)."
 
           # Guard against a broken/empty upstream response gutting any file.
           if [ "$NEW" -lt 1000 ]; then
@@ -158,7 +169,11 @@ jobs:
             exit 1
           fi
           if [ "$NEW_QA" -lt 10000 ]; then
-            echo "::error::Only $NEW_QA QA libraries generated (expected >= 10000). Refusing to commit."
+            echo "::error::Only $NEW_QA US QA libraries generated (expected >= 10000). Refusing to commit."
+            exit 1
+          fi
+          if [ "$NEW_CAQA" -lt 1000 ]; then
+            echo "::error::Only $NEW_CAQA CA QA libraries generated (expected >= 1000). Refusing to commit."
             exit 1
           fi
 
@@ -175,7 +190,8 @@ jobs:
           }
           check_band "US system" "$OLD" "$NEW"
           check_band "CA system" "$OLD_CA" "$NEW_CA"
-          check_band "QA library" "$OLD_QA" "$NEW_QA"
+          check_band "US QA library" "$OLD_QA" "$NEW_QA"
+          check_band "CA QA library" "$OLD_CAQA" "$NEW_CAQA"
 
       - name: Commit and push if changed
         if: steps.gate.outputs.run == 'yes'
@@ -184,7 +200,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # git diff ignores untracked files (a country's first-ever systems
           # file), so use status --porcelain to detect changes.
-          if [ -z "$(git status --porcelain -- data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/pls-outlets.json)" ]; then
+          if [ -z "$(git status --porcelain -- data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json)" ]; then
             echo "No changes to the data files."
             exit 0
           fi
@@ -203,7 +219,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/pls-outlets.json
+          git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json
           if [ -n "$SUMMARY" ]; then
             git commit -m "chore: daily refresh of library data ($COUNT systems)" -m "$SUMMARY"
           else

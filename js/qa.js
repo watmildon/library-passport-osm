@@ -10,8 +10,13 @@ import { JOSM, bboxAround, josmSend, buildOsmXml, loadData, webEditObjectUrl, we
 import { setupOverpassPicker, withBusy } from './controls.js';
 import { country } from './countries.js';
 
-// The QA pages are US-only for now (data/qa-data.json is a US build).
-const QA_AREA_ID = country('US').areaId;
+// Active country: ?country=CA loads the Canadian QA dataset. An unknown code
+// falls back to the default (US) rather than breaking the page.
+const COUNTRY = (() => {
+  try { return country(new URL(location.href).searchParams.get('country')?.toUpperCase()); }
+  catch { return country(); }
+})();
+const QA_AREA_ID = COUNTRY.areaId;
 
 const $ = sel => document.querySelector(sel);
 
@@ -216,10 +221,36 @@ let data = null;          // qa-data.json
 let searchable = [];      // systems mapped for searchSystems()
 let currentSys = -1;      // selected system index in explorer
 
+// Header country toggle: plain links that reload the page with ?country=.
+// Also points the map-view link at the same country.
+function setupCountryToggle() {
+  document.querySelectorAll('#country-toggle a[data-country]').forEach(a => {
+    a.classList.toggle('active', a.dataset.country === COUNTRY.code);
+  });
+  if (COUNTRY.code !== 'US') {
+    const map = document.querySelector('a[href="./qa-map.html"]');
+    if (map) map.href = `./qa-map.html?country=${COUNTRY.code}`;
+  }
+}
+
+// Hide the PLS-backed panes and their nav links when the dataset carries no
+// outlet-census findings — the case for countries without a PLS equivalent.
+function hidePlsSections() {
+  for (const id of ['pls', 'pls-unmatched']) {
+    const el = document.getElementById(id);
+    if (el) el.hidden = true;
+  }
+  document.querySelectorAll('.qa-nav a').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    if (href === '#pls' || href === '#pls-unmatched' || href.endsWith('augment.html')) a.hidden = true;
+  });
+}
+
 // ---------------- Load & boot ----------------
 async function boot() {
+  setupCountryToggle();
   try {
-    const res = await fetch('./data/qa-data.json');
+    const res = await fetch('./' + COUNTRY.qaFile);
     if (!res.ok) throw new Error('HTTP ' + res.status);
     data = await res.json();
   } catch (e) {
@@ -233,8 +264,11 @@ async function boot() {
   const m = data.meta;
   const src = m.sourceModified || m.layercakeModified;
   $('#qa-meta').textContent =
-    `${fmt(m.totalLibraries)} US libraries · ${fmt(m.totalSystems)} systems · data as of ` +
+    `${fmt(m.totalLibraries)} ${COUNTRY.code} libraries · ${fmt(m.totalSystems)} systems · data as of ` +
     `${src ? new Date(src).toLocaleDateString() : m.generated} (updated daily)`;
+
+  // Countries without an outlets census have no PLS sections to show.
+  if (!data.pls?.length && !data.plsUnmatched?.length) hidePlsSections();
 
   searchable = data.systems.map((s, i) => ({
     name: s.n,
@@ -334,7 +368,7 @@ function renderTiles() {
   const wdOpLibs = libCount(data.wdOperators);
   const wdConflictLibs = libCount(data.wdConflicts);
   $('#tiles').innerHTML =
-    tile('US libraries', fmt(total)) +
+    tile(`${COUNTRY.code} libraries`, fmt(total)) +
     tile('Library systems', fmt(data.systems.length)) +
     tile('Have an operator', pct(withOp, total) + '%', `${fmt(withOp)} of ${fmt(total)}`) +
     tile('Have operator:wikidata', pct(withWd, total) + '%', `${fmt(withWd)} of ${fmt(total)}`) +
@@ -426,24 +460,10 @@ let wdFilter = '';
 let wdState = '';                 // stateIdx as a string, '' = all
 let wdSort = { col: 'c', dir: -1 };
 
-// Full state name (as Layercake spells it) -> USPS code, so every state
-// dropdown shows the same two-letter codes the PLS panes use.
-const STATE_ABBR = {
-  Alabama: 'AL', Alaska: 'AK', Arizona: 'AZ', Arkansas: 'AR', California: 'CA',
-  Colorado: 'CO', Connecticut: 'CT', Delaware: 'DE', 'District of Columbia': 'DC',
-  Florida: 'FL', Georgia: 'GA', Hawaii: 'HI', Idaho: 'ID', Illinois: 'IL',
-  Indiana: 'IN', Iowa: 'IA', Kansas: 'KS', Kentucky: 'KY', Louisiana: 'LA',
-  Maine: 'ME', Maryland: 'MD', Massachusetts: 'MA', Michigan: 'MI', Minnesota: 'MN',
-  Mississippi: 'MS', Missouri: 'MO', Montana: 'MT', Nebraska: 'NE', Nevada: 'NV',
-  'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
-  'North Carolina': 'NC', 'North Dakota': 'ND', Ohio: 'OH', Oklahoma: 'OK',
-  Oregon: 'OR', Pennsylvania: 'PA', 'Rhode Island': 'RI', 'South Carolina': 'SC',
-  'South Dakota': 'SD', Tennessee: 'TN', Texas: 'TX', Utah: 'UT', Vermont: 'VT',
-  Virginia: 'VA', Washington: 'WA', 'West Virginia': 'WV', Wisconsin: 'WI',
-  Wyoming: 'WY', 'Puerto Rico': 'PR', Guam: 'GU', 'American Samoa': 'AS',
-  'United States Virgin Islands': 'VI', 'Northern Mariana Islands': 'MP'
-};
-const stateAbbr = name => STATE_ABBR[name] || name;
+// Full state/province name (as the boundary source spells it) -> postal code,
+// from the country config, so every region dropdown shows the same two-letter
+// codes the PLS panes use. Unmapped names display in full.
+const stateAbbr = name => COUNTRY.regionAbbr[name] || name;
 
 // sysIdx -> Set(stateIdx), derived from the library rows (systems carry no
 // state of their own; a multi-state system matches each of its states).

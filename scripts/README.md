@@ -79,13 +79,20 @@ is a no-op. When a new FY is published, bump `PLS_FY` and `PLS_ZIP_URL` in
 
 ## `build-qa.mjs` — Data QA dataset
 
-Regenerates [`../data/qa-data.json`](../data/qa-data.json), the dataset behind
-[`qa.html`](../qa.html) (the Data QA page).
+Regenerates a country's QA dataset — [`../data/qa-data.json`](../data/qa-data.json)
+by default, `../data/ca-qa-data.json` with `--country=CA` — the data behind
+[`qa.html`](../qa.html) (the Data QA page, `?country=CA` for the Canadian view).
 
 ```sh
 node scripts/build-qa.mjs               # Overpass (primary) when an endpoint is configured
-node scripts/build-qa.mjs --layercake   # force the Layercake/DuckDB fallback
+node scripts/build-qa.mjs --country=CA  # Canada (Overpass only)
+node scripts/build-qa.mjs --layercake   # force the Layercake/DuckDB fallback (US only)
 ```
+
+Countries without a per-outlet census configured in
+[`../js/countries.js`](../js/countries.js) (`outletsFile: null` — currently
+Canada) skip the PLS matching and augment stages; the `pls`, `plsUnmatched`,
+and `augment` sections come out empty and the QA page hides those panes.
 
 **Primary path (Overpass):** two queries — every US library with full tags
 (`out center tags`, ~19k elements) and a per-state assignment (one `foreach`
