@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-22","country":"CA","sourceDate":"2026-08-22","sourceModified":"2026-08-22T03:18:16Z","totalLibraries":2288,"totalSystems":358},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-23","country":"CA","sourceDate":"2026-08-23","sourceModified":"2026-08-23T10:05:02Z","totalLibraries":2288,"totalSystems":358},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1315,7 +1315,6 @@
 ["Bruce County Public Library","n",7794874043,"Bruce County Public Library - Walkerton Branch",8,24,-81.1489,44.133],
 ["Bruce County Public Library","n",7794874044,"Bruce County Public Library - Tiverton Branch",8,24,-81.5405,44.2706],
 ["Bruce County Public Library","n",7794874045,"Bruce County Public Library - Teeswater Branch",8,24,-81.2872,43.999],
-["Bruce County Public Library","n",7794874046,"Bruce County Public Library - Tara Branch",8,24,-81.1461,44.4805],
 ["Bruce County Public Library","n",7794874050,"Bruce County Public Library - Paisley Branch",8,120,-81.2736,44.3072],
 ["Bruce County Public Library","n",7794874051,"Bruce County Public Library - Lucknow Branch",8,127,-81.5135,43.96],
 ["Bruce County Public Library","n",7794874052,"Bruce County Public Library - Lion's Head Branch",8,24,-81.2554,44.9884],
@@ -2599,6 +2598,7 @@
 [null,"w",1307811294,"Biblitheque Gaston-Miron",10,480,-74.288,46.0489],
 [null,"w",1308289811,"Neepawa Public Library",2,0,-99.4656,50.2291],
 [null,"w",1310771331,"Heritage Lower St-Lawrence",10,0,-67.9625,48.6841],
+["Bruce County Public Library","w",1311653055,"Bruce County Public Library - Tara Branch",8,24,-81.1461,44.4806],
 ["Burman University","w",1313598096,null,0,8,-113.7373,52.4888],
 [null,"w",1321928019,"Bighorn Library",0,0,-115.165,51.0589],
 [null,"w",1335367612,"Falher Library / Bibliothèque Dentinger",0,480,-117.2,55.7376],
