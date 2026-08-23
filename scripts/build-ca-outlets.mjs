@@ -299,6 +299,188 @@ async function fetchON() {
   };
 }
 
+// ---- Big-city open-data branch layers (OGL-family, authoritative coords) ---
+//
+// Each city's open-data portal publishes its library system's branches with
+// coordinates — a straight ingest, no geocoding. Bookmobiles/virtual services
+// are filtered out; the matcher only wants physical buildings.
+
+// Toronto Public Library — open.toronto.ca "Library Branch General Information".
+const TPL_GEOJSON = 'https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/f5aa9b07-da35-45e6-b31f-d6790eb9bd9b/resource/5f4950b4-c727-4e54-8d0d-972e198268d6/download/tpl-branch-general-information-4326.geojson';
+
+async function fetchToronto() {
+  const res = await fetch(TPL_GEOJSON, { headers: { 'User-Agent': USER_AGENT } });
+  if (!res.ok) throw new Error(`Toronto GeoJSON -> HTTP ${res.status}`);
+  const feats = (await res.json()).features || [];
+  const outlets = [];
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (String(p.PhysicalBranch) !== '1') continue;   // bookmobiles, Answerline, staff units
+    const c = f.geometry?.coordinates;
+    const [lon, lat] = f.geometry?.type === 'MultiPoint' ? (c?.[0] ?? []) : (c ?? []);
+    if (lat == null || !p.BranchCode) continue;
+    outlets.push({
+      id: `ON-TPL-${p.BranchCode}`,
+      fscskey: 'ON-TPL',
+      system: 'Toronto Public Library',
+      state: 'ON',
+      name: p.BranchName || p.BranchCode,
+      addr: (p.Address || '').split(',')[0].trim(),   // "1515 Albion Road, Toronto, ON, M9V 1B2"
+      city: 'Toronto',
+      zip: p.PostalCode || '',
+      phone: p.Telephone || '',
+      website: p.Website || '',
+      type: 'BR',
+      lat: r5(lat), lon: r5(lon),
+      geo: 'E', geomtype: 'POINTADDRESS'
+    });
+  }
+  if (outlets.length < 80) throw new Error(`Toronto returned only ${outlets.length} physical branches (expected ~100) — refusing a gutted ingest.`);
+  return { outlets, source: 'City of Toronto open data — Library Branch General Information', license: 'Open Government Licence - Toronto' };
+}
+
+// Ottawa Public Library — open.ottawa.ca "Ottawa Public Library Locations 2024".
+const OPL_QUERY = 'https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Ottawa_Public_Library_Locations_2024/FeatureServer/0/query?where=1%3D1&outFields=Name,Street_Address,City,Postal_Code&f=geojson';
+
+async function fetchOttawa() {
+  const res = await fetch(OPL_QUERY, { headers: { 'User-Agent': USER_AGENT } });
+  if (!res.ok) throw new Error(`Ottawa FeatureServer -> HTTP ${res.status}`);
+  const feats = (await res.json()).features || [];
+  const outlets = [];
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (!p.Name || /bookmobile|mobile library/i.test(p.Name)) continue;
+    const [lon, lat] = f.geometry?.coordinates ?? [];
+    if (lat == null) continue;
+    outlets.push({
+      id: `ON-OPL-${slug(p.Name)}`,
+      fscskey: 'ON-OPL',
+      system: 'Ottawa Public Library',
+      state: 'ON',
+      name: p.Name,
+      addr: p.Street_Address || '',
+      city: p.City || 'Ottawa',
+      zip: p.Postal_Code || '',
+      phone: '',
+      website: '',
+      type: 'BR',
+      lat: r5(lat), lon: r5(lon),
+      geo: 'E', geomtype: 'POINTADDRESS'
+    });
+  }
+  if (outlets.length < 25) throw new Error(`Ottawa returned only ${outlets.length} locations (expected ~33) — refusing a gutted ingest.`);
+  return { outlets, source: 'City of Ottawa open data — Ottawa Public Library Locations 2024', license: 'City of Ottawa Open Data Licence 2.0 (OGL-family)' };
+}
+
+// Hamilton Public Library — open.hamilton.ca "Libraries". The layer may still
+// carry a since-closed branch (e.g. Greensville); the closure-suppression pass
+// (Wikidata P3999/P576 + OSM lifecycle tags) is the mechanism for those.
+const HPL_QUERY = 'https://services.arcgis.com/rYz782eMbySr2srL/arcgis/rest/services/Libraries/FeatureServer/1/query?where=1%3D1&outFields=NAME,ADDRESS,COMMUNITY&f=geojson';
+
+async function fetchHamilton() {
+  const res = await fetch(HPL_QUERY, { headers: { 'User-Agent': USER_AGENT } });
+  if (!res.ok) throw new Error(`Hamilton FeatureServer -> HTTP ${res.status}`);
+  const feats = (await res.json()).features || [];
+  const outlets = [];
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (!p.NAME || /bookmobile|mobile library/i.test(p.NAME)) continue;
+    const [lon, lat] = f.geometry?.coordinates ?? [];
+    if (lat == null) continue;
+    outlets.push({
+      id: `ON-HPL-${slug(p.NAME)}`,
+      fscskey: 'ON-HPL',
+      system: 'Hamilton Public Library',
+      state: 'ON',
+      name: p.NAME,
+      addr: p.ADDRESS || '',
+      city: p.COMMUNITY || 'Hamilton',
+      zip: '',
+      phone: '',
+      website: '',
+      type: 'BR',
+      lat: r5(lat), lon: r5(lon),
+      geo: 'E', geomtype: 'POINTADDRESS'
+    });
+  }
+  if (outlets.length < 18) throw new Error(`Hamilton returned only ${outlets.length} locations (expected ~23) — refusing a gutted ingest.`);
+  return { outlets, source: 'City of Hamilton open data — Libraries', license: 'City of Hamilton Open Data Licence (OGL-family)' };
+}
+
+// Winnipeg Public Library — data.winnipeg.ca "Library" (Socrata).
+const WPL_URL = 'https://data.winnipeg.ca/resource/bt47-pkkm.json?$limit=100';
+
+async function fetchWinnipeg() {
+  const res = await fetch(WPL_URL, { headers: { 'User-Agent': USER_AGENT } });
+  if (!res.ok) throw new Error(`Winnipeg Socrata -> HTTP ${res.status}`);
+  const rows = await res.json();
+  const outlets = [];
+  for (const r of rows) {
+    if (!r.name || /bookmobile|mobile library/i.test(r.name)) continue;
+    const [lon, lat] = r.point?.coordinates ?? [];
+    if (lat == null || !r.complex_id) continue;
+    outlets.push({
+      id: `MB-WPL-${r.complex_id}`,
+      fscskey: 'MB-WPL',
+      system: 'Winnipeg Public Library',
+      state: 'MB',
+      name: r.name,
+      addr: r.address || '',
+      city: 'Winnipeg',
+      zip: '',
+      phone: '',
+      website: r.website?.url || '',
+      type: 'BR',
+      lat: r5(lat), lon: r5(lon),
+      geo: 'E', geomtype: 'POINTADDRESS'
+    });
+  }
+  if (outlets.length < 15) throw new Error(`Winnipeg returned only ${outlets.length} branches (expected ~20) — refusing a gutted ingest.`);
+  return { outlets, source: 'City of Winnipeg open data — Library', license: 'Open Government Licence - Winnipeg' };
+}
+
+// ---- NS: archived branches dataset (committed snapshot) --------------------
+//
+// Nova Scotia's "Public Library Branches and Contact Information" Socrata
+// dataset was retired from data.novascotia.ca in 2026 with no replacement; the
+// committed snapshot is the Wayback Machine's Sept-2024 GeoJSON capture (data
+// version 2023-05, published under the NS Open Government Licence). Each
+// region's HQ row carries the system's full name; only Branch rows become
+// outlets (HQ rows are admin offices).
+const NS_SNAPSHOT = join(ROOT, 'data', 'sources', 'ns-library-branches-2024.geojson');
+
+function fetchNS() {
+  const feats = JSON.parse(readFileSync(NS_SNAPSHOT, 'utf8')).features || [];
+  const systemName = new Map();   // region_id -> full system name, from HQ rows
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (p.type === 'HQ' && p.region_id) systemName.set(p.region_id, p.name.replace(/\s*\(HQ\)$/, ''));
+  }
+  const outlets = [];
+  for (const f of feats) {
+    const p = f.properties || {};
+    if (p.type !== 'Branch' || !f.geometry || !p.loc_id) continue;
+    const [lon, lat] = f.geometry.coordinates;
+    outlets.push({
+      id: `NS-${p.loc_id}`,
+      fscskey: `NS-${p.region_id}`,
+      system: systemName.get(p.region_id) || p.region_id,
+      state: 'NS',
+      name: p.name,
+      addr: p.address1 || '',
+      city: p.city || '',
+      zip: p.postal || '',
+      phone: p.phone || '',
+      website: p.link?.url?.replace(/^http:\/\/web\.archive\.org\/web\/\d+\//, '') || '',
+      type: 'BR',
+      lat: r5(lat), lon: r5(lon),
+      geo: 'E', geomtype: 'POINTADDRESS'
+    });
+  }
+  if (outlets.length < 60) throw new Error(`NS snapshot yielded only ${outlets.length} branches (expected ~79) — file damaged?`);
+  return { outlets, source: 'Nova Scotia open data — Public Library Branches (Wayback capture 2024-09 of the retired dataset, data 2023-05)', license: 'Nova Scotia Open Government Licence' };
+}
+
 async function main() {
   console.log('Fetching BC service points (BC Geographic Warehouse WFS)…');
   const bc = await fetchBC();
@@ -307,6 +489,21 @@ async function main() {
 
   console.log('Fetching ON single-outlet systems (Annual Survey of Public Libraries)…');
   const on = await fetchON();
+
+  console.log('Fetching city branch layers (Toronto, Ottawa, Hamilton, Winnipeg)…');
+  const tpl = await fetchToronto();
+  console.log(`  Toronto: ${tpl.outlets.length} branches`);
+  const opl = await fetchOttawa();
+  console.log(`  Ottawa: ${opl.outlets.length} branches`);
+  const hpl = await fetchHamilton();
+  console.log(`  Hamilton: ${hpl.outlets.length} branches`);
+  const wpl = await fetchWinnipeg();
+  console.log(`  Winnipeg: ${wpl.outlets.length} branches`);
+
+  console.log('Loading NS archived branches snapshot…');
+  const ns = fetchNS();
+  const nsSystems = new Set(ns.outlets.map(o => o.fscskey));
+  console.log(`  NS: ${ns.outlets.length} branches across ${nsSystems.size} systems`);
 
   // One sourceDate for the file: the newest live-feed asOf date (static survey
   // releases contribute no date — their bump comes from pinning a new release).
@@ -317,14 +514,27 @@ async function main() {
     return;
   }
 
-  const outlets = [...bc.outlets, ...on.outlets].sort((a, b) => a.id.localeCompare(b.id));
+  const outlets = [
+    ...bc.outlets, ...on.outlets,
+    ...tpl.outlets, ...opl.outlets, ...hpl.outlets,
+    ...wpl.outlets, ...ns.outlets
+  ].sort((a, b) => a.id.localeCompare(b.id));
+  const src = x => ({ source: x.source, license: x.license, outlets: x.outlets.length });
   const meta = {
     source: 'Canadian provincial open data (per-province sources in meta.provinces)',
     generated: new Date().toISOString().slice(0, 10),
     sourceDate,
     provinces: {
       BC: { source: bc.source, license: bc.license, asOf: bc.asOf, outlets: bc.outlets.length, systems: bcSystems.size },
-      ON: { source: on.source, license: on.license, year: on.year, outlets: on.outlets.length, systems: on.outlets.length }
+      ON: {
+        outlets: on.outlets.length + tpl.outlets.length + opl.outlets.length + hpl.outlets.length,
+        sources: [
+          { ...src(on), year: on.year },
+          src(tpl), src(opl), src(hpl)
+        ]
+      },
+      MB: src(wpl),
+      NS: { ...src(ns), systems: nsSystems.size }
     },
     totalOutlets: outlets.length
   };

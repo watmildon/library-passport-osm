@@ -47,6 +47,41 @@ Ontario outlets in `data/ca-library-outlets.json` come from the
 Contains information licensed under the
 [Open Government Licence – Ontario](https://www.ontario.ca/page/open-government-licence-ontario).
 
+## Ontario city open data (Canada)
+
+Branch locations for the large Ontario systems come from their cities' open
+data portals:
+
+- Toronto Public Library branches:
+  [Library Branch General Information](https://open.toronto.ca/dataset/library-branch-general-information/) —
+  contains information licensed under the
+  [Open Government Licence – Toronto](https://open.toronto.ca/open-data-license/).
+- Ottawa Public Library locations:
+  [Ottawa Public Library Locations 2024](https://open.ottawa.ca/) — contains
+  information licensed under the
+  [City of Ottawa Open Data Licence v2.0](https://ottawa.ca/en/city-hall/get-know-your-city/open-data#open-data-licence-version-2-0).
+- Hamilton Public Library branches:
+  [Libraries](https://open.hamilton.ca/) — contains information licensed under
+  the [City of Hamilton Open Data Licence](https://www.hamilton.ca/city-council/plans-strategies/open-data-program).
+
+## Manitoba (Canada)
+
+Winnipeg Public Library branches come from the City of Winnipeg's
+[Library dataset](https://data.winnipeg.ca/Libraries/Library/bt47-pkkm).
+
+Contains information licensed under the
+[Open Government Licence – Winnipeg](https://data.winnipeg.ca/open-data-licence).
+
+## Nova Scotia (Canada)
+
+Nova Scotia branches come from the province's "Public Library Branches and
+Contact Information" dataset (retired from data.novascotia.ca in 2026; the
+committed snapshot in `data/sources/ns-library-branches-2024.geojson` is the
+Wayback Machine's September 2024 capture, data version May 2023).
+
+Contains information licensed under the
+[Open Government Licence – Nova Scotia](https://novascotia.ca/opendata/licence.asp).
+
 ## OpenCage
 
 Ontario street addresses were geocoded once via the
