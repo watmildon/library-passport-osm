@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-08-22","sourceDate":"2026-08-22","boundary":"Canada (OSM relation 1428125)","totalSystems":358},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-08-23","sourceDate":"2026-08-23","boundary":"Canada (OSM relation 1428125)","totalSystems":358},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
