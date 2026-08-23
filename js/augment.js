@@ -273,6 +273,10 @@ function tagChips(tags) {
     .join('');
 }
 
+// The chips as key=value lines (same tag order), for copy-to-editor buttons —
+// inline chips carry no separators when selected by hand.
+const tagLines = tags => orderedTagEntries(tags).map(([k, v]) => `${k}=${v}`).join('\n');
+
 // Conflict rows: PLS value differs from an existing OSM tag. Display-only —
 // never sent to JOSM; the mapper reconciles by hand.
 function conflictBlock(conflicts) {
@@ -315,7 +319,9 @@ function selectSystem(sysIdx) {
       ${fillable ? `<div class="aug-chips">${tagChips(b.tags)}</div>` : ''}
       ${conflictBlock(b.conflicts)}
       <div class="aug-row-actions">
-        ${fillable ? `<button class="aug-send" data-branch="${i}">Send to JOSM →</button>` : ''}
+        ${fillable ? `<button class="aug-send" data-branch="${i}">Send to JOSM →</button>
+        <button class="aug-copy qa-link-btn" data-copy-tags="${escapeHtml(tagLines(b.tags))}"
+          title="Copy as key=value lines — pasteable into the editor's tag text view">⧉ Copy tags</button>` : ''}
         ${fallbackLink(b)}
       </div>
     </div>`;
@@ -341,6 +347,18 @@ function selectSystem(sysIdx) {
   view.querySelectorAll('[data-branch]').forEach(btn =>
     btn.addEventListener('click', () =>
       withBusy(btn, 'Sending…', () => sendOneBranch(a.branches[+btn.dataset.branch], s))));
+  view.querySelectorAll('[data-copy-tags]').forEach(btn =>
+    btn.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(btn.dataset.copyTags);
+        btn.textContent = 'Copied ✓';
+      } catch {
+        // Clipboard needs a secure context; leave the lines in the tooltip.
+        btn.title = btn.dataset.copyTags;
+        btn.textContent = 'select from tooltip';
+      }
+      setTimeout(() => { btn.textContent = '⧉ Copy tags'; }, 1600);
+    }));
   const sendAll = $('#aug-send-all');
   if (sendAll) sendAll.addEventListener('click', () =>
     withBusy(sendAll, 'Sending…', () => sendSystem(a, s)));

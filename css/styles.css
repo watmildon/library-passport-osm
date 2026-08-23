@@ -498,6 +498,12 @@ body.qa-page { height: auto; background: var(--bg); }
   padding: 2px 7px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 .aug-chip code { background: none; padding: 0; color: var(--accent); font-weight: 700; }
+/* Copy-as-lines button rendered inside a chip block (QA map popups). */
+.qm-copy-tags {
+  border: none; background: none; color: var(--accent); cursor: pointer;
+  font-size: 11px; font-weight: 600; padding: 2px 4px; align-self: center;
+}
+.qm-copy-tags:hover { text-decoration: underline; }
 .aug-row-actions { display: flex; align-items: center; gap: 12px; }
 .aug-send {
   padding: 6px 13px; border: none; border-radius: 8px; background: var(--accent); color: #fff;

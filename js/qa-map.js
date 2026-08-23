@@ -471,9 +471,16 @@ function setSysPts(pts) {
 }
 
 // ---------------- Popups ----------------
+// Chip block plus a copy button that writes the tags as key=value lines —
+// pasteable straight into JOSM's/iD's tag text views. Manually selecting the
+// chips copies them run-together (inline spans carry no separators), which is
+// exactly what the button avoids.
+const tagLines = tags => Object.entries(tags).map(([k, v]) => `${k}=${v}`).join('\n');
 function tagChips(tags) {
   return `<div class="aug-chips">${Object.entries(tags).map(([k, v]) =>
-    `<span class="aug-chip"><code>${escapeHtml(k)}</code>=${escapeHtml(v)}</span>`).join('')}</div>`;
+    `<span class="aug-chip"><code>${escapeHtml(k)}</code>=${escapeHtml(v)}</span>`).join('')}<button
+    class="qm-copy-tags" data-tags="${escapeHtml(tagLines(tags))}"
+    title="Copy as key=value lines">⧉ Copy</button></div>`;
 }
 
 function qidRow(it) {
@@ -756,6 +763,17 @@ function openIssue(type, i, opts = {}) {
   state.popup.on('close', () => { setBboxHighlight(null); setSysPts(null); });
 
   const el = state.popup.getElement();
+  el.querySelectorAll('.qm-copy-tags').forEach(b => b.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(b.dataset.tags);
+      b.textContent = 'Copied ✓';
+    } catch {
+      // Clipboard needs a secure context; leave the lines in the tooltip.
+      b.title = b.dataset.tags;
+      b.textContent = 'select from tooltip';
+    }
+    setTimeout(() => { b.textContent = '⧉ Copy'; }, 1600);
+  }));
   el.querySelector('#qm-zoom-bbox')?.addEventListener('click', () => {
     if (it.bb) state.map.fitBounds([[it.bb[0], it.bb[1]], [it.bb[2], it.bb[3]]], { padding: 60, duration: 700 });
   });
