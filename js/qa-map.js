@@ -847,7 +847,12 @@ function renderList() {
     el.innerHTML = '<div class="list-empty">No issues of the selected types in view.<br>Zoom out, pan, or enable more types above.</div>';
     return;
   }
-  rows.sort((a, b2) => priority(a.t.id) - priority(b2.t.id) || a.it.name.localeCompare(b2.it.name));
+  // Within a type: system-scale rows (unmatched/sysmixed carry an outlet
+  // count) rank biggest-first — the largest unmapped system is the biggest
+  // win; everything else stays alphabetical.
+  rows.sort((a, b2) => priority(a.t.id) - priority(b2.t.id) ||
+    ((b2.it.outlets ?? 0) - (a.it.outlets ?? 0)) ||
+    a.it.name.localeCompare(b2.it.name));
   const shown = rows.slice(0, LIST_MAX);
 
   const detail = ({ t, it }) => {
