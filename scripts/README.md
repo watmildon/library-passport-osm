@@ -172,7 +172,18 @@ Either way the Node script normalizes the rows into one compact file:
   ready-made work sets; when tagged siblings share the domain, their operator /
   wikidata values are emitted as suggestions for the untagged rest. Generic
   hosting platforms and >2-state spreads (vendor/aggregator domains) are excluded.
-- `wdOperators` — operator suggestions read from each library's **own** `wikidata`
+- `unnamedPairs` – unnamed libraries (no `name` tag) with a named library within
+  150 m: the building/POI duplicate-mapping pattern, an `amenity=library`
+  building with no name holding the named node (or the reverse). The fix is to
+  keep one element as appropriate and remove the duplicate, never to copy tags
+  onto both. Rows are
+  `{ osm, st, lon, lat, match: { osm, n, op?, lon, lat, dist, in? }, others? }`
+  ([`unnamed-pairs.mjs`](./unnamed-pairs.mjs), tested by `npm run test:unnamed`).
+  `in: 1` means the point verifiably falls inside the way's outline – a
+  dedicated fail-soft `out geom` Overpass fetch covers the ways involved in
+  pairs; without it pairs are proximity-only. `others` counts additional named
+  libraries in range (a multi-library building – don't merge blindly). Written
+  in `osm`-key order for diff stability; the page sorts contained-first.
   item (see below), grouped by the system they point at: `{ pq, pn, pk, po, st,
   libs[] }` where `pq`/`pn` are the proposed operator's Q-id and label, `pk` its
   entity kind, and `po` the `operator` name OSM already uses for that Q-id.
@@ -183,7 +194,12 @@ Either way the Node script normalizes the rows into one compact file:
   plsCount, osmCount, matched, closed?, variants?, untagged[], missing[], discrepancies[] }`.
   `plsUnmatched[]` rows carry `pts[]` — one point per PLS outlet (`n`, `lat`,
   `lon`, plus `osm`/`osmName`/`osmLat`/`osmLon` when some OSM library sits
-  within 200 m) so the pages can navigate to each suspected library.
+  within 200 m) so the pages can navigate to each suspected library, and
+  `ops[]` – the distinct operator spellings found on those matched buildings,
+  with `m: 1` on any the crosswalk scores as this very PLS system (a system
+  present in OSM under its own name but on fewer branches than
+  `matchMinOsmLibs`; the pages present those as "found – tag the rest, add
+  operator:wikidata" instead of ambiguous).
   One row per PLS system; `variants` lists the other OSM operator spellings that
   crosswalked to it.
 - `augment` — per-system, ready-to-apply PLS tag **suggestions** for the JOSM-first

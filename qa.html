@@ -45,6 +45,7 @@
         <a href="#wikidata">Wikidata gaps</a>
         <a href="#ambiguous">Shared operators</a>
         <a href="#domains">Website domains</a>
+        <a href="#unnamed">Unnamed twins</a>
         <a href="#wd-operators">Operator from Wikidata</a>
         <a href="#wd-conflicts">Operator mismatches</a>
         <a href="#pls">Missing branches</a>
@@ -124,6 +125,30 @@
       <button class="qa-more" id="dom-more" hidden>Show all</button>
     </details>
 
+    <details id="unnamed" class="qa-section" open>
+      <summary><h2>Unnamed libraries with a named twin</h2></summary>
+      <p class="qa-note">Libraries with no <code>name</code> tag that sit on top of a named library –
+        usually a building tagged <code>amenity=library</code> with the named POI node inside it, or the
+        reverse. These are almost always <em>the same library mapped twice</em>, so the quick tidy is to
+        keep <em>one</em> element as appropriate and move all the tags onto
+        it, and remove the duplicate. Don't leave the tags duplicated across both.
+        <span class="qa-badge qa-badge-wd">inside</span> means
+        the point verifiably falls within the building outline; other rows are close-by pairs – judge
+        each. A <span class="qa-badge qa-badge-not">+N more named</span> badge means several named
+        libraries sit in range (e.g. a university building holding more than one library) – don't merge
+        those blindly.</p>
+      <div class="qa-filter-row">
+        <input id="un-filter" class="qa-filter" type="text" placeholder="Filter names or operators…" autocomplete="off" />
+        <select id="un-state" class="qa-state-select" title="Filter by state">
+          <option value="">All states</option>
+        </select>
+      </div>
+      <div class="qa-table-wrap">
+        <table class="qa-table" id="un-table"></table>
+      </div>
+      <button class="qa-more" id="un-more" hidden>Show all</button>
+    </details>
+
     <details id="wd-operators" class="qa-section" open>
       <summary><h2>Operator from Wikidata</h2></summary>
       <p class="qa-note">Libraries with no <code>operator</code> tag that carry their own
@@ -201,7 +226,11 @@
         across inconsistent spellings (so no one system reaches the crosswalk's 2-library minimum), or the
         branches aren't mapped at all. <em>“in OSM”</em> counts outlets with <em>some</em> library mapped
         within 200&nbsp;m, whatever its tags: a high count means the buildings exist and the operator tags
-        need fixing; zero means likely unmapped territory.</p>
+        need fixing; zero means likely unmapped territory. A green
+        <span class="qa-badge qa-badge-wd">operator found – tag the rest</span> badge means at least one
+        branch already carries this system's operator, just on fewer branches than the matcher needs –
+        copy that operator to the remaining branches and add <code>operator:wikidata</code> to every
+        branch to make the system unambiguous; it then crosswalks on the next daily build.</p>
       <div class="qa-filter-row">
         <input id="plsu-filter" class="qa-filter" type="text" placeholder="Filter systems…" autocomplete="off" />
         <select id="plsu-state" class="qa-state-select" title="Filter by state">

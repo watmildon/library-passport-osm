@@ -167,6 +167,7 @@ function setupEditorPicker() {
     showHint();
     // Every section holding edit links has to be rebuilt for the new editor.
     renderPls();
+    renderUnnamedPairs();
     renderWdOperators();
     renderWdConflicts();
     renderCollisions();
@@ -282,7 +283,10 @@ function localizeCensusSections() {
       'system</strong> – usually because their branches’ <code>operator</code> tags are missing or split ' +
       'across inconsistent spellings, or the branches aren’t mapped at all. <em>“in OSM”</em> counts ' +
       'outlets with <em>some</em> library mapped within 200 m, whatever its tags: a high count means the ' +
-      'buildings exist and the operator tags need fixing; zero means likely unmapped territory.';
+      'buildings exist and the operator tags need fixing; zero means likely unmapped territory. A green ' +
+      '<span class="qa-badge qa-badge-wd">operator found – tag the rest</span> badge means at least one ' +
+      'branch already carries this system’s operator – copy it to the remaining branches and add ' +
+      '<code>operator:wikidata</code> to every branch to make the system unambiguous.';
   }
 }
 
@@ -312,6 +316,15 @@ async function boot() {
   if (!data.pls?.length && !data.plsUnmatched?.length) hidePlsSections();
   else if (COUNTRY.code !== 'US') localizeCensusSections();
 
+  // Data older than the section (or a country with no pairs) – hide the pane.
+  if (!data.unnamedPairs?.length) {
+    const el = document.getElementById('unnamed');
+    if (el) el.hidden = true;
+    document.querySelectorAll('.qa-nav a').forEach(a => {
+      if (a.getAttribute('href') === '#unnamed') a.hidden = true;
+    });
+  }
+
   searchable = data.systems.map((s, i) => ({
     name: s.n,
     value: s.w || s.n,
@@ -329,6 +342,7 @@ async function boot() {
   renderWikidataGaps();
   renderAmbiguous();
   renderDomains();
+  renderUnnamedPairs();
   renderWdOperators();
   renderWdConflicts();
   renderPls();
@@ -345,6 +359,12 @@ async function boot() {
     domFilter = e.target.value;
     renderDomains();
   });
+  $('#un-filter').addEventListener('input', e => {
+    unFilter = e.target.value;
+    unExpanded = false;
+    renderUnnamedPairs();
+  });
+  setupUnStateFilter();
   $('#wdop-filter').addEventListener('input', e => {
     wdopFilter = e.target.value;
     wdopExpanded = false;
@@ -409,6 +429,7 @@ function renderTiles() {
   const libCount = gs => (gs || []).reduce((n, g) => n + g.libs.length, 0);
   const wdOpLibs = libCount(data.wdOperators);
   const wdConflictLibs = libCount(data.wdConflicts);
+  const unTwins = (data.unnamedPairs || []).length;
   $('#tiles').innerHTML =
     tile(`${COUNTRY.code} libraries`, fmt(total)) +
     tile('Library systems', fmt(data.systems.length)) +
@@ -423,7 +444,9 @@ function renderTiles() {
     (wdOpLibs ? tile('Operator sourced from Wikidata', `<span class="pls-untagged-n">${fmt(wdOpLibs)}</span>`,
       'Operator-less libraries whose own Wikidata item names the system that runs them', '#wd-operators') : '') +
     (wdConflictLibs ? tile('Operator mismatches', `<span class="qa-delta-miss">${fmt(wdConflictLibs)}</span>`,
-      'Libraries whose operator:wikidata disagrees with their own Wikidata item', '#wd-conflicts') : '');
+      'Libraries whose operator:wikidata disagrees with their own Wikidata item', '#wd-conflicts') : '') +
+    (unTwins ? tile('Unnamed with a named twin', `<span class="pls-untagged-n">${fmt(unTwins)}</span>`,
+      'Unnamed libraries with a named library mapped at the same spot – keep one element and remove the duplicate', '#unnamed') : '');
 }
 
 function meterRow(label, n, d) {
@@ -845,6 +868,13 @@ function renderPlsUnmatched() {
     const badge = u.near
       ? `<span class="qa-badge qa-badge-mixed" title="Outlets with some OSM library within 200 m – the buildings are likely mapped but operator tags are missing or inconsistent">${u.near}/${u.outlets} in OSM</span>`
       : `<span class="qa-badge qa-badge-miss" title="No outlet has an OSM library within 200 m – likely unmapped">0 in OSM</span>`;
+    // The system's own operator already sits on a branch (below the matcher's
+    // branch floor): found, not ambiguous. Encourage finishing the tagging –
+    // same operator on the rest, operator:wikidata on all.
+    const found = (u.ops || []).find(o => o.m);
+    const foundBadge = found
+      ? `<span class="qa-badge qa-badge-wd" title="“${escapeHtml(found.n)}” is already the operator on at least one branch – fewer branches than the matcher needs. Copy that operator to the remaining branches and add operator:wikidata to every branch; the system then crosswalks on the next daily build.">operator found – tag the rest</span> `
+      : '';
     // ALL libraries in the outlets' bbox, unfiltered by operator — the point is
     // to eyeball what's there when the operator tags are broken or absent.
     // Older qa-data has a centroid instead of a bbox; keep the map fallback.
@@ -854,8 +884,8 @@ function renderPlsUnmatched() {
     return `<div class="pls-row">
       <span class="pls-name">${escapeHtml(titleCase(u.name))}</span>
       <span class="pls-detail">${escapeHtml(u.state)} · ${u.outlets} outlets · ${escapeHtml(CENSUS.short)} ${escapeHtml(u.fscskey)}</span>
-      <span class="pls-meta">${badge}</span>
-      ${link}
+      <span class="pls-meta">${foundBadge}${badge}</span>
+      ${found ? wdSearchLink(titleCase(u.name)) : ''}${link}
     </div>`;
   }).join('');
 
@@ -1016,6 +1046,66 @@ function renderDomains() {
   more.hidden = domExpanded || rows.length <= DOM_PREVIEW;
   more.textContent = `Show all ${fmt(rows.length)} domains`;
   more.onclick = () => { domExpanded = true; renderDomains(); };
+}
+
+// ---------------- Unnamed libraries with a named twin ----------------
+//
+// build-qa.mjs pairs every unnamed library with the nearest named one within
+// 150 m and, where a way is involved, verifies real containment against the
+// building outline (match.in). Almost always the same library mapped twice –
+// the fix is to keep one element and remove the duplicate.
+const UN_PREVIEW = 30;
+let unExpanded = false;
+let unFilter = '';
+let unState = '';                 // stateIdx as a string, '' = all
+
+function setupUnStateFilter() {
+  const sel = $('#un-state');
+  if (!sel || !data.unnamedPairs?.length) return;
+  const states = new Set(data.unnamedPairs.map(x => x.st).filter(i => i >= 0));
+  const opts = [...states]
+    .map(st => ({ st, abbr: stateAbbr(data.states[st]) }))
+    .sort((a, b) => a.abbr.localeCompare(b.abbr))
+    .map(x => `<option value="${x.st}" title="${escapeHtml(data.states[x.st])}">${escapeHtml(x.abbr)}</option>`);
+  sel.insertAdjacentHTML('beforeend', opts.join(''));
+  sel.addEventListener('change', () => { unState = sel.value; unExpanded = false; renderUnnamedPairs(); });
+}
+
+const osmPageLink = osm =>
+  `<a href="https://www.openstreetmap.org/${OSM_TYPE[osm[0]]}/${osm.slice(1)}" target="_blank" rel="noopener">${OSM_TYPE[osm[0]]} ${osm.slice(1)}</a>`;
+
+function renderUnnamedPairs() {
+  const term = unFilter.trim().toLowerCase();
+  const rows = (data.unnamedPairs || [])
+    .filter(x => !unState || x.st === +unState)
+    .filter(x => !term || x.match.n.toLowerCase().includes(term) || (x.match.op || '').toLowerCase().includes(term))
+    // Verified containment first, then nearest – the surest fixes on top.
+    .sort((a, b) => (b.match.in ? 1 : 0) - (a.match.in ? 1 : 0) || a.match.dist - b.match.dist);
+
+  const shown = unExpanded ? rows : rows.slice(0, UN_PREVIEW);
+  $('#un-table').innerHTML = `
+    <thead><tr><th>Unnamed object</th><th>Named twin</th><th class="num">Where</th><th>State</th><th>Actions</th></tr></thead>
+    <tbody>${shown.length ? shown.map(x => {
+      const where = x.match.in
+        ? '<span class="qa-badge qa-badge-wd">inside ✓</span>'
+        : `${x.match.dist}&nbsp;m`;
+      const twin =
+        `<a href="https://www.openstreetmap.org/${OSM_TYPE[x.match.osm[0]]}/${x.match.osm.slice(1)}" target="_blank" rel="noopener">${escapeHtml(x.match.n)}</a>` +
+        (x.match.op ? ` <span class="pls-geo">${escapeHtml(x.match.op)}</span>` : '') +
+        (x.others ? ` <span class="qa-badge qa-badge-not">+${x.others} more named</span>` : '');
+      return `<tr>
+        <td>${osmPageLink(x.osm)}</td>
+        <td>${twin}</td>
+        <td class="num">${where}</td>
+        <td>${x.st >= 0 ? escapeHtml(stateAbbr(data.states[x.st])) : ''}</td>
+        <td class="qa-actions"><a class="qa-icon-link" href="${editObject(x.osm[0], x.osm.slice(1), x.lat, x.lon)}" target="_blank" rel="noopener" title="Open in editor (both objects are within the loaded area)">✏️</a></td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="5" class="qa-note" style="padding:14px 10px">No pairs match.</td></tr>'}</tbody>`;
+
+  const more = $('#un-more');
+  more.hidden = unExpanded || rows.length <= UN_PREVIEW;
+  more.textContent = `Show all ${fmt(rows.length)} pairs`;
+  more.onclick = () => { unExpanded = true; renderUnnamedPairs(); };
 }
 
 // ---------------- Wikidata-sourced operators ----------------

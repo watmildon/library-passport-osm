@@ -13,7 +13,8 @@
     "refresh:systems:ca": "node scripts/refresh-systems.mjs --country=CA",
     "diff:data": "node scripts/data-diff-summary.mjs",
     "test:augment": "node --test scripts/pls-augment.test.mjs scripts/street-expand.test.mjs",
-    "test:pls": "node --test scripts/pls-merge.test.mjs scripts/pls-closures.test.mjs scripts/pls-classify.test.mjs"
+    "test:pls": "node --test scripts/pls-merge.test.mjs scripts/pls-closures.test.mjs scripts/pls-classify.test.mjs",
+    "test:unnamed": "node --test scripts/unnamed-pairs.test.mjs"
   },
   "license": "CC0-1.0"
 }

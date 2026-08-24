@@ -20,6 +20,7 @@
 //   systems     { n: name, k?: key, w: wikidata|null, c: count }, sorted by key
 //   libs        [sysKey, type, id, name, stateIdx, flags, lon, lat]
 //   collisions  likely-typo operator name pairs (small Levenshtein distance)
+//   unnamedPairs unnamed libraries with a named library on the same footprint
 //   wdOperators operator suggestions read from each library's own wikidata= item
 //   wdConflicts libraries whose operator:wikidata disagrees with that item
 //
@@ -40,6 +41,7 @@ import { overpassEndpoint, overpassTimestamp, fetchLibraryElements, fetchStateAs
 import { country } from '../js/countries.js';
 import { indexPls, crosswalk, classify, haversineM } from './pls-match.mjs';
 import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment.mjs';
+import { findUnnamedPairs, wayRings, pairContained } from './unnamed-pairs.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -390,6 +392,65 @@ out center;`;
   }
   console.warn('  proceeding without OSM lifecycle closures');
   return [];
+}
+
+// ---- Unnamed libraries with a named twin -----------------------------------
+//
+// A common duplicate mapping: the building carries amenity=library with no
+// name while a node inside it holds the name – or the reverse. Pair every
+// unnamed library with the nearest named one within 150 m (see
+// unnamed-pairs.mjs), then verify real containment against the building
+// outlines where a way is involved. The name already exists on the other
+// object, so these are the quickest naming fixes the QA page can offer.
+
+// Outlines for the ways involved in pairs – one id-list query, a couple
+// hundred ways. Fails soft like every other auxiliary fetch: no outlines just
+// leaves the pairs proximity-only (dist without the `in` mark).
+async function fetchPairWayRings(wayIds) {
+  if (!wayIds.length) return new Map();
+  const q = `[out:json][timeout:120];\nway(id:${wayIds.join(',')});\nout geom;`;
+  for (const [i, url] of OVERPASS_ENDPOINTS.entries()) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT },
+        body: 'data=' + encodeURIComponent(q)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return wayRings((await res.json()).elements);
+    } catch (e) {
+      console.warn(`  pair-outline fetch failed on endpoint #${i}: ${e.cause?.code ?? e.message}`);
+    }
+  }
+  console.warn('  proceeding without building outlines (pairs stay proximity-only)');
+  return new Map();
+}
+
+// Rows are written in stable osm-key order (the daily diff must not churn when
+// a distance wobbles); the QA page sorts contained-first at render time.
+async function buildUnnamedPairs(rawLibs, stateIdx) {
+  const pairs = findUnnamedPairs(rawLibs);
+  if (!pairs.length) return [];
+  const wayIds = [...new Set(pairs.flatMap(p =>
+    [p.un, p.named].filter(l => l.type[0] === 'w').map(l => l.id)))];
+  const rings = await fetchPairWayRings(wayIds);
+  const round4 = x => Math.round(x * 1e4) / 1e4;
+  return pairs.map(p => ({
+    osm: p.un.type[0] + p.un.id,
+    st: (p.un.state ? stateIdx.get(p.un.state) : -1) ?? -1,
+    lon: round4(p.un.lon),
+    lat: round4(p.un.lat),
+    match: {
+      osm: p.named.type[0] + p.named.id,
+      n: p.named.name,
+      ...(p.named.operator ? { op: p.named.operator } : {}),
+      lon: round4(p.named.lon),
+      lat: round4(p.named.lat),
+      dist: Math.round(p.dist),
+      ...(pairContained(p, rings) ? { in: 1 } : {})
+    },
+    ...(p.others ? { others: p.others } : {})
+  })).sort((a, b) => a.osm.localeCompare(b.osm));
 }
 
 // Drop findings that sit on a closure signal; returns how many were dropped.
@@ -759,6 +820,12 @@ async function main() {
   const domains = findDomainClusters(rawLibs, stateIdx, notAssert);
   console.log(`  ${domains.length} website domains with operator-less libraries`);
 
+  // ---- Unnamed libraries whose name is already mapped right next to them.
+  console.log('Pairing unnamed libraries with named twins…');
+  const unnamedPairs = await buildUnnamedPairs(rawLibs, stateIdx);
+  console.log(`  ${unnamedPairs.length} unnamed libraries have a named library within 150 m` +
+    ` (${unnamedPairs.filter(p => p.match.in).length} verified inside/containing a building outline)`);
+
   // ---- Wikidata labels/aliases for tagged systems: extra crosswalk name
   // candidates when the OSM operator name differs from PLS's official name.
   const wdAliases = await fetchWikidataAliases([...new Set(
@@ -805,6 +872,7 @@ async function main() {
     collisions,
     ambiguous,
     domains,
+    unnamedPairs,
     wdOperators: wdOps.operators,
     wdConflicts: wdOps.conflicts,
     pls: pls?.results ?? [],
@@ -1528,9 +1596,14 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
     // some OSM library (any operator) sits within 200 m — that object's id,
     // name and coordinate, ready for an edit link.
     const pts = [];
+    const opCoords = new Map();   // operator spelling -> coords of its libs here
     for (const o of ps.outlets) {
       const nb = nearbyLib(o.lat, o.lon);
       if (nb) near++;
+      if (nb?.operator) {
+        if (!opCoords.has(nb.operator)) opCoords.set(nb.operator, []);
+        opCoords.get(nb.operator).push({ lat: nb.lat, lon: nb.lon });
+      }
       if (o.lon < w) w = o.lon; if (o.lon > e) e = o.lon;
       if (o.lat < s) s = o.lat; if (o.lat > n) n = o.lat;
       pts.push({
@@ -1538,9 +1611,20 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
         ...(nb ? { osm: nb.id, osmName: nb.name, osmLat: r5(nb.lat), osmLon: r5(nb.lon) } : {})
       });
     }
+    // Operator spellings already on the matched buildings, each re-scored
+    // through the same crosswalk that failed to find this system. One that
+    // lands on this very PLS system (m: 1) means the system IS in OSM under
+    // its own name – just on fewer than MIN_LIBS_FOR_PLS branches – so the
+    // pages present it as "found, tag the remaining branches (operator +
+    // operator:wikidata)" rather than as ambiguous.
+    const ops = [...opCoords].map(([op, coords]) => {
+      const cw = crosswalk(plsIndex, [op], ps.state, coords);
+      return cw?.fscskey === ps.fscskey ? { n: op, m: 1 } : { n: op };
+    });
     unmatched.push({
       name: ps.name, fscskey: ps.fscskey, state: ps.state,
       outlets: ps.outlets.length, near, pts,
+      ...(ops.length ? { ops } : {}),
       // padded outlet bbox [west, south, east, north] for an area-scoped
       // Overpass query (~5km margin so 2-outlet systems still show an area)
       bb: [r3(w - 0.05), r3(s - 0.05), r3(e + 0.05), r3(n + 0.05)]
@@ -1701,6 +1785,7 @@ export function serializeLinewise(out) {
     `"collisions": ${arr(out.collisions)},\n` +
     `"ambiguous": ${arr(out.ambiguous)},\n` +
     `"domains": ${arr(out.domains)},\n` +
+    `"unnamedPairs": ${arr(out.unnamedPairs ?? [])},\n` +
     `"wdOperators": ${arr(out.wdOperators ?? [])},\n` +
     `"wdConflicts": ${arr(out.wdConflicts ?? [])},\n` +
     `"pls": ${arr(out.pls)},\n` +

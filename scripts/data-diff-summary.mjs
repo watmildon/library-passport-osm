@@ -37,6 +37,7 @@ const QA_SECTIONS = {
   collisions:   c => `${c.a} ${c.b}`,
   ambiguous:    a => a.n,
   domains:      d => d.d,
+  unnamedPairs: u => u.osm,
   wdOperators:  g => g.pq,
   wdConflicts:  g => `${g.tw} ${g.pq}`,
   pls:          p => p.sysKey,

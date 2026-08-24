@@ -70,7 +70,7 @@ const fmt = n => n.toLocaleString();
 const CENSUS = COUNTRY.census;
 const TYPES = [
   { id: 'unnamed',  label: 'Unnamed',          color: '#a98307', on: true,
-    hint: 'A library with no name tag at all – needs a person to find the real name (system branch list, website, imagery, or a visit)' },
+    hint: 'A library with no name tag at all – needs a person to find the real name (system branch list, website, imagery, or a visit). Bright ringed pins have a named twin mapped on the same spot – keep one element and remove the duplicate' },
   { id: 'missing',  label: 'Missing',          color: '#d1434f', on: true,
     hint: `${CENSUS.name} lists a branch here but OSM has no library within 200 m – likely needs creating` },
   { id: 'opconflict', label: 'Operator conflict', color: '#c23a94', on: true,
@@ -80,12 +80,17 @@ const TYPES = [
   { id: 'gaps',     label: 'Incomplete Tags',  color: '#2f8f85', on: false,
     hint: 'Libraries missing everyday tags – choose which tags below' },
   { id: 'unmatched', label: 'System not in OSM', color: '#8c5a3c', on: false,
-    hint: `A multi-outlet ${CENSUS.short} system with NO operator tags on any of its branches – unmapped, or purely additive tagging work` },
+    hint: `A multi-outlet ${CENSUS.short} system with no (or too few) operator tags on its branches – unmapped, or purely additive tagging work` },
   { id: 'sysmixed', label: 'System ambiguous', color: '#5a7d9a', on: false,
     hint: `A multi-outlet ${CENSUS.short} system whose branches already carry OTHER operator tags – a federated cooperative, a rename, or fragmented spellings. Needs a person to judge` }
 ];
 const TYPE_BY_ID = new Map(TYPES.map(t => [t.id, t]));
 const priority = id => TYPES.findIndex(t => t.id === id);
+
+// Unnamed pins whose name is already mapped right there (a named twin) render
+// in this brighter gold – on the map and in the work list – so the quick
+// keep-one-element merges are easy to spot among the plain unnamed pins.
+const TWIN_COLOR = '#ffc400';
 
 // Wikidata vocabulary, mirrored from qa.js: the property a parent claim came
 // from, and human labels for the entity kinds build-qa.mjs classifies.
@@ -224,13 +229,18 @@ function buildIssues() {
 
   // Unnamed libraries — no name tag at all. High-value fixes that need a
   // person: the real name comes from the system's branch list, the website,
-  // imagery, or a visit.
+  // imagery, or a visit. Where build-qa paired the library with a named twin
+  // (a named library on the same footprint – a duplicate mapping), the popup
+  // points at the twin instead of sending the mapper researching.
+  const twinByOsm = new Map((d.unnamedPairs || []).map(p => [p.osm, p]));
   for (const l of d.libs) {
     const [sysIdx, type, id, name, , flags, lon, lat] = l;
     if (name) continue;
+    const pair = twinByOsm.get(type + id);
     issues.unnamed.push({
       type: 'unnamed', lon, lat, osm: type + id, flags,
-      name: '(unnamed library)', sysName: d.systems[sysIdx]?.n ?? ''
+      name: '(unnamed library)', sysName: d.systems[sysIdx]?.n ?? '',
+      twin: pair?.match ?? null, others: pair?.others ?? 0
     });
   }
 
@@ -267,13 +277,20 @@ function buildIssues() {
     const lat = u.bb ? (u.bb[1] + u.bb[3]) / 2 : u.lat;
     if (lon == null || lat == null) continue;
     const pts = u.pts || [];   // per-outlet points (older data predates them)
-    const ops = [...new Set(pts.map(p => p.osm && libSys.get(p.osm)).filter(i => i != null && i >= 0))]
-      .map(i => d.systems[i].n);
+    // Operator identities on the matched buildings. Current data ships u.ops
+    // with `m: 1` on spellings the crosswalk scores as THIS system – that's
+    // not ambiguity, the system is in OSM under its own name on fewer branches
+    // than the matcher's floor. Only OTHER operators make a system ambiguous.
+    // Older data (no u.ops): fall back to system membership via libs.
+    const opsInfo = u.ops ?? [...new Set(pts.map(p => p.osm && libSys.get(p.osm)).filter(i => i != null && i >= 0))]
+      .map(i => ({ n: d.systems[i].n }));
+    const foundOp = opsInfo.find(o => o.m)?.n ?? null;
+    const ops = opsInfo.filter(o => !o.m).map(o => o.n);
     const type = ops.length ? 'sysmixed' : 'unmatched';
     issues[type].push({
       type, lon, lat,
       name: titleCase(u.name), state: u.state, outlets: u.outlets, near: u.near,
-      bb: u.bb || null, fscskey: u.fscskey, pts, ops
+      bb: u.bb || null, fscskey: u.fscskey, pts, ops, foundOp
     });
   }
 
@@ -327,7 +344,9 @@ function typeFC(t) {
     features: state.issues[t].map((it, i) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [it.lon, it.lat] },
-      properties: { i }
+      // `twin` drives the unnamed layer's data-driven paint: pins whose name
+      // is already mapped right there render brighter so they're easy to spot.
+      properties: { i, ...(it.twin ? { twin: true } : {}) }
     }))
   };
 }
@@ -366,13 +385,25 @@ function initMap(view, sourceDateLabel) {
   state.map.on('load', () => {
     // Bottom-to-top: later-added layers draw on top; TYPES[0] should win, so add
     // in reverse priority order.
+    // Unnamed pins with a named twin (a candidate enclosing/duplicate library
+    // whose name is already mapped) are the quick keep-one-element merges –
+    // brighter gold, dark ring, a touch bigger, so they stand out from the
+    // plain unnamed pins.
+    const TWIN = ['boolean', ['get', 'twin'], false];
     for (const t of [...TYPES].reverse()) {
       state.map.addSource(srcId(t.id), { type: 'geojson', data: typeFC(t.id) });
       state.map.addLayer({
         id: layerId(t.id),
         type: 'circle',
         source: srcId(t.id),
-        paint: (t.id === 'unmatched' || t.id === 'sysmixed') ? {
+        paint: t.id === 'unnamed' ? {
+          'circle-radius': ['interpolate', ['linear'], ['zoom'],
+            4, ['case', TWIN, 4.5, 3.5], 9, ['case', TWIN, 7.5, 6], 13, ['case', TWIN, 11, 9]],
+          'circle-color': ['case', TWIN, TWIN_COLOR, t.color],
+          'circle-opacity': 0.9,
+          'circle-stroke-width': ['step', ['zoom'], ['case', TWIN, 1.5, 0.5], 7, ['case', TWIN, 2, 1.5]],
+          'circle-stroke-color': ['case', TWIN, '#6b5300', '#ffffff']
+        } : (t.id === 'unmatched' || t.id === 'sysmixed') ? {
           // Hollow pin: a whole system's area, not one building.
           'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 9],
           'circle-color': t.color,
@@ -560,10 +591,13 @@ function popupHtml(type, it) {
 
   if (type === 'unmatched' || type === 'sysmixed') {
     const note = type === 'sysmixed'
-      ? `Branches already carry operator tags – <b>${it.ops.slice(0, 3).map(escapeHtml).join('</b>, <b>')}</b>${it.ops.length > 3 ? ` +${it.ops.length - 3} more` : ''} – likely a federated cooperative, a rename, or fragmented spellings. Judge which tagging is right before changing anything.`
-      : it.near
-        ? 'Buildings are likely mapped but none carries an operator tag – straightforward additive tagging.'
-        : 'No outlet has an OSM library within 200 m – likely unmapped territory.';
+      ? `Branches already carry operator tags – <b>${it.ops.slice(0, 3).map(escapeHtml).join('</b>, <b>')}</b>${it.ops.length > 3 ? ` +${it.ops.length - 3} more` : ''} – likely a federated cooperative, a rename, or fragmented spellings. Judge which tagging is right before changing anything.${
+          it.foundOp ? ` (<b>${escapeHtml(it.foundOp)}</b> already matches this system.)` : ''}`
+      : it.foundOp
+        ? `Found in OSM – <b>${escapeHtml(it.foundOp)}</b> is already the operator on at least one branch, just on too few branches for the matcher. Add the same operator to the remaining branches, and <code>operator:wikidata</code> to every branch to make the system unambiguous.`
+        : it.near
+          ? 'Buildings are likely mapped but none carries an operator tag – straightforward additive tagging.'
+          : 'No outlet has an OSM library within 200 m – likely unmapped territory.';
     return head(it.near
       ? `<span class="qm-badge" style="--c:#9a7d00">${it.near}/${it.outlets} buildings likely in OSM</span>`
       : '<span class="qm-badge" style="--c:#d1434f">0 outlets found in OSM</span>') + `
@@ -587,11 +621,20 @@ function popupHtml(type, it) {
   }
 
   if (type === 'unnamed') {
-    return head('<span class="qm-badge" style="--c:#a98307">no name tag</span>') + `
+    const note = it.twin
+      ? `A named library sits ${it.twin.in ? 'on this very footprint' : `${it.twin.dist} m away`}:
+         <b>${escapeHtml(it.twin.n)}</b>
+         (<a href="https://www.openstreetmap.org/${OSM_TYPE[it.twin.osm[0]]}/${it.twin.osm.slice(1)}" target="_blank" rel="noopener">${OSM_TYPE[it.twin.osm[0]]} ${it.twin.osm.slice(1)}</a>)
+         – likely the same library mapped twice. Keep one element as appropriate and remove the duplicate.${
+           it.others ? ` <b>${it.others} more named librar${it.others === 1 ? 'y is' : 'ies are'} in range</b> – a multi-library building, judge carefully.` : ''}`
+      : `Find the official name –
+         ${it.sysName ? 'the system’s branch list, the library’s website,' : 'the library’s website'}
+         or imagery – then add <code>name</code>.`;
+    return head(it.twin
+      ? '<span class="qm-badge" style="--c:#a98307">name is right there</span>'
+      : '<span class="qm-badge" style="--c:#a98307">no name tag</span>') + `
       <div class="pop-body">
-        <div class="qa-note" style="margin:6px 0 0">Find the official name –
-          ${it.sysName ? 'the system’s branch list, the library’s website,' : 'the library’s website'}
-          or imagery – then add <code>name</code>.</div>
+        <div class="qa-note" style="margin:6px 0 0">${note}</div>
         <div id="qm-tagcard">${tagCardHtml(snapshotTagRows(it), 'checking live…')}</div>
         <div class="qm-actions">${editLink(editObject(it.osm, it.lat, it.lon), '✏️ Edit')}</div>
       </div>`;
@@ -847,10 +890,12 @@ function renderList() {
     el.innerHTML = '<div class="list-empty">No issues of the selected types in view.<br>Zoom out, pan, or enable more types above.</div>';
     return;
   }
-  // Within a type: system-scale rows (unmatched/sysmixed carry an outlet
-  // count) rank biggest-first — the largest unmapped system is the biggest
-  // win; everything else stays alphabetical.
+  // Within a type: twin-backed unnamed rows first (the quick merges), then
+  // system-scale rows (unmatched/sysmixed carry an outlet count) biggest-first
+  // — the largest unmapped system is the biggest win; everything else stays
+  // alphabetical.
   rows.sort((a, b2) => priority(a.t.id) - priority(b2.t.id) ||
+    ((b2.it.twin ? 1 : 0) - (a.it.twin ? 1 : 0)) ||
     ((b2.it.outlets ?? 0) - (a.it.outlets ?? 0)) ||
     a.it.name.localeCompare(b2.it.name));
   const shown = rows.slice(0, LIST_MAX);
@@ -861,15 +906,18 @@ function renderList() {
     if (t.id === 'opconflict') return it.kind === 'wdc'
       ? `tagged “${it.taggedName || it.taggedQ}”, item says “${it.parentName || it.parentQ}”`
       : `operator differs from ${CENSUS.short} match “${it.sysName}”`;
-    if (t.id === 'unnamed') return [it.sysName, 'needs a name'].filter(Boolean).join(' · ');
-    if (t.id === 'unmatched') return `${it.state} · ${it.outlets} outlets · ${it.near}/${it.outlets} in OSM`;
+    if (t.id === 'unnamed') return it.twin
+      ? `name likely “${it.twin.n}” – mapped ${it.twin.in ? 'on the same footprint' : `${it.twin.dist} m away`}`
+      : [it.sysName, 'needs a name'].filter(Boolean).join(' · ');
+    if (t.id === 'unmatched') return `${it.state} · ${it.outlets} outlets · ${it.near}/${it.outlets} in OSM${
+      it.foundOp ? ' · operator found – tag the rest' : ''}`;
     if (t.id === 'sysmixed') return `${it.state} · tagged as ${it.ops.slice(0, 2).join(', ')}${it.ops.length > 2 ? ` +${it.ops.length - 2}` : ''}`;
     return 'missing ' + it.missing.join(', ');
   };
 
   el.innerHTML = shown.map(r => `
     <div class="lib-item qm-item" data-type="${r.t.id}" data-i="${r.i}">
-      <span class="qm-dot qm-dot-lg" style="--c:${r.t.color}"></span>
+      <span class="qm-dot qm-dot-lg" style="--c:${r.it.twin ? TWIN_COLOR : r.t.color}"></span>
       <div class="info">
         <div class="nm">${escapeHtml(r.it.name)}</div>
         <div class="meta">${escapeHtml(detail(r))}</div>
