@@ -1556,6 +1556,9 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
       osmCount: mergedLibs.length,
       matched: cls.matched,
       ...(closedCount ? { closed: closedCount } : {}),
+      // Census outlets co-located with an already-matched member (see
+      // classify) – carried for the count math, never as a finding.
+      ...(cls.shared?.length ? { shared: cls.shared.length } : {}),
       ...(variants.length ? { variants } : {}),
       untagged: cls.untagged.map(u => ({
         name: u.p.name, addr: u.p.addr, city: u.p.city, lat: u.p.lat, lon: u.p.lon,

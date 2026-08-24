@@ -24,3 +24,30 @@ test('classify: a distant same-name outlet becomes a discrepancy, not a match', 
   assert.equal(cls.matched, 0);
   assert.equal(cls.discrepancies.length, 1);
 });
+
+test('classify: a second outlet at a matched member is shared, not a conflict', () => {
+  // The Driggs case (ID0106): PLS lists the branch and its makerspace as two
+  // outlets at one address; OSM maps one object ("Driggs Branch and
+  // Makerspace") tagged with the right operator. The leftover outlet must not
+  // become an untagged/conflict finding against its own system's member.
+  const branch = { id: 'ID-1', name: 'Valley of the Tetons District - Driggs Branch', lat: 43.724, lon: -111.11103 };
+  const maker = { id: 'ID-2', name: 'Valley of the Tetons District - Makerspace', lat: 43.724, lon: -111.11101 };
+  const lib = { id: 'n14093677707', name: 'Driggs Branch and Makerspace', lat: 43.7239343, lon: -111.110774 };
+  const nearby = () => ({ id: 'n14093677707', name: lib.name, operator: 'Valley of the Tetons Library', lat: lib.lat, lon: lib.lon, dist: 25 });
+  const cls = classify([branch, maker], [lib], 'Valley of the Tetons Library', nearby);
+  assert.equal(cls.matched, 1);
+  assert.equal(cls.shared.length, 1);
+  assert.equal(cls.untagged.length, 0);
+  assert.equal(cls.missing.length, 0);
+});
+
+test('classify: a leftover outlet near a NON-member library still reports untagged', () => {
+  const a = { id: 'X-1', name: 'Central Library', lat: 45.0, lon: -77.0 };
+  const lib = { id: 'n1', name: 'Central Library', lat: 45.00005, lon: -77.0 };
+  const other = { id: 'w9', name: 'Some Other Library', operator: 'Someone Else', lat: 45.05, lon: -77.0, dist: 150 };
+  const b = { id: 'X-2', name: 'North Branch', lat: 45.05, lon: -77.0 };
+  const cls = classify([a, b], [lib], 'Central Library', (lat) => (lat === b.lat ? other : null));
+  assert.equal(cls.matched, 1);
+  assert.equal(cls.shared.length, 0);
+  assert.equal(cls.untagged.length, 1);
+});

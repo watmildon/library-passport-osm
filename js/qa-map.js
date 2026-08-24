@@ -668,13 +668,30 @@ function snapshotTagRows(it) {
   }));
 }
 
+// A website value renders as a real link, clickable straight from the popup
+// (label sans scheme, like the main map). Only http(s) values – or bare hosts,
+// which get https:// prefixed – ever become hrefs, so a malformed tag value
+// can't smuggle in another scheme. Q-ids in *wikidata values link out too,
+// matching the operator card.
+function tagValueHtml(key, v) {
+  if (/^(contact:)?website$/.test(key) || /^https?:\/\//i.test(v)) {
+    const href = /^https?:\/\//i.test(v) ? v : 'https://' + v;
+    return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener">${escapeHtml(v.replace(/^https?:\/\//i, ''))}</a>`;
+  }
+  if (/wikidata$/.test(key)) {
+    return v.split(';').map(q => q.trim())
+      .map(q => /^Q\d+$/.test(q) ? wdLink(q) : escapeHtml(q)).join('; ');
+  }
+  return escapeHtml(v);
+}
+
 function tagCardHtml(rows, note) {
   const missing = rows.filter(r => !r.present);
   const present = rows.filter(r => r.present);
   const missingHtml = missing.map(r =>
     `<div class="tag-row tag-missing"><span class="tag-k">${escapeHtml(r.key)}</span><span class="tag-v">— missing</span></div>`).join('');
   const presentHtml = present.map(r =>
-    `<div class="tag-row tag-present"><span class="tag-k">${escapeHtml(r.key)}</span><span class="tag-v">${r.value != null ? escapeHtml(r.value) : '✓'}</span></div>`).join('');
+    `<div class="tag-row tag-present"><span class="tag-k">${escapeHtml(r.key)}</span><span class="tag-v">${r.value != null ? tagValueHtml(r.key, r.value) : '✓'}</span></div>`).join('');
   return `
     <div class="tags-block">
       <div class="tags-title">OSM tags ${missing.length

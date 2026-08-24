@@ -811,6 +811,7 @@ function renderPls() {
           ${p.missing.length && p.untagged.length ? ' · ' : ''}
           ${p.untagged.length ? `<b class="pls-untagged-n">${p.untagged.length} untagged</b>` : ''}
           ${p.closed ? `<span class="qa-badge qa-badge-not" title="${escapeHtml(CENSUS.short)} outlets recorded as closed – via the branch's Wikidata item (date of official closure) or a disused:/was: lifecycle tag in OSM – and therefore not counted as missing">${p.closed} closed</span>` : ''}
+          ${p.shared ? `<span class="qa-badge qa-badge-not" title="${escapeHtml(CENSUS.short)} outlets co-located with an already-matched branch (a makerspace, genealogy room, or service listed separately by the census) – OSM correctly maps them as one object, so nothing to fix">${p.shared} co-located</span>` : ''}
           <button class="qa-link-btn" data-sys="${p.sysIdx}">Explore →</button></span>
       </div>
       ${qidNote ? `<div class="pls-qid-row">${qidNote}</div>` : ''}

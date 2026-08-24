@@ -191,7 +191,11 @@ Either way the Node script normalizes the rows into one compact file:
   item, grouped by the `(tagged → asserted)` pair: `{ tw, tn, tk, pq, pn, pk, st,
   libs[] }`. Overpass-only, like `wdOperators`.
 - `pls` — per-system IMLS PLS cross-reference (see below): `{ sysKey, fscskey,
-  plsCount, osmCount, matched, closed?, variants?, untagged[], missing[], discrepancies[] }`.
+  plsCount, osmCount, matched, closed?, shared?, variants?, untagged[], missing[], discrepancies[] }`.
+  `shared` counts census outlets co-located with an already-matched member –
+  PLS lists two outlets at one address (a makerspace or genealogy room inside
+  the branch) that OSM correctly maps as one object; carried for the count
+  math, never emitted as a finding.
   `plsUnmatched[]` rows carry `pts[]` — one point per PLS outlet (`n`, `lat`,
   `lon`, plus `osm`/`osmName`/`osmLat`/`osmLon` when some OSM library sits
   within 200 m) so the pages can navigate to each suspected library, and

@@ -168,12 +168,20 @@ export function classify(plsOutlets, osmLibs, operatorName, nearbyLibs) {
     discrepancies.push({ p: c.p, osmId: c.o.id, osmLat: c.o.lat, osmLon: c.o.lon, dist: Math.round(c.dist) });
   }
 
-  // remaining PLS outlets: split untagged (exists in OSM, any operator) vs missing
-  const untagged = [], missing = [];
+  // remaining PLS outlets: split untagged (exists in OSM, any operator) vs
+  // missing. When the nearby library is a MEMBER of this very system, the
+  // outlet is co-located with an already-matched branch – PLS lists two
+  // outlets at one address (a makerspace or genealogy room inside the branch)
+  // that OSM correctly maps as one object. That's `shared`, not a finding:
+  // calling the member "a different operator" flagged perfectly tagged
+  // libraries as conflicts (e.g. Driggs Branch and Makerspace, ID0106).
+  const memberIds = new Set(osmLibs.map(o => o.id));
+  const untagged = [], missing = [], shared = [];
   for (const p of plsOutlets) {
     if (usedP.has(p.id)) continue;
     const near = nearbyLibs ? nearbyLibs(p.lat, p.lon) : null;
-    if (near) untagged.push({ p, near });
+    if (near && memberIds.has(near.id)) shared.push({ p, near });
+    else if (near) untagged.push({ p, near });
     else missing.push(p);
   }
 
@@ -183,6 +191,7 @@ export function classify(plsOutlets, osmLibs, operatorName, nearbyLibs) {
     matchedPairs: matched.map(c => ({ p: c.p, o: c.o, dist: Math.round(c.dist) })), // PLS outlet ↔ its OSM library
     untagged,      // [{ p, near }]
     missing,       // [ outlet ]
+    shared,        // [{ p, near }] co-located with a member – satisfied, not actionable
     discrepancies  // [{ p, osmId, dist }]
   };
 }
