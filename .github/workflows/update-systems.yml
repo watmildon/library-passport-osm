@@ -58,44 +58,12 @@ jobs:
       - name: Freshness gate
         id: gate
         run: |
-          # Ask the Overpass instance for its data timestamp and skip the whole
-          # rebuild when the committed data already comes from an equal-or-newer
-          # snapshot (each data file records meta.sourceDate). Do not echo the
-          # endpoint anywhere.
-          if [ -z "$OVERPASS_URL" ]; then
-            echo "::error::OVERPASS_PRIMARY_URL secret is not set."
-            exit 1
-          fi
-          TS=$(curl -sf -X POST "$OVERPASS_URL" \
-                 --data-urlencode 'data=[out:json][timeout:60];out count;' \
-               | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{try{process.stdout.write(JSON.parse(s).osm3s.timestamp_osm_base||'')}catch{}})" \
-               || echo "")
-          if [ -z "$TS" ]; then
-            echo "::error::The Overpass instance did not answer with a data timestamp. Is it up?"
-            exit 1
-          fi
-          LIVE_DATE="${TS:0:10}"
-          SYS=$(node -p "const m=require('./data/us-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
-          CASYS=$(node -p "const m=require('./data/ca-library-systems.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
-          QA=$(node -p "const m=require('./data/qa-data.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
-          CAQA=$(node -p "const m=require('./data/ca-qa-data.json').meta; m.sourceDate||''" 2>/dev/null || echo "")
-          echo "Overpass data: $TS"
-          echo "Committed sourceDate — us systems: '${SYS:-none}', ca systems: '${CASYS:-none}', us qa: '${QA:-none}', ca qa: '${CAQA:-none}'"
-          echo "### Data source" >> "$GITHUB_STEP_SUMMARY"
-          echo "Private Overpass instance — data timestamp: $TS" >> "$GITHUB_STEP_SUMMARY"
-
-          RUN=yes
-          # Skip only if ALL committed files are already at least as fresh as live.
-          if [ "${{ github.event.inputs.force }}" = "true" ]; then
-            echo "Forced rebuild requested."
-          elif [ -n "$SYS" ] && [ -n "$CASYS" ] && [ -n "$QA" ] && [ -n "$CAQA" ] \
-               && [ ! "$SYS" \< "$LIVE_DATE" ] && [ ! "$CASYS" \< "$LIVE_DATE" ] \
-               && [ ! "$QA" \< "$LIVE_DATE" ] && [ ! "$CAQA" \< "$LIVE_DATE" ]; then
-            echo "Committed data is not older than the Overpass snapshot — skipping rebuild."
-            echo "Up to date (committed sourceDate >= ${LIVE_DATE})." >> "$GITHUB_STEP_SUMMARY"
-            RUN=no
-          fi
-          echo "run=$RUN" >> "$GITHUB_OUTPUT"
+          # Asks the instance for its data timestamp and skips the whole rebuild
+          # when every committed file already comes from an equal-or-newer
+          # snapshot. The decision, the tracked-file list and the failure
+          # diagnosis all live in the script — it shares them with the build
+          # scripts it gates, and it never echoes the endpoint.
+          node scripts/freshness-gate.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
       - name: Check whether a new IMLS PLS release needs DuckDB
         id: pls

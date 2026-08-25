@@ -31,8 +31,61 @@ source; `sourceDate` makes freshness comparable across sources.
 Before writing, a writer **compares its source date against the committed
 `sourceDate` and only writes if it is contributing newer data** (pass `--force`
 to override), so a rerun or an out-of-order job never clobbers fresher data.
-The [`update-systems`](../.github/workflows/update-systems.yml) workflow
-applies the same gate up front (`force: true` input overrides).
+
+### `freshness-gate.mjs` — the same gate, up front
+
+`freshness-gate.mjs` applies that comparison once for the whole pipeline, so a
+day with nothing to do costs one cheap `out count;` query instead of a full
+rebuild. It asks the instance for its data timestamp and compares it against
+the committed `sourceDate` of every country's `systemsFile` and `qaFile` (the
+list comes from `js/countries.js` — a new country extends the gate for free).
+Outlet censuses are deliberately excluded: they follow their own annual /
+provincial release cadence and their build scripts self-gate on it.
+
+```sh
+node scripts/freshness-gate.mjs           # report + decision
+node scripts/freshness-gate.mjs --force   # decide "run" regardless
+```
+
+```
+Overpass snapshot: 2026-08-25T09:50:12Z (data date 2026-08-25)
+Committed sourceDate:
+  US systems  2026-08-24  stale    data/us-library-systems.json
+  US QA       2026-08-25  current  data/qa-data.json
+Rebuild needed: 1 of 4 files are older than the snapshot (US systems).
+```
+
+The [`update-systems`](../.github/workflows/update-systems.yml) workflow runs
+it as its first step and keys every later step off its `run` output (the
+`force: true` input passes `--force`). Under Actions it also writes the
+`run`/`sourceDate` step outputs, a data-source note to the job summary, and
+`::error::` annotations; run locally it just prints the report, which makes it
+the quickest way to ask "is my instance healthy and is my checkout stale?".
+
+**A missing or unreachable instance is a hard failure** (exit 1) — better a red
+X than a silent skip that reads as "no changes today" for a week. The failure
+says which way it failed; see below.
+
+## Diagnosing an Overpass failure
+
+Every query goes through `overpassQuery`, which classifies failures rather than
+reporting "it didn't work" — a dead backend, a dead host, a rate limit and a
+hung query need completely different fixes:
+
+| What you see | What it means |
+| --- | --- |
+| `HTTP 502/503 … the proxy is up but the Overpass backend is not answering` | The instance's web server is fine; the Overpass service behind it needs a restart. |
+| `could not connect (ECONNREFUSED)` | Nothing is listening — the instance is down, not just its backend. |
+| `could not connect (ENOTFOUND)` | The host no longer resolves. |
+| `HTTP 429 … rate limited` | Too many queries in flight. |
+| `HTTP 504 … the query outlived the proxy` | Server-side timeout tuning, not an outage. |
+| `no response within the Ns client limit` | The query was accepted and never answered — raise `maxSeconds`, or the instance is wedged. |
+| `the body is not JSON` | Something other than an Overpass interpreter answered. |
+
+Each message carries **how long the call took** before failing, which is often
+the tell: a 0.2 s failure is an instant rejection, a 300 s one is a query that
+was genuinely attempted. Every message is run through a redactor first, so a
+proxy error page that names its upstream still can't leak the endpoint.
 
 ## `refresh-systems.mjs` — systems lists (Overpass, primary)
 
@@ -406,8 +459,9 @@ runs `refresh-systems.mjs`, `build-pls.mjs` (a no-op except when a new PLS
 fiscal year lands), and `build-qa.mjs` every day (and on-demand via the Actions
 tab), committing the result back to the repo so the picker and QA page keep
 pace with mappers' additions and cleanups. The Overpass endpoint comes from the
-`OVERPASS_PRIMARY_URL` repository secret; if the instance is unreachable the
-job fails loudly without committing (fall back manually, below).
+`OVERPASS_PRIMARY_URL` repository secret; `freshness-gate.mjs` runs first and,
+if the instance is unreachable, fails the job loudly — naming the failure mode
+— without committing (fall back manually, below).
 
 Guards keep a bad upstream response from landing:
 
