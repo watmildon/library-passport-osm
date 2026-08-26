@@ -26,7 +26,7 @@
 //   OVERPASS_URL=https://my-overpass/api/interpreter node scripts/refresh-systems.mjs
 
 import { writeSystems, USER_AGENT, committedSourceDate, toISODate, systemsPath } from './systems-core.mjs';
-import { overpassEndpoint, overpassQuery, overpassTimestamp } from './overpass-source.mjs';
+import { overpassEndpoint, overpassQueryResilient, overpassTimestamp, degradedMode, describeTier } from './overpass-source.mjs';
 import { country } from '../js/countries.js';
 
 const FORCE = process.argv.includes('--force');
@@ -36,13 +36,15 @@ const COUNTRY = country((countryArg ? countryArg.split('=')[1] : 'US').toUpperCa
 async function main() {
   const endpoint = overpassEndpoint({ required: true });
   // Never print the endpoint or its host — in CI it comes from a secret, and
-  // GitHub only masks the exact secret string in logs.
-  console.log('Using the configured Overpass endpoint.');
+  // GitHub only masks the exact secret string in logs. The tier name is safe.
+  // This script IS the basics, so a degraded (failover-tier) run changes only
+  // which endpoint answers, not what gets built.
+  console.log(`Using ${describeTier()}${degradedMode() ? ' (degraded failover)' : ''}.`);
 
   // 1) Freshness gate — compare Overpass's data timestamp to the committed file
   //    before doing the big query. (writeSystems enforces the same gate again.)
   // timestamp_osm_base is UTC (e.g. 2026-07-23T02:00:00Z); toISODate keeps it UTC.
-  const overpassDate = toISODate(await overpassTimestamp(endpoint));
+  const overpassDate = toISODate(await overpassTimestamp(endpoint, { resilient: true }));
   if (!overpassDate) throw new Error('Could not read Overpass data timestamp — aborting.');
   const committed = committedSourceDate(systemsPath(COUNTRY.code));
   console.log(`  ${COUNTRY.code}: committed data source: ${committed ?? '(none)'} · Overpass data: ${overpassDate}`);
@@ -58,7 +60,7 @@ async function main() {
 area(${COUNTRY.areaId})->.us;
 nwr[amenity=library](area.us);
 out tags;`;
-  const json = await overpassQuery(endpoint, query, { maxSeconds: 210, userAgent: USER_AGENT });
+  const json = await overpassQueryResilient(endpoint, query, { maxSeconds: 210, userAgent: USER_AGENT });
   const elements = json.elements || [];
   console.log(`  ${elements.length} ${COUNTRY.code} libraries`);
 

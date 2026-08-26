@@ -15,25 +15,41 @@
 // NOT tracked — they follow their sources' own annual/provincial release
 // cadence, not OSM's minutely one, and their build scripts self-gate on it.
 //
-// A missing or unreachable instance is a hard failure: better a red X than a
-// silent skip that looks like "no changes today" for a week.
+// FAILOVER: when the primary instance is down, the gate walks the endpoint
+// chain (primary secret → OVERPASS_SECONDARY_URL secret → public Overpass
+// servers, see overpass-source.mjs) and pins the first tier that answers via
+// the OVERPASS_TIER env var ($GITHUB_ENV), so every later build step uses the
+// same endpoint without re-probing a dead host. Any tier but primary is a
+// DEGRADED refresh – the build scripts skip the expensive enrichment stages –
+// and the gate says so loudly in the log, the job summary and its outputs.
 //
-// In GitHub Actions it writes `run=yes|no` to $GITHUB_OUTPUT, appends a data
-// source note to $GITHUB_STEP_SUMMARY, and emits ::error:: annotations. Outside
-// Actions those are no-ops and it just prints the report, so it doubles as the
-// local "is my instance healthy and is my checkout stale?" check.
+// The refresh only becomes a hard failure when NO tier answers: better a red X
+// than a silent skip that looks like "no changes today" for a week.
 //
-// Usage:  node scripts/freshness-gate.mjs [--force]
-// Exit:   0 decision made (run=yes|no) · 1 no endpoint configured, or the
-//         instance did not answer with a usable timestamp.
+// In GitHub Actions it writes `run=yes|no`, `tier` and `degraded=yes|no` to
+// $GITHUB_OUTPUT, appends a data source note to $GITHUB_STEP_SUMMARY, and
+// emits ::error::/::warning:: annotations. Outside Actions those are no-ops
+// and it just prints the report, so it doubles as the local "is my instance
+// healthy and is my checkout stale?" check.
+//
+// Usage:  node scripts/freshness-gate.mjs [--force] [--tier=auto|primary|secondary|public]
+//         (--tier pins the chain to exactly one tier; default auto walks it)
+// Exit:   0 decision made (run=yes|no) · 1 no endpoint answered with a usable
+//         timestamp.
 
 import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { overpassEndpoint, overpassTimestamp } from './overpass-source.mjs';
+import { overpassCandidates, resolveOverpass, describeTier } from './overpass-source.mjs';
 import { committedSourceDate, toISODate, ROOT } from './systems-core.mjs';
 import { COUNTRIES } from '../js/countries.js';
 
 const FORCE = process.argv.includes('--force');
+const tierArg = process.argv.find(a => a.startsWith('--tier='));
+const START_TIER = (tierArg ? tierArg.split('=')[1] : 'auto').trim().toLowerCase();
+if (!['auto', 'primary', 'secondary', 'public'].includes(START_TIER)) {
+  console.error(`Unknown --tier value "${START_TIER}" — expected auto, primary, secondary or public.`);
+  process.exit(1);
+}
 
 // ---- GitHub Actions plumbing (no-ops when run locally) ---------------------
 
@@ -41,6 +57,12 @@ const inActions = !!process.env.GITHUB_ACTIONS;
 
 function setOutput(key, value) {
   if (process.env.GITHUB_OUTPUT) appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
+}
+
+// Pin an env var for every LATER step of the job ($GITHUB_ENV is a file, never
+// a log — writing a URL here does not print it).
+function setEnv(key, value) {
+  if (process.env.GITHUB_ENV) appendFileSync(process.env.GITHUB_ENV, `${key}=${value}\n`);
 }
 
 function addSummary(line) {
@@ -65,43 +87,51 @@ const tracked = Object.values(COUNTRIES).flatMap(c => [
 ]).filter(f => f.file);
 
 async function main() {
-  // Never print the endpoint or its host — in CI it comes from a secret, and
-  // GitHub only masks the exact secret string in logs.
-  const endpoint = overpassEndpoint();
-  if (!endpoint) {
-    fail('No Overpass endpoint configured.',
-      'In CI this comes from the OVERPASS_PRIMARY_URL repository secret (exposed to the job as OVERPASS_URL); locally, put the URL in a gitignored .overpass-url file in the repo root.');
+  // Never print an endpoint or its host — the primary and secondary come from
+  // secrets, and GitHub only masks the exact secret string in logs. Tiers are
+  // identified by name only.
+  if (!overpassCandidates(START_TIER).length) {
+    fail(`No ${START_TIER} Overpass endpoint configured.`,
+      'In CI the primary comes from the OVERPASS_PRIMARY_URL repository secret (exposed to the job as OVERPASS_URL) and the secondary from OVERPASS_SECONDARY_URL; locally, put the URL in a gitignored .overpass-url / .overpass-secondary-url file in the repo root.');
   }
 
-  // Catch a mistyped or mangled secret here rather than letting it surface as a
-  // connection failure — a rotated URL pasted without its scheme, or with a
-  // stray newline, is a config problem, not an outage. The URL itself stays
-  // unprinted; only the shape of the mistake is reported.
-  try {
-    const u = new URL(endpoint);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error(`scheme is "${u.protocol}"`);
-  } catch (e) {
-    fail('The configured Overpass endpoint is not a usable http(s) URL.',
-      `${e.message}. Check OVERPASS_PRIMARY_URL (or .overpass-url) for a missing scheme, a stray newline, or surrounding quotes; it should look like https://host/api/interpreter.`);
+  // Walk the failover chain: first tier that answers with a usable data
+  // timestamp wins. Failure messages come pre-redacted from overpass-source.
+  const res = await resolveOverpass(START_TIER);
+  for (const f of res.failures) {
+    const line = `${f.tier} endpoint unavailable: ${f.message}`;
+    console.warn(inActions ? `::warning::${line.replace(/\r?\n/g, '%0A')}` : `WARNING: ${line}`);
+  }
+  if (!res.tier) {
+    fail('Refusing to rebuild — no Overpass endpoint answered.',
+      res.failures.map(f => `[${f.tier}] ${f.message}`).join(' · '));
   }
 
-  let timestamp;
-  try {
-    timestamp = await overpassTimestamp(endpoint);
-  } catch (e) {
-    // OverpassError messages already name the failure mode, and are already
-    // redacted; anything else gets reported as-is.
-    fail('Refusing to rebuild — the data source is unavailable.', e.message);
-  }
+  const timestamp = res.timestamp;
   const liveDate = toISODate(timestamp);
   if (!liveDate) {
-    fail('The Overpass instance answered, but with no usable data timestamp.',
-      `Expected osm3s.timestamp_osm_base, got ${timestamp ? `"${timestamp}"` : 'nothing'} — is the endpoint really an Overpass interpreter, and is its replication running?`);
+    fail('The Overpass endpoint answered, but its data timestamp did not parse.',
+      `Got "${timestamp}" — expected an ISO osm3s.timestamp_osm_base.`);
   }
+  const degraded = res.tier !== 'primary';
 
-  console.log(`Overpass snapshot: ${timestamp} (data date ${liveDate})`);
+  // Pin the winning tier for every later build step. For the public tier the
+  // winning server is pinned too (the first public server may be the one that
+  // just failed); it is not a secret, unlike the other tiers' URLs.
+  setEnv('OVERPASS_TIER', res.tier);
+  if (res.tier === 'public') setEnv('OVERPASS_PUBLIC_URL', res.url);
+
+  console.log(`Overpass snapshot via ${describeTier(res.tier)}: ${timestamp} (data date ${liveDate})`);
   addSummary('### Data source');
-  addSummary(`Private Overpass instance — data timestamp: ${timestamp}`);
+  if (degraded) {
+    const note = `DEGRADED refresh — the primary Overpass instance is unavailable, using ${describeTier(res.tier)}. ` +
+      'Expensive enrichment stages (augment live-tag fetches, unnamed-pair outlines) are skipped and carried forward from the last full refresh.';
+    console.warn(inActions ? `::warning::${note}` : `WARNING: ${note}`);
+    addSummary(`**${note}**`);
+    addSummary(`Data timestamp: ${timestamp}`);
+  } else {
+    addSummary(`Private Overpass instance — data timestamp: ${timestamp}`);
+  }
 
   // Read every tracked file's committed snapshot date. A file with no readable
   // sourceDate (never built, or hand-edited) counts as stale: rebuilding it is
@@ -134,6 +164,8 @@ async function main() {
 
   setOutput('run', run ? 'yes' : 'no');
   setOutput('sourceDate', liveDate);
+  setOutput('tier', res.tier);
+  setOutput('degraded', degraded ? 'yes' : 'no');
 }
 
 // Anything that gets past the handled cases still exits through fail(), so a

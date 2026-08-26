@@ -20,6 +20,66 @@ The URL is a secret. No script prints it *or its host* — GitHub Actions only
 masks the exact secret string in logs, so even the hostname would leak.
 `meta.source` in the data files stays deliberately generic ("Overpass, …").
 
+## Failover tiers and degraded mode
+
+When the primary instance is down, the pipeline falls back along a chain of
+endpoint **tiers** rather than failing for the duration of the outage:
+
+| tier | endpoint | capability |
+| --- | --- | --- |
+| `primary` | `OVERPASS_URL` env (CI: the `OVERPASS_PRIMARY_URL` secret) / gitignored `.overpass-url` | no limits — the full pipeline |
+| `secondary` | `OVERPASS_SECONDARY_URL` env (CI: secret) / gitignored `.overpass-secondary-url` | hosted free tier with a tight quota — degraded |
+| `public` | overpass-api.de, kumi.systems | last resort — degraded |
+
+The secondary URL may embed an API key, so it is handled exactly like the
+primary: never printed, never committed, redacted from every error message
+(`redact()` strips *all* configured secret endpoints from every message,
+whichever tier it came from).
+
+**How a tier is chosen.** `freshness-gate.mjs` probes the chain once per run
+(`resolveOverpass()` in `overpass-source.mjs`) and pins the first tier that
+answers with a usable data timestamp by writing `OVERPASS_TIER` to
+`$GITHUB_ENV`. Every later step honors the pin instead of re-probing a dead
+host; each tier that failed is reported as a `::warning::` with the usual
+failure diagnosis. The refresh is only a hard failure when **no** tier
+answers. The workflow's `tier` input (workflow_dispatch) pins the chain to one
+tier for testing — "does the secondary work?" — without the chain hiding the
+answer.
+
+**What degraded mode does.** Any tier but `primary` sets degraded mode
+(`degradedMode()`), and `build-qa.mjs` then rebuilds only the basics:
+
+- The **augment stage is skipped** — it is one Overpass query per crosswalked
+  system (hundreds of queries), by far the biggest consumer of the run.
+- The **unnamed-twin search is skipped** — the pairing itself is local, but the
+  building-outline fetch is not, and rebuilding without it would strip the
+  verified-containment marks and churn the diff.
+- Both sections are **carried forward** from the committed file, so the QA and
+  augment pages keep working on last-full-refresh data, and `meta.degraded:
+  true` records how the file was built.
+- The small fail-soft queries (not:-assertions, lifecycle closures) go to the
+  **public servers first**, preserving the fallback tier's quota for the big
+  country-wide queries the public servers can't be trusted with.
+- The **big queries get failover of their own** (`overpassQueryResilient`): in
+  degraded mode the remaining public servers are tried after the active
+  endpoint, and a wholly failed round is retried once after a one-minute
+  cool-down — the public servers answer 429 while their per-IP slots are busy,
+  and often aren't a minute later.
+
+The systems lists (`refresh-systems.mjs`) are already "the basics" — one query
+per country — so they build identically on every tier.
+
+A degraded daily run costs roughly 11 requests against the fallback tier
+(freshness probe, plus per-country timestamp + libraries for the systems
+lists, and timestamp + libraries + state assignment for the QA builds), which
+fits a 500-requests/month free tier with headroom — thanks to the freshness
+gate, a day with no OSM changes costs just the probe. The unit tests for the
+tier plumbing live in `overpass-source.test.mjs` (`npm run test:overpass`).
+
+Planned but not yet wired: a tertiary tier on the OSM Postpass instance —
+Postpass speaks SQL rather than Overpass QL, so it needs its own query
+implementations, not just another URL in the chain.
+
 ## Freshness — every writer records `meta.sourceDate`
 
 Each data writer stamps the snapshot date of the source it built from into
@@ -62,9 +122,10 @@ it as its first step and keys every later step off its `run` output (the
 `::error::` annotations; run locally it just prints the report, which makes it
 the quickest way to ask "is my instance healthy and is my checkout stale?".
 
-**A missing or unreachable instance is a hard failure** (exit 1) — better a red
-X than a silent skip that reads as "no changes today" for a week. The failure
-says which way it failed; see below.
+**An unreachable instance falls back down the tier chain** (see "Failover
+tiers" above); the refresh is a hard failure (exit 1) only when no tier
+answers — better a red X than a silent skip that reads as "no changes today"
+for a week. Every tier that failed says which way it failed; see below.
 
 ## Diagnosing an Overpass failure
 
@@ -459,9 +520,11 @@ runs `refresh-systems.mjs`, `build-pls.mjs` (a no-op except when a new PLS
 fiscal year lands), and `build-qa.mjs` every day (and on-demand via the Actions
 tab), committing the result back to the repo so the picker and QA page keep
 pace with mappers' additions and cleanups. The Overpass endpoint comes from the
-`OVERPASS_PRIMARY_URL` repository secret; `freshness-gate.mjs` runs first and,
-if the instance is unreachable, fails the job loudly — naming the failure mode
-— without committing (fall back manually, below).
+`OVERPASS_PRIMARY_URL` repository secret; `freshness-gate.mjs` runs first,
+walks the failover chain if the primary is unreachable (see "Failover tiers"
+above — a fallback tier means a degraded refresh, noted in the commit body),
+and only fails the job — loudly, naming each tier's failure mode — when no
+endpoint answers at all (fall back manually, below).
 
 Guards keep a bad upstream response from landing:
 

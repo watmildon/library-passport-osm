@@ -14,6 +14,14 @@
 //
 // Output, one compact file the QA page loads client-side:
 //
+// DEGRADED mode (OVERPASS_TIER != primary, pinned by freshness-gate.mjs when
+// the primary instance is down): the active endpoint is a rate-limited
+// fallback, so only the basics are rebuilt. The per-system augment fetches
+// (hundreds of queries) and the unnamed-pair outline fetch are skipped and
+// their sections carried forward from the committed file, and the small
+// fail-soft queries go to the public servers first to preserve the fallback
+// tier's quota. meta.degraded records that the file was built this way.
+//
 //   meta        generated date, source + snapshot date, totals
 //   tags        the tag names behind each bit of a library's flags bitmask
 //   states      state names (libs reference them by index)
@@ -37,7 +45,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { layercakeModified, toISODate, committedSourceDate } from './systems-core.mjs';
-import { overpassEndpoint, overpassTimestamp, fetchLibraryElements, fetchStateAssignments } from './overpass-source.mjs';
+import { overpassEndpoint, overpassTimestamp, fetchLibraryElements, fetchStateAssignments, degradedMode, describeTier, PUBLIC_OVERPASS_URLS } from './overpass-source.mjs';
 import { country } from '../js/countries.js';
 import { indexPls, crosswalk, classify, haversineM } from './pls-match.mjs';
 import { suggestTagsForOutlet, isPreciseGeocode, titleCase } from './pls-augment.mjs';
@@ -49,6 +57,9 @@ const SQL_FILE = join(HERE, 'qa-libraries.sql');
 const DUCKDB = process.env.DUCKDB || 'duckdb';
 const FORCE = process.argv.includes('--force');
 const USE_LAYERCAKE = process.argv.includes('--layercake');
+// Degraded mode – see the header note. Resolved once; the pin doesn't change
+// mid-run.
+const DEGRADED = degradedMode();
 // Per-country build: --country=CA writes data/ca-qa-data.json. Countries
 // without an outlets census (see js/countries.js) skip the PLS matching and
 // augment stages; everything else works the same.
@@ -230,12 +241,16 @@ function computeCollisions(rawLibs) {
 // similarly-named system). These tags aren't in Layercake's POI columns, so
 // they're fetched with one tiny Overpass query. They must never be grouped as
 // real values, and suggestions must never re-propose a ruled-out item.
-// The configured instance (OVERPASS_URL / .overpass-url) is tried first.
-const OVERPASS_ENDPOINTS = [
-  ...(overpassEndpoint() ? [overpassEndpoint()] : []),
-  'https://overpass-api.de/api/interpreter',
-  'https://overpass.kumi.systems/api/interpreter'
-];
+// The active endpoint is tried first, the public servers after it – EXCEPT in
+// degraded mode, where the public servers go first: the fallback tier is
+// quota-limited, these queries are small enough for the public servers to
+// answer gracefully, and the quota is better spent on the big queries the
+// public servers can't be trusted with.
+const OVERPASS_ENDPOINTS = [...new Set(
+  DEGRADED
+    ? [...PUBLIC_OVERPASS_URLS, ...(overpassEndpoint() ? [overpassEndpoint()] : [])]
+    : [...(overpassEndpoint() ? [overpassEndpoint()] : []), ...PUBLIC_OVERPASS_URLS]
+)];
 
 // Returns { wd: Map(elKey -> Set(QIDs)), op: Map(elKey -> Set(names)) } where
 // elKey is `${type[0]}${id}` matching the Layercake rows. Fails soft: on total
@@ -644,7 +659,7 @@ async function main() {
     throw new Error(`The Layercake fallback is US-only (US data extract); a ${COUNTRY.code} build needs a configured Overpass endpoint.`);
   }
   const sourceName = endpoint ? 'Overpass' : 'Layercake';
-  const sourceModified = endpoint ? await overpassTimestamp(endpoint) : await layercakeModified();
+  const sourceModified = endpoint ? await overpassTimestamp(endpoint, { resilient: true }) : await layercakeModified();
   const sourceDate = toISODate(sourceModified);
   if (!sourceDate) throw new Error(`Could not read the ${sourceName} data timestamp — aborting.`);
 
@@ -652,6 +667,16 @@ async function main() {
   if (!FORCE && committed && committed >= sourceDate) {
     console.log(`Committed QA data source ${committed} is not older than ${sourceName} ${sourceDate} — nothing to do. (Use --force to override.)`);
     return;
+  }
+
+  // Degraded mode: the sections too expensive to rebuild are carried forward
+  // from the committed file (empty if the file has never been built), so the
+  // QA and augment pages keep working on last-full-refresh data while the
+  // basics stay fresh.
+  let carried = null;
+  if (DEGRADED) {
+    try { carried = JSON.parse(readFileSync(DEST, 'utf8')); } catch { carried = {}; }
+    console.log(`DEGRADED build via ${describeTier()} — the augment and unnamed-pair stages are carried forward, not rebuilt.`);
   }
 
   let rawLibs, rawColl;
@@ -821,10 +846,18 @@ async function main() {
   console.log(`  ${domains.length} website domains with operator-less libraries`);
 
   // ---- Unnamed libraries whose name is already mapped right next to them.
-  console.log('Pairing unnamed libraries with named twins…');
-  const unnamedPairs = await buildUnnamedPairs(rawLibs, stateIdx);
-  console.log(`  ${unnamedPairs.length} unnamed libraries have a named library within 150 m` +
-    ` (${unnamedPairs.filter(p => p.match.in).length} verified inside/containing a building outline)`);
+  // Degraded: carried forward — the pairing itself is local, but rebuilding it
+  // without the outline fetch would strip the `in` marks and churn the diff.
+  let unnamedPairs;
+  if (DEGRADED) {
+    unnamedPairs = carried.unnamedPairs ?? [];
+    console.log(`  degraded: unnamed-twin search skipped — ${unnamedPairs.length} pairs carried forward`);
+  } else {
+    console.log('Pairing unnamed libraries with named twins…');
+    unnamedPairs = await buildUnnamedPairs(rawLibs, stateIdx);
+    console.log(`  ${unnamedPairs.length} unnamed libraries have a named library within 150 m` +
+      ` (${unnamedPairs.filter(p => p.match.in).length} verified inside/containing a building outline)`);
+  }
 
   // ---- Wikidata labels/aliases for tagged systems: extra crosswalk name
   // candidates when the OSM operator name differs from PLS's official name.
@@ -845,7 +878,15 @@ async function main() {
   const pls = matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases, closures);
 
   // ---- IMLS PLS augmentation: per-crosswalked-system live tag fetch + suggestions.
-  const augment = await buildAugment(pls, systems);
+  // Degraded: carried forward — this stage is one Overpass query per
+  // crosswalked system (hundreds), the single biggest consumer of the run.
+  let augment;
+  if (DEGRADED) {
+    augment = carried.augment ?? [];
+    console.log(`  degraded: augment live-tag fetch skipped — ${augment.length} systems carried forward`);
+  } else {
+    augment = await buildAugment(pls, systems);
+  }
 
   // ---- operator:wikidata suggestions for the systems still missing one. Runs
   // last because it consolidates every source, including the PLS crosswalk.
@@ -863,7 +904,10 @@ async function main() {
       sourceModified,
       totalLibraries: libs.length,
       totalSystems: systems.length,
-      ...(pls?.meta ? { plsFiscalYear: pls.meta.fiscalYear } : {})
+      ...(pls?.meta ? { plsFiscalYear: pls.meta.fiscalYear } : {}),
+      // A degraded build carries the augment / unnamed-pair sections forward
+      // from the last full refresh instead of rebuilding them.
+      ...(DEGRADED ? { degraded: true } : {})
     },
     tags: flagDefs.map(d => d.key),
     states: stateNames,

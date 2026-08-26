@@ -10,6 +10,15 @@
 //     only masks the exact secret string, so even logging the hostname would
 //     leak it.
 //
+// FAILOVER: when the primary instance is down, the pipeline can run against a
+// chain of fallback tiers (see "Failover tiers" below): a hosted secondary
+// (OVERPASS_SECONDARY_URL – also a secret, its URL may embed an API key), then
+// the public Overpass servers. The freshness gate probes the chain once per
+// run and pins the winner via the OVERPASS_TIER env var; every later script
+// honors the pin instead of re-probing. Any tier other than primary runs the
+// pipeline DEGRADED – the basics are rebuilt, the expensive enrichment stages
+// are skipped (see build-qa.mjs).
+//
 // When no endpoint is configured, callers fall back to their Layercake/DuckDB
 // path (see scripts/README.md).
 //
@@ -28,22 +37,89 @@ const ROOT = join(HERE, '..');
 const DEFAULT_USER_AGENT = process.env.USER_AGENT ||
   'library-passport-osm/1.0 (+https://github.com/watmildon/library-passport-osm; data build)';
 
-// The configured Overpass endpoint: OVERPASS_URL env var, else .overpass-url in
-// the repo root, else null. With { required: true }, exits with guidance instead
-// of returning null.
-export function overpassEndpoint({ required = false } = {}) {
-  if (process.env.OVERPASS_URL?.trim()) return process.env.OVERPASS_URL.trim();
-  const f = join(ROOT, '.overpass-url');
-  if (existsSync(f)) {
-    const url = readFileSync(f, 'utf8').trim();
-    if (url) return url;
-  }
-  if (required) {
-    console.error('No Overpass endpoint configured. Set OVERPASS_URL or create a');
-    console.error('.overpass-url file in the repo root (it is gitignored).');
+// ---- Failover tiers --------------------------------------------------------
+//
+// Three tiers of endpoint, in falling order of capability:
+//   primary    the private instance (OVERPASS_URL / .overpass-url) – minutely
+//              replication, no rate limits; the full pipeline runs here.
+//   secondary  a hosted fallback (OVERPASS_SECONDARY_URL /
+//              .overpass-secondary-url) – a tightly quota'd free tier, so the
+//              pipeline runs DEGRADED on it. The URL may embed an API key:
+//              treat it exactly like the primary and never print it.
+//   public     the public Overpass servers – the last resort, also degraded.
+//
+// Which tier is ACTIVE comes from the OVERPASS_TIER env var, pinned by the
+// freshness gate after it probes the chain (resolveOverpass). Unset means
+// primary, which keeps every local invocation working exactly as before.
+
+export const PUBLIC_OVERPASS_URLS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter'
+];
+
+// A gitignored single-line URL file in the repo root, or null.
+function fileUrl(name) {
+  const f = join(ROOT, name);
+  if (!existsSync(f)) return null;
+  return readFileSync(f, 'utf8').trim() || null;
+}
+
+const primaryUrl = () => process.env.OVERPASS_URL?.trim() || fileUrl('.overpass-url');
+const secondaryUrl = () => process.env.OVERPASS_SECONDARY_URL?.trim() || fileUrl('.overpass-secondary-url');
+
+const TIERS = ['primary', 'secondary', 'public'];
+
+// The active tier: the OVERPASS_TIER pin, defaulting to primary. An unknown
+// value is a config bug worth failing loudly on – a typo'd pin silently
+// running the full pipeline against a quota'd endpoint would burn the quota.
+export function activeTier() {
+  const t = (process.env.OVERPASS_TIER || 'primary').trim().toLowerCase();
+  if (!TIERS.includes(t)) {
+    console.error(`Unknown OVERPASS_TIER "${t}" — expected one of: ${TIERS.join(', ')}.`);
     process.exit(1);
   }
-  return null;
+  return t;
+}
+
+// Degraded mode: any active tier but the primary. Build scripts use this to
+// skip the stages a rate-limited fallback endpoint cannot absorb.
+export const degradedMode = () => activeTier() !== 'primary';
+
+// The active tier, named for a log line – never the URL or host.
+export function describeTier(tier = activeTier()) {
+  return tier === 'public' ? 'a public Overpass server' : `the ${tier} Overpass endpoint`;
+}
+
+// The ordered probe list for the freshness gate: each configured secret tier
+// once, then the public servers. A pinned startTier (workflow_dispatch's
+// `tier` input) restricts the list to exactly that tier, so a test run can ask
+// "does the secondary work?" without the chain hiding the answer.
+export function overpassCandidates(startTier = 'auto') {
+  const all = [
+    { tier: 'primary', url: primaryUrl() },
+    { tier: 'secondary', url: secondaryUrl() },
+    ...PUBLIC_OVERPASS_URLS.map(url => ({ tier: 'public', url }))
+  ].filter(c => c.url);
+  return startTier === 'auto' ? all : all.filter(c => c.tier === startTier);
+}
+
+// The configured Overpass endpoint for the ACTIVE tier. For the primary tier:
+// OVERPASS_URL env var, else .overpass-url in the repo root, else null – with
+// { required: true }, exits with guidance instead of returning null. For the
+// public tier, OVERPASS_PUBLIC_URL (the specific server the gate probed
+// successfully) beats the default list head.
+export function overpassEndpoint({ required = false } = {}) {
+  const tier = activeTier();
+  const url =
+    tier === 'primary' ? primaryUrl() :
+    tier === 'secondary' ? secondaryUrl() :
+    (process.env.OVERPASS_PUBLIC_URL?.trim() || PUBLIC_OVERPASS_URLS[0]);
+  if (!url && required) {
+    console.error(`No ${tier} Overpass endpoint configured. Set ${tier === 'primary' ? 'OVERPASS_URL' : 'OVERPASS_SECONDARY_URL'} or create a`);
+    console.error(`.overpass${tier === 'primary' ? '' : '-secondary'}-url file in the repo root (it is gitignored).`);
+    process.exit(1);
+  }
+  return url;
 }
 
 // ---- Failure reporting -----------------------------------------------------
@@ -62,16 +138,22 @@ export function overpassEndpoint({ required = false } = {}) {
 // a log goes through redact() first.
 
 // Replace the endpoint — and its bare origin/host, which a proxy page may print
-// on its own — with a placeholder.
-function redact(text, endpoint) {
+// on its own — with a placeholder. EVERY configured secret endpoint is
+// stripped, not just the one this message is about: a proxy page on one tier
+// can, in principle, echo a URL that was pasted into the wrong secret.
+// Exported for tests only.
+export function redact(text, endpoint) {
   if (!text) return '';
-  const secrets = new Set([endpoint]);
-  try {
-    const u = new URL(endpoint);
-    secrets.add(u.origin);
-    secrets.add(u.host);
-    secrets.add(u.hostname);
-  } catch { /* not a parseable URL; stripping the literal string is all we can do */ }
+  const secrets = new Set();
+  for (const e of [endpoint, primaryUrl(), secondaryUrl()].filter(Boolean)) {
+    secrets.add(e);
+    try {
+      const u = new URL(e);
+      secrets.add(u.origin);
+      secrets.add(u.host);
+      secrets.add(u.hostname);
+    } catch { /* not a parseable URL; stripping the literal string is all we can do */ }
+  }
   let out = String(text);
   // Longest first, so stripping the host doesn't leave fragments of the origin.
   for (const s of [...secrets].filter(Boolean).sort((a, b) => b.length - a.length)) {
@@ -194,11 +276,77 @@ export async function overpassQuery(endpoint, query, { maxSeconds = 360, userAge
   }
 }
 
+// Same contract as overpassQuery, with the resilience the pipeline's heavy
+// queries need on the fallback tiers: in degraded mode the remaining public
+// servers are tried after the active endpoint, and a wholly failed round is
+// retried once after a cool-down – the public servers answer 429 while their
+// per-IP slots are busy, and a minute later they often aren't. On the primary
+// tier the endpoint list is just the instance itself, so this reduces to
+// "one retry after a pause". Endpoints are identified by position only.
+export async function overpassQueryResilient(endpoint, query, { maxSeconds = 360, userAgent = DEFAULT_USER_AGENT, rounds = 3, pauseMs = 60_000 } = {}) {
+  const endpoints = [...new Set([endpoint, ...(degradedMode() ? PUBLIC_OVERPASS_URLS : [])].filter(Boolean))];
+  let lastErr;
+  for (let round = 1; round <= rounds; round++) {
+    for (const [i, url] of endpoints.entries()) {
+      try {
+        return await overpassQuery(url, query, { maxSeconds, userAgent });
+      } catch (e) {
+        lastErr = e;
+        const more = i + 1 < endpoints.length || round < rounds;
+        console.warn(`  endpoint #${i} failed (round ${round}/${rounds}): ${e.message}${more ? '' : ' — giving up'}`);
+      }
+    }
+    if (round < rounds) {
+      console.warn(`  all ${endpoints.length} endpoint(s) failed — retrying in ${pauseMs / 1000}s…`);
+      await new Promise(r => setTimeout(r, pauseMs));
+    }
+  }
+  throw lastErr;
+}
+
 // The instance's data timestamp (osm3s.timestamp_osm_base, ISO UTC), via the
-// cheapest possible query.
-export async function overpassTimestamp(endpoint) {
-  const json = await overpassQuery(endpoint, '[out:json][timeout:60];out count;', { maxSeconds: 90 });
+// cheapest possible query. { resilient: true } adds the failover/retry above –
+// for the build scripts' own freshness checks; the gate's probe stays
+// one-shot, since its job is to diagnose each endpoint individually.
+export async function overpassTimestamp(endpoint, { resilient = false } = {}) {
+  const q = '[out:json][timeout:60];out count;';
+  const json = resilient
+    ? await overpassQueryResilient(endpoint, q, { maxSeconds: 90 })
+    : await overpassQuery(endpoint, q, { maxSeconds: 90 });
   return json.osm3s?.timestamp_osm_base || null;
+}
+
+// Probe the failover chain in order and return the first tier that answers
+// with a usable data timestamp: { tier, url, timestamp, failures }, where
+// failures records each tier that did not answer as { tier, message } (the
+// message is already redacted and safe to print). tier is null when nothing
+// answered. Probing is the freshness gate's job – every other script trusts
+// the OVERPASS_TIER pin the gate writes instead of re-probing a dead host.
+export async function resolveOverpass(startTier = 'auto') {
+  const failures = [];
+  for (const c of overpassCandidates(startTier)) {
+    // A mistyped or mangled secret (missing scheme, stray newline) is a config
+    // problem, not an outage – diagnose it as this tier's failure without
+    // spending a connection attempt on it. The URL itself stays unprinted.
+    try {
+      const u = new URL(c.url);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error(`the scheme is "${u.protocol}"`);
+    } catch (e) {
+      failures.push({ tier: c.tier, message: `the configured URL is not usable http(s) (${redact(e.message, c.url)}) — check the secret for a missing scheme, a stray newline, or surrounding quotes` });
+      continue;
+    }
+    try {
+      const timestamp = await overpassTimestamp(c.url);
+      if (!timestamp) {
+        failures.push({ tier: c.tier, message: 'answered without a usable data timestamp (expected osm3s.timestamp_osm_base) — is it really an Overpass interpreter, and is its replication running?' });
+        continue;
+      }
+      return { tier: c.tier, url: c.url, timestamp, failures };
+    } catch (e) {
+      failures.push({ tier: c.tier, message: e.message });
+    }
+  }
+  return { tier: null, url: null, timestamp: null, failures };
 }
 
 // Every library in a country with full tags and a point coordinate (`out
@@ -210,7 +358,7 @@ export async function fetchLibraryElements(endpoint, countryCode = 'US') {
 area(${c.areaId})->.us;
 nwr[amenity=library](area.us);
 out center tags;`;
-  const json = await overpassQuery(endpoint, q, { maxSeconds: 330 });
+  const json = await overpassQueryResilient(endpoint, q, { maxSeconds: 330 });
   return { elements: json.elements || [], timestamp: json.osm3s?.timestamp_osm_base || null };
 }
 
@@ -231,7 +379,7 @@ foreach.states->.st(
   nwr[amenity=library](area.st);
   out ids;
 );`;
-  const json = await overpassQuery(endpoint, q, { maxSeconds: 520 });
+  const json = await overpassQueryResilient(endpoint, q, { maxSeconds: 520 });
   const byEl = new Map();
   let state = null;
   for (const el of json.elements || []) {

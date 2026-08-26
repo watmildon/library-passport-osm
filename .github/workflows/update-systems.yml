@@ -7,6 +7,15 @@ name: Update library data
 # and are careful never to print it (GitHub only masks the exact secret string,
 # so even the hostname would leak).
 #
+# FAILOVER: when the primary instance is down, the freshness gate walks the
+# endpoint chain – the OVERPASS_SECONDARY_URL secret (a hosted fallback with a
+# tight quota), then the public Overpass servers – and pins the winner for the
+# rest of the job via the OVERPASS_TIER env var. Any tier but primary runs a
+# DEGRADED refresh: the systems lists and the QA basics are rebuilt, while the
+# expensive stages (per-system augment fetches, unnamed-pair outlines) are
+# skipped and their sections carried forward from the last full refresh. Like
+# the primary, the secondary URL may embed an API key and is never logged.
+#
 # The Layercake/DuckDB build path still exists as a manual fallback — see
 # scripts/README.md.
 
@@ -19,6 +28,11 @@ on:
         description: 'Rebuild even if the committed data is already up to date'
         type: boolean
         default: false
+      tier:
+        description: 'Pin the refresh to one endpoint tier (auto walks the failover chain)'
+        type: choice
+        options: [auto, primary, secondary, public]
+        default: auto
 
 # Let the job commit back to the repo.
 permissions:
@@ -33,6 +47,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       OVERPASS_URL: ${{ secrets.OVERPASS_PRIMARY_URL }}
+      OVERPASS_SECONDARY_URL: ${{ secrets.OVERPASS_SECONDARY_URL }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
@@ -60,10 +75,12 @@ jobs:
         run: |
           # Asks the instance for its data timestamp and skips the whole rebuild
           # when every committed file already comes from an equal-or-newer
-          # snapshot. The decision, the tracked-file list and the failure
-          # diagnosis all live in the script — it shares them with the build
-          # scripts it gates, and it never echoes the endpoint.
-          node scripts/freshness-gate.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+          # snapshot. The decision, the tracked-file list, the failover walk and
+          # the failure diagnosis all live in the script — it shares them with
+          # the build scripts it gates, and it never echoes an endpoint. When a
+          # fallback tier wins, the gate pins it for the later steps by writing
+          # OVERPASS_TIER to $GITHUB_ENV.
+          node scripts/freshness-gate.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }} --tier=${{ github.event.inputs.tier || 'auto' }}
 
       - name: Check whether a new IMLS PLS release needs DuckDB
         id: pls
@@ -194,9 +211,14 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
           git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json data/ca-library-outlets.json
-          if [ -n "$SUMMARY" ]; then
-            git commit -m "chore: daily refresh of library data ($COUNT systems)" -m "$SUMMARY"
-          else
-            git commit -m "chore: daily refresh of library data ($COUNT systems)"
+          MSG=(-m "chore: daily refresh of library data ($COUNT systems)")
+          # A degraded refresh says so in the commit body, so `git log` shows
+          # which days ran on a fallback endpoint with stages carried forward.
+          if [ "${{ steps.gate.outputs.degraded }}" = "yes" ]; then
+            MSG+=(-m "Degraded refresh (${{ steps.gate.outputs.tier }} endpoint tier): augment and unnamed-pair sections carried forward.")
           fi
+          if [ -n "$SUMMARY" ]; then
+            MSG+=(-m "$SUMMARY")
+          fi
+          git commit "${MSG[@]}"
           git push
