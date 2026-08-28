@@ -16,6 +16,12 @@ name: Update library data
 # skipped and their sections carried forward from the last full refresh. Like
 # the primary, the secondary URL may embed an API key and is never logged.
 #
+# The Canadian outlet census (data/ca-library-outlets.json) is NOT refreshed
+# here: its provincial and municipal open-data portals move only a few times a
+# year and rate-limit daily polling — a data.ontario.ca 429 broke this job on
+# 2026-08-28. It has its own monthly workflow (update-ca-outlets.yml); this job
+# only reads the committed file.
+#
 # The Layercake/DuckDB build path still exists as a manual fallback — see
 # scripts/README.md.
 
@@ -125,12 +131,6 @@ jobs:
         run: |
           node scripts/build-qa.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
 
-      - name: Refresh Canada outlets (provincial open data)
-        if: steps.gate.outputs.run == 'yes'
-        run: |
-          # Self-gates on the provincial sources' as-of dates — usually a no-op.
-          node scripts/build-ca-outlets.mjs
-
       - name: Regenerate Canada QA dataset (Overpass)
         if: steps.gate.outputs.run == 'yes'
         run: |
@@ -191,7 +191,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # git diff ignores untracked files (a country's first-ever systems
           # file), so use status --porcelain to detect changes.
-          if [ -z "$(git status --porcelain -- data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json data/ca-library-outlets.json)" ]; then
+          if [ -z "$(git status --porcelain -- data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json)" ]; then
             echo "No changes to the data files."
             exit 0
           fi
@@ -210,7 +210,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-          git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json data/ca-library-outlets.json
+          git add data/us-library-systems.json data/ca-library-systems.json data/qa-data.json data/ca-qa-data.json data/pls-outlets.json
           MSG=(-m "chore: daily refresh of library data ($COUNT systems)")
           # A degraded refresh says so in the commit body, so `git log` shows
           # which days ran on a fallback endpoint with stages carried forward.

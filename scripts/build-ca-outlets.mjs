@@ -56,6 +56,51 @@ const USER_AGENT = process.env.USER_AGENT ||
 
 const r5 = x => Math.round(x * 1e5) / 1e5;
 
+// ---- Resilient fetching ----------------------------------------------------
+//
+// The provincial and municipal portals are third-party services with their own
+// rate limits and maintenance windows; data.ontario.ca in particular answers
+// 429 when it feels busy. A transient refusal must not cost a whole monthly
+// refresh, so every remote read goes through fetchRetry, and every province
+// goes through province() so one dead portal cannot take down the others.
+
+const RETRY_DELAYS_MS = [2000, 8000, 30000];
+
+// fetch + retry on the failures that are worth retrying: 429, 5xx and network
+// errors. 4xx other than 429 means the URL or our request is wrong — retrying
+// that just wastes the portal's patience, so it fails immediately.
+async function fetchRetry(url, label) {
+  let last;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const res = await fetch(url, { headers: { 'User-Agent': USER_AGENT } });
+      if (res.ok) return res;
+      const retryable = res.status === 429 || res.status >= 500;
+      last = new Error(`${label} -> HTTP ${res.status}`);
+      if (!retryable) throw last;
+      // Honour Retry-After when the server sends one (delta-seconds or date).
+      const ra = res.headers.get('retry-after');
+      const raMs = ra ? (/^\d+$/.test(ra.trim())
+        ? Number(ra.trim()) * 1000
+        : Math.max(0, Date.parse(ra) - Date.now())) : NaN;
+      if (attempt >= RETRY_DELAYS_MS.length) throw last;
+      const wait = Number.isFinite(raMs) && raMs > 0
+        ? Math.min(raMs, 60000)
+        : RETRY_DELAYS_MS[attempt];
+      console.log(`  ${label}: HTTP ${res.status}, retrying in ${Math.round(wait / 1000)}s…`);
+      await sleep(wait);
+    } catch (err) {
+      last = err instanceof Error ? err : new Error(String(err));
+      // A non-retryable HTTP status was thrown above — do not loop on it.
+      if (/-> HTTP (?!429|5\d\d)/.test(last.message)) throw last;
+      if (attempt >= RETRY_DELAYS_MS.length) throw last;
+      const wait = RETRY_DELAYS_MS[attempt];
+      console.log(`  ${label}: ${last.message}, retrying in ${Math.round(wait / 1000)}s…`);
+      await sleep(wait);
+    }
+  }
+}
+
 // Stable ASCII slug for system keys: accents folded, non-alphanumerics dashed.
 function slug(name) {
   return name.normalize('NFD').replace(/[̀-ͯ]/g, '')
@@ -69,8 +114,7 @@ const BC_WFS = 'https://openmaps.gov.bc.ca/geo/pub/ows' +
   '&outputFormat=json&count=10000&srsName=EPSG:4326';
 
 async function fetchBC() {
-  const res = await fetch(BC_WFS, { headers: { 'User-Agent': USER_AGENT } });
-  if (!res.ok) throw new Error(`BC WFS -> HTTP ${res.status}`);
+  const res = await fetchRetry(BC_WFS, 'BC WFS');
   const json = await res.json();
   const feats = json.features || [];
   if (feats.length < 100) {
@@ -229,8 +273,7 @@ function parseCsv(text) {
 }
 
 async function fetchON() {
-  const res = await fetch(ON_CSV_URL, { headers: { 'User-Agent': USER_AGENT } });
-  if (!res.ok) throw new Error(`Ontario ASPL CSV -> HTTP ${res.status}`);
+  const res = await fetchRetry(ON_CSV_URL, 'Ontario ASPL CSV');
   const rows = parseCsv(await res.text());
   const H = rows[0];
   const col = re => H.findIndex(h => re.test(h));
@@ -309,8 +352,7 @@ async function fetchON() {
 const TPL_GEOJSON = 'https://ckan0.cf.opendata.inter.prod-toronto.ca/dataset/f5aa9b07-da35-45e6-b31f-d6790eb9bd9b/resource/5f4950b4-c727-4e54-8d0d-972e198268d6/download/tpl-branch-general-information-4326.geojson';
 
 async function fetchToronto() {
-  const res = await fetch(TPL_GEOJSON, { headers: { 'User-Agent': USER_AGENT } });
-  if (!res.ok) throw new Error(`Toronto GeoJSON -> HTTP ${res.status}`);
+  const res = await fetchRetry(TPL_GEOJSON, 'Toronto GeoJSON');
   const feats = (await res.json()).features || [];
   const outlets = [];
   for (const f of feats) {
@@ -343,8 +385,7 @@ async function fetchToronto() {
 const OPL_QUERY = 'https://services.arcgis.com/G6F8XLCl5KtAlZ2G/arcgis/rest/services/Ottawa_Public_Library_Locations_2024/FeatureServer/0/query?where=1%3D1&outFields=Name,Street_Address,City,Postal_Code&f=geojson';
 
 async function fetchOttawa() {
-  const res = await fetch(OPL_QUERY, { headers: { 'User-Agent': USER_AGENT } });
-  if (!res.ok) throw new Error(`Ottawa FeatureServer -> HTTP ${res.status}`);
+  const res = await fetchRetry(OPL_QUERY, 'Ottawa FeatureServer');
   const feats = (await res.json()).features || [];
   const outlets = [];
   for (const f of feats) {
@@ -378,8 +419,7 @@ async function fetchOttawa() {
 const HPL_QUERY = 'https://services.arcgis.com/rYz782eMbySr2srL/arcgis/rest/services/Libraries/FeatureServer/1/query?where=1%3D1&outFields=NAME,ADDRESS,COMMUNITY&f=geojson';
 
 async function fetchHamilton() {
-  const res = await fetch(HPL_QUERY, { headers: { 'User-Agent': USER_AGENT } });
-  if (!res.ok) throw new Error(`Hamilton FeatureServer -> HTTP ${res.status}`);
+  const res = await fetchRetry(HPL_QUERY, 'Hamilton FeatureServer');
   const feats = (await res.json()).features || [];
   const outlets = [];
   for (const f of feats) {
@@ -411,8 +451,7 @@ async function fetchHamilton() {
 const WPL_URL = 'https://data.winnipeg.ca/resource/bt47-pkkm.json?$limit=100';
 
 async function fetchWinnipeg() {
-  const res = await fetch(WPL_URL, { headers: { 'User-Agent': USER_AGENT } });
-  if (!res.ok) throw new Error(`Winnipeg Socrata -> HTTP ${res.status}`);
+  const res = await fetchRetry(WPL_URL, 'Winnipeg Socrata');
   const rows = await res.json();
   const outlets = [];
   for (const r of rows) {
@@ -481,23 +520,89 @@ function fetchNS() {
   return { outlets, source: 'Nova Scotia open data — Public Library Branches (Wayback capture 2024-09 of the retired dataset, data 2023-05)', license: 'Nova Scotia Open Government Licence' };
 }
 
+// ---- Per-province carry-forward -------------------------------------------
+//
+// One portal being down must not throw away the other provinces' refresh, and
+// must never silently shrink the file. province() runs a fetcher and, on
+// failure, rebuilds that province's slice from the COMMITTED file instead:
+// the data is a month stale but correct, and the warning says so. Only if a
+// province fails with nothing committed to fall back on is the result fatal —
+// that is a genuinely empty ingest, not a stale one.
+//
+// `carried` collects the provinces that fell back, for the summary and the
+// workflow annotation.
+const carried = [];
+const inActions = !!process.env.GITHUB_ACTIONS;
+
+function warn(message) {
+  console.warn(inActions ? '::warning::' + message.replace(/\r?\n/g, '%0A') : `WARNING: ${message}`);
+}
+
+function committedOutlets(pred) {
+  try {
+    const prev = JSON.parse(readFileSync(DEST, 'utf8'));
+    return (prev.outlets || []).filter(pred);
+  } catch { return []; }
+}
+
+async function province(label, fetcher, { pred, ...rest }) {
+  try {
+    return await fetcher();
+  } catch (err) {
+    const outlets = committedOutlets(pred);
+    const msg = `${label} unavailable (${err.message})`;
+    if (!outlets.length) {
+      throw new Error(`${msg} and nothing committed to carry forward — refusing to write a file missing ${label}.`);
+    }
+    warn(`${msg} — carrying forward ${outlets.length} committed outlets from the last good refresh.`);
+    carried.push(label);
+    return { outlets, carriedForward: true, ...rest };
+  }
+}
+
 async function main() {
   console.log('Fetching BC service points (BC Geographic Warehouse WFS)…');
-  const bc = await fetchBC();
+  const bc = await province('BC', fetchBC, {
+    pred: o => o.state === 'BC',
+    asOf: null,
+    source: 'BC Geographic Warehouse GSR_PUBLIC_LIBRARY_LOCS_SV (WFS)',
+    license: 'Open Government Licence - British Columbia'
+  });
   const bcSystems = new Set(bc.outlets.map(o => o.fscskey));
   console.log(`  BC: ${bc.outlets.length} outlets across ${bcSystems.size} systems, data as of ${bc.asOf}`);
 
   console.log('Fetching ON single-outlet systems (Annual Survey of Public Libraries)…');
-  const on = await fetchON();
+  const on = await province('ON (ASPL)', fetchON, {
+    pred: o => o.state === 'ON' && o.id.startsWith('ON-') && !/^ON-(TPL|OPL|HPL)-/.test(o.id),
+    year: ON_YEAR,
+    source: `Ontario Annual Survey of Public Libraries ${ON_YEAR} (data.ontario.ca), single-outlet systems, OpenCage-geocoded`,
+    license: 'Open Government Licence - Ontario'
+  });
 
   console.log('Fetching city branch layers (Toronto, Ottawa, Hamilton, Winnipeg)…');
-  const tpl = await fetchToronto();
+  const tpl = await province('Toronto', fetchToronto, {
+    pred: o => o.fscskey === 'ON-TPL',
+    source: 'City of Toronto open data — Library Branch General Information',
+    license: 'Open Government Licence - Toronto'
+  });
   console.log(`  Toronto: ${tpl.outlets.length} branches`);
-  const opl = await fetchOttawa();
+  const opl = await province('Ottawa', fetchOttawa, {
+    pred: o => o.fscskey === 'ON-OPL',
+    source: 'City of Ottawa open data — Ottawa Public Library Locations 2024',
+    license: 'City of Ottawa Open Data Licence 2.0 (OGL-family)'
+  });
   console.log(`  Ottawa: ${opl.outlets.length} branches`);
-  const hpl = await fetchHamilton();
+  const hpl = await province('Hamilton', fetchHamilton, {
+    pred: o => o.fscskey === 'ON-HPL',
+    source: 'City of Hamilton open data — Libraries',
+    license: 'City of Hamilton Open Data Licence (OGL-family)'
+  });
   console.log(`  Hamilton: ${hpl.outlets.length} branches`);
-  const wpl = await fetchWinnipeg();
+  const wpl = await province('Winnipeg', fetchWinnipeg, {
+    pred: o => o.state === 'MB',
+    source: 'City of Winnipeg open data — Library',
+    license: 'Open Government Licence - Winnipeg'
+  });
   console.log(`  Winnipeg: ${wpl.outlets.length} branches`);
 
   console.log('Loading NS archived branches snapshot…');
@@ -507,8 +612,15 @@ async function main() {
 
   // One sourceDate for the file: the newest live-feed asOf date (static survey
   // releases contribute no date — their bump comes from pinning a new release).
-  const sourceDate = bc.asOf || new Date().toISOString().slice(0, 10);
+  // A carried-forward BC contributes no asOf, so falling back to today would
+  // stamp month-old data as fresh. Reuse the committed sourceDate instead —
+  // the file genuinely has not moved past it.
   const committed = committedSourceDate(DEST);
+  const sourceDate = bc.asOf || committed || new Date().toISOString().slice(0, 10);
+  if (carried.length) {
+    warn(`${carried.length} source(s) carried forward from the last good refresh: ${carried.join(', ')}. ` +
+      'Those provinces are unchanged from the committed file; the rest of the refresh is current.');
+  }
   if (!FORCE && committed && committed >= sourceDate) {
     console.log(`  committed data source ${committed} is not older than ${sourceDate} — skipping write (use --force to override).`);
     return;
@@ -536,7 +648,8 @@ async function main() {
       MB: src(wpl),
       NS: { ...src(ns), systems: nsSystems.size }
     },
-    totalOutlets: outlets.length
+    totalOutlets: outlets.length,
+    ...(carried.length ? { carriedForward: carried } : {})
   };
   // One outlet per line (still valid JSON) so daily diffs touch only changed rows.
   const json = '{\n' +

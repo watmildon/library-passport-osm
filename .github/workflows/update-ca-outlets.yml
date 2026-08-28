@@ -1,0 +1,128 @@
+name: Update Canada outlets
+
+# Refresh data/ca-library-outlets.json — the Canadian outlet census the QA page
+# uses to find branches missing from OSM — from the provincial and municipal
+# open-data portals (BC Geographic Warehouse, data.ontario.ca, and the Toronto,
+# Ottawa, Hamilton and Winnipeg portals).
+#
+# This is deliberately SEPARATE from the daily update-systems.yml job. Those
+# portals publish a few times a year, not minutely, so polling them daily
+# bought nothing and cost reliability: on 2026-08-28 a data.ontario.ca 429
+# failed the whole daily refresh after Overpass had already done 22 minutes of
+# work. Monthly matches how fast the data actually moves.
+#
+# Resilience lives in the script, not here: every fetch retries a 429/5xx with
+# backoff, and a source that is still failing is carried forward from the
+# committed file rather than dropped (meta.carriedForward records which). So a
+# portal being down makes this job green-with-a-warning, and only a source that
+# has never been committed makes it red.
+
+on:
+  schedule:
+    - cron: '43 10 1 * *'      # 1st of the month; the script self-gates anyway
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Rebuild even if the committed data is already up to date'
+        type: boolean
+        default: false
+
+# Let the job commit back to the repo.
+permissions:
+  contents: write
+
+concurrency:
+  group: update-ca-outlets
+  cancel-in-progress: false
+
+jobs:
+  outlets:
+    runs-on: ubuntu-latest
+    env:
+      # Ontario's survey has addresses but no coordinates, so new single-outlet
+      # systems need one OpenCage lookup each; answers land in the committed
+      # data/ca-geocode-cache.json and are never re-billed. If the secret is
+      # ever missing, cached addresses still resolve and uncached ones are
+      # skipped with a warning (never fabricated) rather than failing the job.
+      OPENCAGE_KEY: ${{ secrets.OPENCAGE_KEY }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Record current count
+        id: before
+        run: |
+          OLD=$(node -p "try { require('./data/ca-library-outlets.json').outlets.length } catch { 0 }")
+          echo "count=$OLD" >> "$GITHUB_OUTPUT"
+          echo "Currently committed: $OLD CA outlets."
+
+      - name: Refresh Canada outlets (provincial open data)
+        run: |
+          # Self-gates on the provincial sources' as-of dates, so an unchanged
+          # month is a no-op write. Retries and per-source carry-forward are
+          # handled inside the script.
+          node scripts/build-ca-outlets.mjs ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+
+      - name: Sanity-check the results
+        env:
+          OLD: ${{ steps.before.outputs.count }}
+        run: |
+          NEW=$(node -p "try { require('./data/ca-library-outlets.json').outlets.length } catch { 0 }")
+          echo "Generated $NEW CA outlets (was $OLD)."
+
+          # Guard against a broken upstream response gutting the file. The
+          # script's per-source minimums catch a single portal returning junk;
+          # this catches the assembled total.
+          if [ "$NEW" -lt 400 ]; then
+            echo "::error::Only $NEW CA outlets generated (expected >= 400). Refusing to commit."
+            exit 1
+          fi
+
+          # Refuse a >20% swing either way — these sources change by a handful
+          # of branches a year, so a big jump is a source glitch, not real news.
+          if [ "$OLD" -gt 0 ]; then
+            LOW=$(( OLD * 80 / 100 )); HIGH=$(( OLD * 120 / 100 ))
+            if [ "$NEW" -lt "$LOW" ] || [ "$NEW" -gt "$HIGH" ]; then
+              echo "::error::CA outlet count changed from $OLD to $NEW (>20%). Refusing to commit; re-run manually if this is a real change."
+              exit 1
+            fi
+          fi
+
+          # Surface any source that fell back to committed data, so a run that
+          # is green but partly stale says so in the job summary too.
+          CARRIED=$(node -p "(require('./data/ca-library-outlets.json').meta.carriedForward || []).join(', ')")
+          {
+            echo "### Canada outlets"
+            echo "$NEW outlets (was $OLD)."
+            if [ -n "$CARRIED" ]; then
+              echo ""
+              echo "**Carried forward from the last good refresh:** $CARRIED"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # The geocode cache is committed alongside: build-ca-outlets.mjs pays
+          # OpenCage once per new address and caches the answer, so committing
+          # it is what keeps later runs from re-billing those lookups.
+          if [ -z "$(git status --porcelain -- data/ca-library-outlets.json data/ca-geocode-cache.json)" ]; then
+            echo "No changes to the Canada outlet data."
+            exit 0
+          fi
+          COUNT=$(node -p "require('./data/ca-library-outlets.json').outlets.length")
+          CARRIED=$(node -p "(require('./data/ca-library-outlets.json').meta.carriedForward || []).join(', ')")
+
+          git add data/ca-library-outlets.json data/ca-geocode-cache.json
+          MSG=(-m "chore: monthly refresh of Canada outlet data ($COUNT outlets)")
+          if [ -n "$CARRIED" ]; then
+            MSG+=(-m "Carried forward from the last good refresh: $CARRIED.")
+          fi
+          git commit "${MSG[@]}"
+          git push

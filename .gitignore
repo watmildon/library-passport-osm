@@ -11,5 +11,22 @@ Thumbs.db
 # Logs
 *.log
 
-# Private dev Overpass endpoint (never commit this)
+# Private dev Overpass endpoints (never commit these; the secondary
+# fallback URL may embed an API key)
 .overpass-url
+.overpass-secondary-url
+
+# opencage API key (never commit this)
+.opencage-key
+
+# AI/LLM assistants
+.claude/
+.cursor/
+.aider*
+.continue/
+.codeium/
+.windsurf/
+.github/copilot-*
+CLAUDE.md
+AGENTS.md
+.specstory/
