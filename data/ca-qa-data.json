@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-27","country":"CA","sourceDate":"2026-08-27","sourceModified":"2026-08-27T16:39:21Z","totalLibraries":2289,"totalSystems":359},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-28","country":"CA","sourceDate":"2026-08-28","sourceModified":"2026-08-28T22:03:33Z","totalLibraries":2289,"totalSystems":359},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -682,7 +682,7 @@
 [null,"n",2806504801,"Bibliothèque Alain-Grandbois",10,228,-71.4524,46.7406],
 [null,"n",2819335855,"Bibliothèque Multiculturelle et Le Studio - Espace numérique - Chomedey",10,224,-73.7474,45.5528],
 ["Toronto Public Library","n",2853026332,"Toronto Public Library - Woodside Square",8,26,-79.2702,43.8088],
-["Bancroft Public Library","n",2868701886,"Bancroft Public Library",8,360,-77.8524,45.0574],
+["Bancroft Public Library","n",2868701886,"Bancroft Public Library",8,364,-77.8524,45.0574],
 ["Toronto Public Library","n",2868793761,"Toronto Public Library - Malvern",8,254,-79.2158,43.8081],
 ["Killaloe & District Public Library","n",2871559177,"Killaloe & District Public Library",8,492,-77.4184,45.5561],
 [null,"n",2873754811,"Bibliothèque Auguste-Honoré-Gosselin",10,0,-71.6946,46.7566],
@@ -1118,7 +1118,7 @@
 ["Vancouver Island Public Library","n",6493345691,"VIRL: Gold River Branch",1,511,-126.0523,49.7776],
 ["Vancouver Island Public Library","n",6493345755,"VIRL: Sayward Branch",1,511,-125.9593,50.3779],
 ["Vancouver Island Public Library","n",6493345894,"VIRL: Quadra Island Branch",1,511,-125.209,50.0403],
-[null,"n",6499028986,"Grande Cache Municipal Library",0,0,-119.1268,53.8883],
+[null,"n",6499028986,"Grande Cache Municipal Library",0,452,-119.1268,53.8883],
 ["Edmonton Public Library","n",6502607713,"Edmonton Public Library",0,509,-113.5388,53.4076],
 ["St. Catharines Public Library","n",6507419288,"St. Catharines Public Library - Dr. Huq Family Branch",8,495,-79.226,43.1807],
 [null,"n",6511918347,"Wakefield Library",10,0,-75.9316,45.6326],
@@ -2283,7 +2283,7 @@
 [null,"w",513093131,"Bibliothèque municipale",10,487,-74.3664,49.9139],
 [null,"w",513448664,null,0,0,-113.9585,52.0313],
 [null,"w",513698544,"GVPL: Central Saanich Branch",1,100,-123.4481,48.5757],
-["Athens Public Library","w",520328278,"Athens Public Library",8,108,-75.9502,44.6252],
+["Athens Public Library","w",520328278,"Athens Public Library",8,236,-75.9502,44.6252],
 ["Trent Hills Public Library","w",524834115,"Trent Hills Public Library - Campbellford Branch",8,8,-77.795,44.3082],
 [null,"w",525013391,"Jasper Municipal Library",0,224,-118.0835,52.8773],
 ["Huron County Library","w",525464314,"Huron County Library - Brussels Branch",8,505,-81.2502,43.7444],
