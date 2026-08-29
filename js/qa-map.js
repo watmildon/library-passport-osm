@@ -30,6 +30,7 @@ import maplibregl from 'https://cdn.jsdelivr.net/npm/maplibre-gl@5.24.0/+esm';
 import { MAP_STYLE, OVERPASS_TIMEOUT_MS } from './config.js';
 import { JOSM, bboxAround, josmSend, fetchTagsBatch, webEditObjectUrl, webEditAtUrl } from './josm.js';
 import { country } from './countries.js';
+import { markerImage, markerSvg, isHollow } from './markers.js';
 
 // Active country: ?country=CA loads the Canadian QA dataset. An unknown code
 // falls back to the default (US) rather than breaking the page.
@@ -68,20 +69,31 @@ const fmt = n => n.toLocaleString();
 // CENSUS names the country's outlet census in hints (IMLS PLS for the US,
 // provincial open data for Canada).
 const CENSUS = COUNTRY.census;
+// Colours are the "even spectrum" palette: seven hues spaced around the wheel at
+// a consistent lightness and saturation, so no layer shouts louder than another.
+// It replaced a palette that crowded three colours into the orange-brown range,
+// where the old Unnamed mustard also lost contrast against Positron's warm greys.
+//
+// `shape` is the second, redundant channel. Colour alone cannot separate seven
+// categories for a dichromat — measured across the candidate palettes, every one
+// left at least one pair below the confusable threshold under deuteranopia — so
+// each layer also gets its own silhouette (see MARKERS). Shape survives all
+// three common colour vision deficiencies intact; colour carries the grouping
+// for everyone else.
 const TYPES = [
-  { id: 'unnamed',  label: 'Unnamed',          color: '#a98307', on: true,
-    hint: 'A library with no name tag at all – needs a person to find the real name (system branch list, website, imagery, or a visit). Bright ringed pins have a named twin mapped on the same spot – keep one element and remove the duplicate' },
-  { id: 'missing',  label: 'Missing',          color: '#d1434f', on: true,
-    hint: `${CENSUS.name} lists a branch here but OSM has no library within 200 m – likely needs creating` },
-  { id: 'opconflict', label: 'Operator conflict', color: '#c23a94', on: true,
+  { id: 'unnamed',  label: 'Unnamed',          color: '#7048c4', shape: 'square', on: true,
+    hint: `A library with no name tag at all – needs a person to find the real name (system branch list, website, imagery, or a visit). Bright ringed pins have a named twin mapped on the same spot – keep one element and remove the duplicate. Red-ringed pins sit on a ${CENSUS.short} branch, which supplies the likely name` },
+  { id: 'missing',  label: 'Missing',          color: '#d63b4c', shape: 'triangle', on: true,
+    hint: `${CENSUS.name} lists a branch here but OSM has no NAMED library within 200 m – likely needs creating. Ringed pins already have a nameless library mapped on the spot: name that element instead of creating a duplicate` },
+  { id: 'opconflict', label: 'Operator conflict', color: '#b8399b', shape: 'diamond', on: true,
     hint: `Signals disagree – the existing operator tag conflicts with the ${CENSUS.short} match, or operator:wikidata contradicts the library’s own Wikidata item. Needs a person to judge` },
-  { id: 'operator', label: 'Add operator', color: '#e8872e', on: true,
+  { id: 'operator', label: 'Add operator', color: '#dd7620', shape: 'star', on: true,
     hint: `No operator tag, with a high-probability suggestion – from the ${CENSUS.name} crosswalk or the library’s own Wikidata item` },
-  { id: 'gaps',     label: 'Incomplete Tags',  color: '#2f8f85', on: false,
+  { id: 'gaps',     label: 'Incomplete Tags',  color: '#12897c', shape: 'circle', on: false,
     hint: 'Libraries missing everyday tags – choose which tags below' },
-  { id: 'unmatched', label: 'System not in OSM', color: '#8c5a3c', on: false,
+  { id: 'unmatched', label: 'System not in OSM', color: '#7d6034', shape: 'hollowPlus', on: false,
     hint: `A multi-outlet ${CENSUS.short} system with no (or too few) operator tags on its branches – unmapped, or purely additive tagging work` },
-  { id: 'sysmixed', label: 'System ambiguous', color: '#5a7d9a', on: false,
+  { id: 'sysmixed', label: 'System ambiguous', color: '#3c6fa8', shape: 'hollowTriangleDown', on: false,
     hint: `A multi-outlet ${CENSUS.short} system whose branches already carry OTHER operator tags – a federated cooperative, a rename, or fragmented spellings. Needs a person to judge` }
 ];
 const TYPE_BY_ID = new Map(TYPES.map(t => [t.id, t]));
@@ -90,7 +102,12 @@ const priority = id => TYPES.findIndex(t => t.id === id);
 // Unnamed pins whose name is already mapped right there (a named twin) render
 // in this brighter gold – on the map and in the work list – so the quick
 // keep-one-element merges are easy to spot among the plain unnamed pins.
-const TWIN_COLOR = '#ffc400';
+const TWIN_COLOR = '#b79cf0';
+
+// The unmatched-system popup marks each suspected outlet: this amber for one
+// already standing in OSM, the missing layer's colour for one that is not.
+// It belongs to no issue layer, so it is named here rather than in TYPES.
+const SYSPT_IN_OSM = '#b8860b';
 
 // Wikidata vocabulary, mirrored from qa.js: the property a parent claim came
 // from, and human labels for the entity kinds build-qa.mjs classifies.
@@ -227,6 +244,23 @@ function buildIssues() {
     }
   }
 
+  // A census branch whose nearest OSM library has no name: the branch IS
+  // mapped, so this is not a "create" job — the fix is to name that element.
+  // Both layers get the pairing, so each rings the other's colour and points
+  // at it.
+  const unnamedByOsm = new Map();
+  for (const p of d.pls || []) {
+    for (const u of p.unnamedNear || []) {
+      const prev = unnamedByOsm.get(u.osm);
+      if (!prev || u.dist < prev.dist) {
+        unnamedByOsm.set(u.osm, {
+          name: titleCase(u.name), addr: titleCase(u.addr),
+          city: titleCase(u.city), dist: u.dist
+        });
+      }
+    }
+  }
+
   // Unnamed libraries — no name tag at all. High-value fixes that need a
   // person: the real name comes from the system's branch list, the website,
   // imagery, or a visit. Where build-qa paired the library with a named twin
@@ -240,7 +274,8 @@ function buildIssues() {
     issues.unnamed.push({
       type: 'unnamed', lon, lat, osm: type + id, flags,
       name: '(unnamed library)', sysName: d.systems[sysIdx]?.n ?? '',
-      twin: pair?.match ?? null, others: pair?.others ?? 0
+      twin: pair?.match ?? null, others: pair?.others ?? 0,
+      nearMissing: unnamedByOsm.get(type + id) ?? null
     });
   }
 
@@ -250,6 +285,14 @@ function buildIssues() {
       type: 'missing', lon: m.lon, lat: m.lat,
       name: titleCase(m.name), addr: titleCase(m.addr), city: titleCase(m.city),
       state: p.state, ...sys
+    });
+    // The census branch pin, rendered in the missing layer but ringed gold and
+    // pointing at the nameless element rather than offering "create here".
+    for (const u of p.unnamedNear || []) issues.missing.push({
+      type: 'missing', lon: u.lon, lat: u.lat,
+      name: titleCase(u.name), addr: titleCase(u.addr), city: titleCase(u.city),
+      state: p.state, ...sys,
+      nearUnnamed: { osm: u.osm, dist: u.dist }
     });
     for (const u of p.untagged) {
       const base = {
@@ -297,6 +340,8 @@ function buildIssues() {
   state.issues = issues;
   rebuildGaps();
 }
+
+
 
 // The gaps list depends on which tags are selected, so it's rebuilt on change.
 // A library qualifies when ANY selected tag is missing.
@@ -346,7 +391,14 @@ function typeFC(t) {
       geometry: { type: 'Point', coordinates: [it.lon, it.lat] },
       // `twin` drives the unnamed layer's data-driven paint: pins whose name
       // is already mapped right there render brighter so they're easy to spot.
-      properties: { i, ...(it.twin ? { twin: true } : {}) }
+      // `near` marks a pin the pipeline paired with its counterpart in the
+      // OTHER layer (a census branch sitting on a nameless OSM library), and
+      // rings it in that layer's colour.
+      properties: {
+        i,
+        ...(it.twin ? { twin: true } : {}),
+        ...(it.nearMissing || it.nearUnnamed ? { near: true } : {})
+      }
     }))
   };
 }
@@ -389,41 +441,80 @@ function initMap(view, sourceDateLabel) {
     // whose name is already mapped) are the quick keep-one-element merges –
     // brighter gold, dark ring, a touch bigger, so they stand out from the
     // plain unnamed pins.
-    const TWIN = ['boolean', ['get', 'twin'], false];
+    // Register one icon per visual variant. Each layer needs a plain pin, and
+    // the two cross-linked layers additionally need a ringed variant (the ring
+    // is the OTHER layer's colour — see linkMissingUnnamed's rationale), plus
+    // unnamed's brighter twin pin. Icons are raster images, so a variant is a
+    // separate image rather than a paint expression; `icon-image` then picks
+    // between them per feature exactly as circle-color used to.
+    const ratio = Math.min(window.devicePixelRatio || 1, 3);
+    const MISSING_COLOR = TYPE_BY_ID.get('missing').color;
+    const UNNAMED_COLOR = TYPE_BY_ID.get('unnamed').color;
+    const addIcon = (name, shape, opts) => {
+      if (state.map.hasImage(name)) return;
+      state.map.addImage(name, markerImage(shape, { ratio, ...opts }), { pixelRatio: ratio });
+    };
+    for (const t of TYPES) {
+      const hollow = isHollow(t.shape);
+      addIcon(`qm-${t.id}`, t.shape, {
+        fill: t.color, stroke: hollow ? t.color : '#ffffff',
+        strokeWidth: hollow ? 2 : 1.5, hollow
+      });
+    }
+    // Cross-link rings: an unnamed pin sitting on a census branch, and the
+    // census branch sitting on a nameless library. Each wears the other's hue.
+    addIcon('qm-unnamed-near', TYPE_BY_ID.get('unnamed').shape,
+      { fill: UNNAMED_COLOR, stroke: MISSING_COLOR, strokeWidth: 3 });
+    addIcon('qm-missing-near', TYPE_BY_ID.get('missing').shape,
+      { fill: MISSING_COLOR, stroke: UNNAMED_COLOR, strokeWidth: 3 });
+    // A named twin is the more specific find, so it stays the loudest variant.
+    addIcon('qm-unnamed-twin', TYPE_BY_ID.get('unnamed').shape,
+      { fill: TWIN_COLOR, stroke: '#3b2a63', strokeWidth: 2.5 });
+
+    // Pin size in icon-size units. The icon is rasterised at ICON_R = 16 px
+    // unit radius, so 0.4 renders a ~6.4 px marker — matching the radii the
+    // circle layers used at each zoom.
+    //
+    // A style property may contain only ONE zoom-based expression, and it must
+    // be the outermost one — so a per-feature size choice goes INSIDE each zoom
+    // stop, never a ['case'] wrapped around an ['interpolate'].
+    const sizeAt = (z4, z9, z13) =>
+      ['interpolate', ['linear'], ['zoom'], 4, z4 / 16, 9, z9 / 16, 13, z13 / 16];
+    // Ringed and twin pins run slightly larger, as they did as circles.
+    const BIGGER = ['any', ['boolean', ['get', 'twin'], false], ['boolean', ['get', 'near'], false]];
+    const sizeAtFlagged = (plain, flagged) =>
+      ['interpolate', ['linear'], ['zoom'],
+        4,  ['case', BIGGER, flagged[0] / 16, plain[0] / 16],
+        9,  ['case', BIGGER, flagged[1] / 16, plain[1] / 16],
+        13, ['case', BIGGER, flagged[2] / 16, plain[2] / 16]];
+
     for (const t of [...TYPES].reverse()) {
       state.map.addSource(srcId(t.id), { type: 'geojson', data: typeFC(t.id) });
+      const icon =
+        t.id === 'unnamed' ? ['case', ['boolean', ['get', 'twin'], false], 'qm-unnamed-twin',
+                                      ['boolean', ['get', 'near'], false], 'qm-unnamed-near', 'qm-unnamed'] :
+        t.id === 'missing' ? ['case', ['boolean', ['get', 'near'], false], 'qm-missing-near', 'qm-missing'] :
+        `qm-${t.id}`;
+      const size =
+        t.id === 'unnamed' || t.id === 'missing'
+          ? sizeAtFlagged([3.5, 6, 9], [4.5, 7.5, 11])
+        : t.id === 'gaps' ? sizeAt(2, 4.5, 7)          // the big, quiet layer
+        : (t.id === 'unmatched' || t.id === 'sysmixed') ? sizeAt(4, 8, 9)
+        : sizeAt(3.5, 6, 9);
       state.map.addLayer({
         id: layerId(t.id),
-        type: 'circle',
+        type: 'symbol',
         source: srcId(t.id),
-        paint: t.id === 'unnamed' ? {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'],
-            4, ['case', TWIN, 4.5, 3.5], 9, ['case', TWIN, 7.5, 6], 13, ['case', TWIN, 11, 9]],
-          'circle-color': ['case', TWIN, TWIN_COLOR, t.color],
-          'circle-opacity': 0.9,
-          'circle-stroke-width': ['step', ['zoom'], ['case', TWIN, 1.5, 0.5], 7, ['case', TWIN, 2, 1.5]],
-          'circle-stroke-color': ['case', TWIN, '#6b5300', '#ffffff']
-        } : (t.id === 'unmatched' || t.id === 'sysmixed') ? {
-          // Hollow pin: a whole system's area, not one building.
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 4, 10, 9],
-          'circle-color': t.color,
-          'circle-opacity': 0.15,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': t.color
-        } : t.id === 'gaps' ? {
-          // The big layer (up to ~17k pins): small and quiet under the rest.
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 2, 9, 4.5, 13, 7],
-          'circle-color': t.color,
-          'circle-opacity': 0.75,
-          'circle-stroke-width': ['step', ['zoom'], 0, 9, 1.5],
-          'circle-stroke-color': '#ffffff'
-        } : {
-          'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3.5, 9, 6, 13, 9],
-          'circle-color': t.color,
-          'circle-opacity': 0.9,
-          'circle-stroke-width': ['step', ['zoom'], 0.5, 7, 1.5],
-          'circle-stroke-color': '#ffffff'
-        }
+        layout: {
+          'icon-image': icon,
+          'icon-size': size,
+          // Pins mark exact points and must not be dropped in dense areas —
+          // the old circle layers never collided, and the work list counts
+          // must keep matching what the map shows.
+          'icon-allow-overlap': true,
+          'icon-ignore-placement': true
+        },
+        paint: { 'icon-opacity': t.id === 'gaps' ? 0.75 : 0.9 }
       });
     }
 
@@ -445,7 +536,7 @@ function initMap(view, sourceDateLabel) {
       source: 'qm-syspts',
       paint: {
         'circle-radius': 6,
-        'circle-color': ['case', ['get', 'inOsm'], '#9a7d00', '#d1434f'],
+        'circle-color': ['case', ['get', 'inOsm'], SYSPT_IN_OSM, TYPE_BY_ID.get('missing').color],
         'circle-opacity': 0.9,
         'circle-stroke-width': 1.5,
         'circle-stroke-color': '#ffffff'
@@ -536,13 +627,23 @@ function popupHtml(type, it) {
     const tags = { amenity: 'library', name: it.name };
     if (it.sysName && !/^Q\d+$/.test(it.sysName)) tags.operator = it.sysName;
     if (it.qid && it.qidConfirmed) tags['operator:wikidata'] = it.qid;
-    return head('<span class="qm-badge" style="--c:#d1434f">missing from OSM</span>') + `
+    // An unnamed library in range usually IS this branch, already mapped but
+    // missing its name – so say that before offering "Create here", which
+    // would otherwise duplicate it.
+    const near = it.nearUnnamed;
+    return head(`<span class="qm-badge" style="--c:${TYPE_BY_ID.get('missing').color}">missing from OSM</span>`) + `
       <div class="pop-body">
         ${it.addr || it.city ? `<div class="r"><span class="k">📍</span><span>${escapeHtml([it.addr, it.city].filter(Boolean).join(', '))}</span></div>` : ''}
         ${qidRow(it)}
+        ${near ? `<div class="qa-note qm-near" style="margin:8px 0 0">
+          <b>An unnamed library is ${near.dist} m away</b>
+          (<a href="https://www.openstreetmap.org/${OSM_TYPE[near.osm[0]]}/${near.osm.slice(1)}" target="_blank" rel="noopener">${OSM_TYPE[near.osm[0]]} ${near.osm.slice(1)}</a>)
+          – very likely this branch, already mapped without a <code>name</code>.
+          Check it first: naming that element is usually the fix, and creating a
+          new one here would duplicate it.</div>` : ''}
         <div class="qa-note" style="margin:8px 0 0">Suggested starter tags – verify on the ground or from the library's website:</div>
         ${tagChips(tags)}
-        <div class="qm-actions">${editLink(editAt(it.lat, it.lon), '✏️ Create here')}</div>
+        <div class="qm-actions">${near ? editLink(editObject(near.osm, it.lat, it.lon), '✏️ Edit the unnamed one') : ''}${editLink(editAt(it.lat, it.lon), '✏️ Create here')}</div>
       </div>`;
   }
 
@@ -564,7 +665,7 @@ function popupHtml(type, it) {
       source = (it.plsName && it.plsName !== it.name
         ? `<div class="r"><span class="k">${escapeHtml(CENSUS.short)}</span><span>${escapeHtml(it.plsName)}</span></div>` : '') + qidRow(it);
     }
-    return head('<span class="qm-badge" style="--c:#e8872e">no operator tag</span>') + `
+    return head(`<span class="qm-badge" style="--c:${TYPE_BY_ID.get('operator').color}">no operator tag</span>`) + `
       <div class="pop-body">
         ${source}
         ${Object.keys(sug).length ? `<div class="qa-note" style="margin:8px 0 0">Suggested:</div>${tagChips(sug)}` : ''}
@@ -581,7 +682,7 @@ function popupHtml(type, it) {
           ${escapeHtml(it.prop)}: ${escapeHtml(it.parentName || '')} ${wdLink(it.parentQ)}</span></div>`
       : `<div class="r"><span class="k">⚠</span><span>OSM already has a different operator tag,
           but the ${escapeHtml(CENSUS.short)} matches this library to “${escapeHtml(it.sysName)}”. Check which is right.</span></div>` + qidRow(it);
-    return head('<span class="qm-badge" style="--c:#c23a94">conflicting signals</span>') + `
+    return head(`<span class="qm-badge" style="--c:${TYPE_BY_ID.get('opconflict').color}">conflicting signals</span>`) + `
       <div class="pop-body">
         ${body}
         <div id="qm-opcard">${opCardHtml(null, 'loading…')}</div>
@@ -599,14 +700,14 @@ function popupHtml(type, it) {
           ? 'Buildings are likely mapped but none carries an operator tag – straightforward additive tagging.'
           : 'No outlet has an OSM library within 200 m – likely unmapped territory.';
     return head(it.near
-      ? `<span class="qm-badge" style="--c:#9a7d00">${it.near}/${it.outlets} buildings likely in OSM</span>`
-      : '<span class="qm-badge" style="--c:#d1434f">0 outlets found in OSM</span>') + `
+      ? `<span class="qm-badge" style="--c:${SYSPT_IN_OSM}">${it.near}/${it.outlets} buildings likely in OSM</span>`
+      : `<span class="qm-badge" style="--c:${TYPE_BY_ID.get('missing').color}">0 outlets found in OSM</span>`) + `
       <div class="pop-body">
         <div class="r"><span class="k">📍</span><span>${escapeHtml(it.state)} · ${it.outlets} ${escapeHtml(CENSUS.short)} outlets · <span class="pls-geo">${escapeHtml(it.fscskey)}</span></span></div>
         <div class="qa-note" style="margin:8px 0 0">${note}</div>
         ${it.pts.length ? `<div class="qm-outlet-list">${it.pts.map((p, i) => `
           <div class="qm-outlet" data-i="${i}" title="Click to zoom here">
-            <span class="qm-dot" style="--c:${p.osm ? '#9a7d00' : '#d1434f'}"></span>
+            ${markerSvg('circle', p.osm ? SYSPT_IN_OSM : TYPE_BY_ID.get('missing').color, 10)}
             <span class="qm-outlet-n">${escapeHtml(titleCase(p.n))}</span>
             <span class="qm-outlet-m">${p.osm ? `<span title="Nearby OSM object: ${escapeHtml(p.osmName || '(unnamed)')}">in OSM</span>` : 'not found'}</span>
             <a class="qa-icon-link" target="_blank" rel="noopener"
@@ -627,12 +728,19 @@ function popupHtml(type, it) {
          (<a href="https://www.openstreetmap.org/${OSM_TYPE[it.twin.osm[0]]}/${it.twin.osm.slice(1)}" target="_blank" rel="noopener">${OSM_TYPE[it.twin.osm[0]]} ${it.twin.osm.slice(1)}</a>)
          – likely the same library mapped twice. Keep one element as appropriate and remove the duplicate.${
            it.others ? ` <b>${it.others} more named librar${it.others === 1 ? 'y is' : 'ies are'} in range</b> – a multi-library building, judge carefully.` : ''}`
+      : it.nearMissing
+      ? `${CENSUS.short} lists <b>${escapeHtml(it.nearMissing.name)}</b>${
+           it.nearMissing.city ? ` (${escapeHtml(titleCase(it.nearMissing.city))})` : ''}
+         ${it.nearMissing.dist} m away, and this is the nearest library to it –
+         very likely the same building. Verify, then add it as <code>name</code>.`
       : `Find the official name –
          ${it.sysName ? 'the system’s branch list, the library’s website,' : 'the library’s website'}
          or imagery – then add <code>name</code>.`;
     return head(it.twin
-      ? '<span class="qm-badge" style="--c:#a98307">name is right there</span>'
-      : '<span class="qm-badge" style="--c:#a98307">no name tag</span>') + `
+      ? `<span class="qm-badge" style="--c:${TWIN_COLOR}">name is right there</span>`
+      : it.nearMissing
+      ? `<span class="qm-badge" style="--c:${TYPE_BY_ID.get('unnamed').color}">${CENSUS.short} names it</span>`
+      : `<span class="qm-badge" style="--c:${TYPE_BY_ID.get('unnamed').color}">no name tag</span>`) + `
       <div class="pop-body">
         <div class="qa-note" style="margin:6px 0 0">${note}</div>
         <div id="qm-tagcard">${tagCardHtml(snapshotTagRows(it), 'checking live…')}</div>
@@ -646,7 +754,7 @@ function popupHtml(type, it) {
   // The badge counts ALL tracked tags (matching the card), not just the ones
   // selected in the gaps filter — it.missing drives the list row instead.
   const nMiss = snapshotTagRows(it).filter(r => !r.present).length;
-  return head(`<span class="qm-badge" style="--c:#2f8f85">${nMiss} tag${nMiss === 1 ? '' : 's'} missing</span>`) + `
+  return head(`<span class="qm-badge" style="--c:${TYPE_BY_ID.get('gaps').color}">${nMiss} tag${nMiss === 1 ? '' : 's'} missing</span>`) + `
     <div class="pop-body">
       <div id="qm-tagcard">${tagCardHtml(snapshotTagRows(it), 'checking live…')}</div>
       <div class="qm-actions">${editLink(editObject(it.osm, it.lat, it.lon), '✏️ Edit')}</div>
@@ -852,7 +960,7 @@ function openIssue(type, i, opts = {}) {
 function renderChips() {
   $('#qm-chips').innerHTML = TYPES.map(t => `
     <div class="chip qm-chip ${state.active.has(t.id) ? 'active' : ''}" data-type="${t.id}" title="${escapeHtml(t.hint)}">
-      <span class="qm-dot" style="--c:${t.color}"></span>${escapeHtml(t.label)}
+      ${markerSvg(t.shape, t.color, 12)}${escapeHtml(t.label)}
       <span class="qm-chip-n">${fmt(state.issues[t.id].length)}</span>
     </div>`).join('');
   $('#qm-chips').querySelectorAll('.qm-chip').forEach(chip => chip.addEventListener('click', () => {
@@ -911,20 +1019,26 @@ function renderList() {
   // system-scale rows (unmatched/sysmixed carry an outlet count) biggest-first
   // — the largest unmapped system is the biggest win; everything else stays
   // alphabetical.
+  const linked = it => (it.nearMissing || it.nearUnnamed) ? 1 : 0;
   rows.sort((a, b2) => priority(a.t.id) - priority(b2.t.id) ||
     ((b2.it.twin ? 1 : 0) - (a.it.twin ? 1 : 0)) ||
+    (linked(b2.it) - linked(a.it)) ||
     ((b2.it.outlets ?? 0) - (a.it.outlets ?? 0)) ||
     a.it.name.localeCompare(b2.it.name));
   const shown = rows.slice(0, LIST_MAX);
 
   const detail = ({ t, it }) => {
-    if (t.id === 'missing') return [it.city, it.state, 'create'].filter(Boolean).join(' · ');
+    if (t.id === 'missing') return [it.city, it.state,
+      it.nearUnnamed ? `unnamed library ${it.nearUnnamed.dist} m away – check first` : 'create'
+    ].filter(Boolean).join(' · ');
     if (t.id === 'operator') return it.sysName ? `add operator → ${it.sysName}` : 'add operator tag';
     if (t.id === 'opconflict') return it.kind === 'wdc'
       ? `tagged “${it.taggedName || it.taggedQ}”, item says “${it.parentName || it.parentQ}”`
       : `operator differs from ${CENSUS.short} match “${it.sysName}”`;
     if (t.id === 'unnamed') return it.twin
       ? `name likely “${it.twin.n}” – mapped ${it.twin.in ? 'on the same footprint' : `${it.twin.dist} m away`}`
+      : it.nearMissing
+      ? `name likely “${it.nearMissing.name}” – ${CENSUS.short} lists it ${it.nearMissing.dist} m away`
       : [it.sysName, 'needs a name'].filter(Boolean).join(' · ');
     if (t.id === 'unmatched') return `${it.state} · ${it.outlets} outlets · ${it.near}/${it.outlets} in OSM${
       it.foundOp ? ' · operator found – tag the rest' : ''}`;
@@ -934,7 +1048,11 @@ function renderList() {
 
   el.innerHTML = shown.map(r => `
     <div class="lib-item qm-item" data-type="${r.t.id}" data-i="${r.i}">
-      <span class="qm-dot qm-dot-lg" style="--c:${r.it.twin ? TWIN_COLOR : r.t.color}"></span>
+      ${markerSvg(r.t.shape, r.it.twin ? TWIN_COLOR : r.t.color, 14,
+        r.it.twin ? { hollow: false, ring: '#3b2a63' }
+        : (r.it.nearMissing || r.it.nearUnnamed)
+          ? { hollow: false, ring: r.t.id === 'unnamed' ? TYPE_BY_ID.get('missing').color : TYPE_BY_ID.get('unnamed').color }
+          : {})}
       <div class="info">
         <div class="nm">${escapeHtml(r.it.name)}</div>
         <div class="meta">${escapeHtml(detail(r))}</div>

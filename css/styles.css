@@ -565,6 +565,14 @@ body.qa-page { height: auto; background: var(--bg); }
   background: var(--c); border: 1.5px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.12);
 }
 .qm-dot-lg { width: 12px; height: 12px; margin-top: 3px; }
+/* Marker glyphs (js/markers.js) — the legend, the work list and the popups draw
+   the same silhouette the map pin uses, so the shape is learnable from the UI
+   that explains it. A faint drop shadow stands in for the map keyline. */
+.qm-mark {
+  flex-shrink: 0; overflow: visible;
+  filter: drop-shadow(0 0 0.5px rgba(0, 0, 0, 0.35));
+}
+.qm-item .qm-mark { margin-top: 3px; }
 .qm-gaptags { display: flex; gap: 6px; padding: 6px 16px 2px; flex-wrap: wrap; align-items: center; }
 .qm-gaptags[hidden] { display: none; }
 .qm-gaptags-label { font-size: 11px; color: var(--muted); font-weight: 600; }

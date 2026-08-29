@@ -469,16 +469,18 @@ async function buildUnnamedPairs(rawLibs, stateIdx) {
 }
 
 // Drop findings that sit on a closure signal; returns how many were dropped.
-// Mutates cls.missing / cls.untagged in place. Matched and discrepancy entries
-// are left alone — those have a live OSM object, so "closed" is a question for
-// the mapper, not this pass.
+// Mutates cls.missing / cls.untagged / cls.unnamedNear in place. Matched and
+// discrepancy entries are left alone — those have a live OSM object, so
+// "closed" is a question for the mapper, not this pass.
 export function suppressClosedFindings(cls, nearClosure) {
   let closed = 0;
-  const keepM = [], keepU = [];
+  const keepM = [], keepU = [], keepN = [];
   for (const o of cls.missing) { if (nearClosure(o.lat, o.lon)) closed++; else keepM.push(o); }
   for (const u of cls.untagged) { if (nearClosure(u.p.lat, u.p.lon)) closed++; else keepU.push(u); }
+  for (const u of cls.unnamedNear || []) { if (nearClosure(u.p.lat, u.p.lon)) closed++; else keepN.push(u); }
   cls.missing = keepM;
   cls.untagged = keepU;
+  cls.unnamedNear = keepN;
   return closed;
 }
 
@@ -1590,7 +1592,8 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
     crosswalks.push({ sysIdx: disp.sysIdx, sysKey: disp.sysKey, fscskey: win.cw.fscskey, state: win.plsSystem.state });
 
     // Only surface systems where PLS reveals something actionable.
-    if (cls.untagged.length === 0 && cls.missing.length === 0 && cls.discrepancies.length === 0) continue;
+    if (cls.untagged.length === 0 && cls.missing.length === 0 && cls.discrepancies.length === 0 &&
+        (cls.unnamedNear?.length ?? 0) === 0) continue;
 
     results.push({
       sysKey: disp.sysKey,
@@ -1613,6 +1616,15 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
         name: o.name, addr: o.addr, city: o.city, zip: o.zip, lat: o.lat, lon: o.lon,
         geo: o.geomtype, structchg: o.structchg
       })),
+      // A nameless OSM library sits on this census branch: the QA map rings
+      // both sides and tells the mapper to name that element rather than
+      // create a second one.
+      ...(cls.unnamedNear?.length ? {
+        unnamedNear: cls.unnamedNear.map(u => ({
+          name: u.p.name, addr: u.p.addr, city: u.p.city, lat: u.p.lat, lon: u.p.lon,
+          osm: u.near.id, osmLat: u.near.lat, osmLon: u.near.lon, dist: u.near.dist
+        }))
+      } : {}),
       discrepancies: cls.discrepancies.map(d => ({ name: d.p.name, lat: d.p.lat, lon: d.p.lon, osmId: d.osmId, osmLat: d.osmLat, osmLon: d.osmLon, dist: d.dist }))
     });
   }

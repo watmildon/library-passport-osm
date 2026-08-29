@@ -176,11 +176,17 @@ export function classify(plsOutlets, osmLibs, operatorName, nearbyLibs) {
   // calling the member "a different operator" flagged perfectly tagged
   // libraries as conflicts (e.g. Driggs Branch and Makerspace, ID0106).
   const memberIds = new Set(osmLibs.map(o => o.id));
-  const untagged = [], missing = [], shared = [];
+  const untagged = [], missing = [], shared = [], unnamedNear = [];
   for (const p of plsOutlets) {
     if (usedP.has(p.id)) continue;
     const near = nearbyLibs ? nearbyLibs(p.lat, p.lon) : null;
     if (near && memberIds.has(near.id)) shared.push({ p, near });
+    // A nearby library with NO name is its own kind of finding: the branch is
+    // almost certainly mapped already, so it is not "missing", but the fix is
+    // to NAME that element, not to add an operator to it. Calling it
+    // `untagged` sent mappers to add an operator tag to a nameless library and
+    // hid the actual gap; calling it `missing` invited a duplicate.
+    else if (near && !near.name) unnamedNear.push({ p, near });
     else if (near) untagged.push({ p, near });
     else missing.push(p);
   }
@@ -191,6 +197,7 @@ export function classify(plsOutlets, osmLibs, operatorName, nearbyLibs) {
     matchedPairs: matched.map(c => ({ p: c.p, o: c.o, dist: Math.round(c.dist) })), // PLS outlet ↔ its OSM library
     untagged,      // [{ p, near }]
     missing,       // [ outlet ]
+    unnamedNear,   // [{ p, near }] a nameless OSM library sits here – name it
     shared,        // [{ p, near }] co-located with a member – satisfied, not actionable
     discrepancies  // [{ p, osmId, dist }]
   };
