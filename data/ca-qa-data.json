@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-28","country":"CA","sourceDate":"2026-08-28","sourceModified":"2026-08-28T22:03:33Z","totalLibraries":2289,"totalSystems":359},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-29","country":"CA","sourceDate":"2026-08-29","sourceModified":"2026-08-29T14:53:50Z","totalLibraries":2289,"totalSystems":359},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1857,7 +1857,7 @@
 ["Cambridge Public Library","w",69119731,"Cambridge Public Library - Hespeler",8,235,-80.3097,43.4309],
 [null,"w",70577187,"Atlantic School of Theology Library",6,483,-63.5797,44.6262],
 ["Parkland Regional Library","w",72867978,"Dauphin Public Library",2,488,-100.0457,51.1528],
-[null,"w",73776250,"SE 14",1,0,-123.0008,49.2495],
+[null,"w",73776250,null,1,0,-123.0008,49.2495],
 ["Perth & District Union Public Library","w",75712451,"Perth & District Union Public Library",8,108,-76.2485,44.9008],
 ["Coquitlam Public Library","w",76131966,"CPL: Poirier Branch",1,511,-122.8457,49.2534],
 ["Mississauga Library","w",76167416,"Mississauga Library - Port Credit",8,253,-79.5865,43.5517],
@@ -2703,6 +2703,7 @@
 {"osm":"w1420852558","st":8,"lon":-82.1627,"lat":43.0385,"match":{"osm":"n7802132681","n":"Lambton County Library - Camlachie","op":"Lambton County Library","lon":-82.1627,"lat":43.0385,"dist":2,"in":1}},
 {"osm":"w1420857590","st":8,"lon":-81.094,"lat":44.2985,"match":{"osm":"n7794874053","n":"Bruce County Public Library - Chesley Branch","op":"Bruce County Public Library","lon":-81.094,"lat":44.2985,"dist":3,"in":1}},
 {"osm":"w612042152","st":3,"lon":-65.0491,"lat":46.0255,"match":{"osm":"n3867929027","n":"Salisbury Public Library","lon":-65.049,"lat":46.0254,"dist":7,"in":1}},
+{"osm":"w73776250","st":1,"lon":-123.0008,"lat":49.2495,"match":{"osm":"n1278853302","n":"BCIT Library","lon":-123.001,"lat":49.2495,"dist":14,"in":1}},
 {"osm":"w751694908","st":8,"lon":-83.0781,"lat":42.2996,"match":{"osm":"n10606950785","n":"Windsor Public Library Local History Branch","lon":-83.0775,"lat":42.2996,"dist":51,"in":1}},
 {"osm":"w935345960","st":8,"lon":-81.9819,"lat":42.8176,"match":{"osm":"n7666743290","n":"Lambton County Library - Inwood","op":"Lambton County Library","lon":-81.9819,"lat":42.8176,"dist":3,"in":1}},
 {"osm":"w964356900","st":3,"lon":-67.9238,"lat":47.1642,"match":{"osm":"n3867824846","n":"Bibliothèque Dr. Lorne J. Violette","lon":-67.9239,"lat":47.1642,"dist":6,"in":1}}

@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-08-28","sourceDate":"2026-08-28","boundary":"United States (OSM relation 148838)","totalSystems":2543},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-08-29","sourceDate":"2026-08-29","boundary":"United States (OSM relation 148838)","totalSystems":2543},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -186,6 +186,7 @@
 {"name":"Live Oak Public Library System","mode":"wikidata","value":"Q30268035","count":5},
 {"name":"Mat-Su Borough Libraries","mode":"operator","value":"Mat-Su Borough Libraries","count":5},
 {"name":"Mesa County Public Library","mode":"wikidata","value":"Q69470325","count":5},
+{"name":"Mesa Public Library","mode":"wikidata","value":"Q69469955","count":5},
 {"name":"New Orleans Public Library","mode":"wikidata","value":"Q7010768","count":5},
 {"name":"Northwest Regional Library System","mode":"wikidata","value":"Q69480749","count":5},
 {"name":"Pasadena Public Library","mode":"wikidata","value":"Q57733524","count":5},
@@ -240,7 +241,6 @@
 {"name":"Mansfield / Richland County Public Library","mode":"operator","value":"Mansfield / Richland County Public Library","count":4},
 {"name":"Maricopa County Library District","mode":"operator","value":"Maricopa County Library District","count":4},
 {"name":"Martinsburg-Berkeley County Public Library","mode":"wikidata","value":"Q69495576","count":4},
-{"name":"Mesa Public Library","mode":"wikidata","value":"Q69469955","count":4},
 {"name":"Metropolitan Library System","mode":"wikidata","value":"Q6825130","count":4},
 {"name":"Monmouth County Library","mode":"operator","value":"Monmouth County Library","count":4},
 {"name":"Monroe County Library System","mode":"wikidata","value":"Q69480012","count":4},
