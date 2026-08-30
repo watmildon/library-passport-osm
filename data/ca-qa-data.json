@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-29","country":"CA","sourceDate":"2026-08-29","sourceModified":"2026-08-29T21:43:02Z","totalLibraries":2289,"totalSystems":359},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-30","country":"CA","sourceDate":"2026-08-30","sourceModified":"2026-08-30T14:46:06Z","totalLibraries":2288,"totalSystems":359},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -781,7 +781,6 @@
 [null,"n",3867710718,"Dr. Walter Chestnut Public Library",3,0,-67.5284,46.2983],
 [null,"n",3867741045,"Kedgwick Public Library",3,0,-67.352,47.6457],
 [null,"n",3867750075,"Lamèque Public Library",3,0,-64.6475,47.7946],
-[null,"n",3867792775,"Chatham Public Library",3,4,-65.4664,47.0311],
 [null,"n",3867814510,"La Moisson Public Library",3,0,-67.3911,47.5116],
 [null,"n",3867824846,"Bibliothèque Dr. Lorne J. Violette",3,0,-67.9239,47.1642],
 [null,"n",3867847470,"Port Elgin Public Library",3,0,-64.085,46.0524],
@@ -1318,7 +1317,7 @@
 ["North Perth Public Library","n",7797350543,"North Perth Public Library - Atwood Branch",8,105,-81.0199,43.667],
 ["North Perth Public Library","n",7797350544,"North Perth Public Library - Monkton Branch",8,105,-81.082,43.5874],
 ["Region of Waterloo Library","n",7797360602,"Region of Waterloo Library - St. Jacobs Branch",8,105,-80.5546,43.5392],
-["Region Of Waterloo Library","n",7797360603,"Region Of Waterloo Library - Bloomingdale Branch",8,233,-80.4617,43.5105],
+["Region Of Waterloo Library","n",7797360603,"Region Of Waterloo Library - Bloomingdale Branch",8,235,-80.4617,43.5105],
 ["Oxford County Library","n",7797361192,"Oxford County Library - Brownsville",8,121,-80.8384,42.8601],
 ["Oxford County Library","n",7797361193,"Oxford County Library - Otterville",8,121,-80.6049,42.9263],
 ["Oxford County Library","n",7797361194,"Oxford County Library - Norwich",8,121,-80.5988,42.9865],
