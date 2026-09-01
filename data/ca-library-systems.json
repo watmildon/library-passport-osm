@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-08-31","sourceDate":"2026-08-31","boundary":"Canada (OSM relation 1428125)","totalSystems":359},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-01","sourceDate":"2026-09-01","boundary":"Canada (OSM relation 1428125)","totalSystems":360},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -230,6 +230,7 @@
 {"name":"Law Society of Ontario","mode":"operator","value":"Law Society of Ontario","count":1},
 {"name":"Library of Parliament","mode":"operator","value":"Library of Parliament","count":1},
 {"name":"Literary and Historical Society of Quebec","mode":"wikidata","value":"Q6647642","count":1},
+{"name":"Loisirs Roxton Falls","mode":"operator","value":"Loisirs Roxton Falls","count":1},
 {"name":"Madawaska Valley Public Library","mode":"operator","value":"Madawaska Valley Public Library","count":1},
 {"name":"Madoc Public Library","mode":"operator","value":"Madoc Public Library","count":1},
 {"name":"Marmora & Lake Public Library","mode":"operator","value":"Marmora & Lake Public Library","count":1},

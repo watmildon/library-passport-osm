@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-08-31","country":"CA","sourceDate":"2026-08-31","sourceModified":"2026-08-31T17:29:40Z","totalLibraries":2288,"totalSystems":359},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-01","country":"CA","sourceDate":"2026-09-01","sourceModified":"2026-09-01T14:31:51Z","totalLibraries":2288,"totalSystems":360},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -142,6 +142,7 @@
 {"n":"Lillooet Area Library Association","w":null,"c":2,"sw":"Q85694685","sn":"Lillooet Area Public Library","ss":["branch"]},
 {"n":"Lincoln Pelham Public Library","w":null,"c":2},
 {"n":"Literary and Historical Society of Quebec","w":"Q6647642","c":1},
+{"n":"Loisirs Roxton Falls","w":null,"c":1},
 {"n":"London Public Library","w":"Q6670681","c":16},
 {"n":"Madawaska Valley Public Library","w":null,"c":1},
 {"n":"Madoc Public Library","w":null,"c":1},
@@ -1748,12 +1749,12 @@
 [null,"n",14077527301,"Health Sciences Library",0,355,-114.1343,51.0662],
 [null,"n",14078899301,"Hamilton Public Library - West Harbour Branch",8,359,-79.8609,43.2776],
 [null,"n",14085515770,"Bibliothèque de Chapais",10,0,-74.8545,49.7771],
-[null,"n",14095615403,"Bibliothèque Maisonneuve",10,102,-73.5406,45.5506],
 [null,"n",14117913601,"Médiathèque Nelly-Arcan",10,100,-70.8911,45.5826],
 [null,"n",14121222745,"Bibliothèque Marie-Victorin",10,1,-71.3601,46.8017],
 ["School District Number 41 (Burnaby)","n",14124152971,"Burnaby Central Library Learning Commons",1,491,-122.975,49.2432],
 ["Bibliothèque de Québec","n",14127142031,"Bibliothèque Le Tournesol",10,254,-71.3768,46.9074],
 ["Bibliothèque de Québec","n",14127142032,"Bibliothèque éphémère Saint-Pie-X",10,254,-71.2329,46.8483],
+["Loisirs Roxton Falls","n",14138318214,"Bibliothèque municipale de Roxton Falls",10,493,-72.5225,45.5723],
 ["University of British Columbia Library","r",1420041,"Woodward Library",1,507,-123.2476,49.2646],
 [null,"r",3031106,null,1,0,-123.4745,48.4341],
 [null,"r",9072451,"Queen Elizabeth II Library",4,0,-52.7345,47.5717],
@@ -1940,7 +1941,7 @@
 ["London Public Library","w",133669765,"London Public Library - Landon",8,120,-81.2532,42.9721],
 [null,"w",134556518,"Ward Chipman Library",3,0,-66.0861,45.3058],
 [null,"w",135840834,"Arthur Wishart Library / West Wing",8,0,-84.2879,46.5011],
-["University of Guelph","w",136469097,"McLaughlin Library",8,232,-80.2277,43.5315],
+["University of Guelph","w",136469097,"McLaughlin Library",8,234,-80.2277,43.5315],
 [null,"w",136554622,"Kennebecasis Public Library",3,480,-65.9669,45.4075],
 ["Toronto Public Library","w",138155410,"Toronto Public Library - Daniel G. Hill",8,254,-79.4914,43.6655],
 ["Toronto Public Library","w",139204812,"Toronto Public Library - Long Branch",8,254,-79.5315,43.5953],
@@ -2664,7 +2665,7 @@
 {"n":"Parkland Regional Library","total":2,"clusters":[{"st":[2],"c":1,"wd":null,"bb":[-100.55,50.65,-99.55,51.65]},{"st":[11],"c":1,"wd":null,"bb":[-105.5,51.69,-104.5,52.69]}]}
 ],
 "domains": [
-{"d":"montreal.ca","total":47,"untagged":37,"op":"Ville de Montréal","wd":"Q340","st":[10]},
+{"d":"montreal.ca","total":46,"untagged":36,"op":"Ville de Montréal","wd":"Q340","st":[10]},
 {"d":"orl.bc.ca","total":30,"untagged":24,"op":"Okanagan Regional Library","wd":null,"st":[1]},
 {"d":"cln.ca","total":15,"untagged":14,"op":"Cariboo Regional District Library","wd":null,"st":[1]},
 {"d":"yukonlibraries.ca","total":14,"untagged":14,"op":null,"wd":null,"st":[12]},
