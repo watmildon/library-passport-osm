@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-01","sourceDate":"2026-09-01","boundary":"Canada (OSM relation 1428125)","totalSystems":360},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-02","sourceDate":"2026-09-02","boundary":"Canada (OSM relation 1428125)","totalSystems":360},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -27,7 +27,6 @@
 {"name":"Greater Victoria Public Library","mode":"operator","value":"Greater Victoria Public Library","count":9},
 {"name":"Region Of Waterloo Library","mode":"operator","value":"Region Of Waterloo Library","count":9},
 {"name":"Surrey Libraries","mode":"wikidata","value":"Q17112184","count":9},
-{"name":"Vaughan Public Libraries","mode":"operator","value":"Vaughan Public Libraries","count":9},
 {"name":"Burlington Public Library","mode":"operator","value":"Burlington Public Library","count":8},
 {"name":"Markham Public Library","mode":"operator","value":"Markham Public Library","count":8},
 {"name":"Okanagan Regional Library","mode":"operator","value":"Okanagan Regional Library","count":7},
@@ -47,6 +46,7 @@
 {"name":"Palliser Regional Library","mode":"operator","value":"Palliser Regional Library","count":5},
 {"name":"Queen's University","mode":"operator","value":"Queen's University","count":5},
 {"name":"Regina Public Libraries","mode":"operator","value":"Regina Public Libraries","count":5},
+{"name":"Vaughan Public Libraries","mode":"wikidata","value":"Q7917311","count":5},
 {"name":"York University","mode":"operator","value":"York University","count":5},
 {"name":"Burnaby Public Library","mode":"wikidata","value":"Q4999596","count":4},
 {"name":"King Township Public Library","mode":"operator","value":"King Township Public Library","count":4},
@@ -105,7 +105,6 @@
 {"name":"Brighton Public Library","mode":"operator","value":"Brighton Public Library","count":2},
 {"name":"Cavan Monaghan Public Library","mode":"operator","value":"Cavan Monaghan Public Library","count":2},
 {"name":"City of Greater Sudbury","mode":"operator","value":"City of Greater Sudbury","count":2},
-{"name":"City of Vaughan","mode":"operator","value":"City of Vaughan","count":2},
 {"name":"Clarence-Rockland Public Library","mode":"operator","value":"Clarence-Rockland Public Library","count":2},
 {"name":"Coquitlam Public Library","mode":"wikidata","value":"Q5169350","count":2},
 {"name":"Cramahe Township Public Library","mode":"operator","value":"Cramahe Township Public Library","count":2},
@@ -275,6 +274,7 @@
 {"name":"Region of Waterloo","mode":"operator","value":"Region of Waterloo","count":1},
 {"name":"Region of Waterloo Library","mode":"operator","value":"Region of Waterloo Library","count":1},
 {"name":"Renfrew Public Library","mode":"operator","value":"Renfrew Public Library","count":1},
+{"name":"Réseau Biblio","mode":"operator","value":"Réseau Biblio","count":1},
 {"name":"Réseau BIBLIO Abitibi-Témiscamingue-Nord-du-Québec","mode":"operator","value":"Réseau BIBLIO Abitibi-Témiscamingue-Nord-du-Québec","count":1},
 {"name":"Réseau BIBLIO de l'Outaouais","mode":"wikidata","value":"Q104698371","count":1},
 {"name":"Réseau Biblio des Laurentides","mode":"operator","value":"Réseau Biblio des Laurentides","count":1},
