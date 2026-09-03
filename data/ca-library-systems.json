@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-02","sourceDate":"2026-09-02","boundary":"Canada (OSM relation 1428125)","totalSystems":360},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-03","sourceDate":"2026-09-03","boundary":"Canada (OSM relation 1428125)","totalSystems":360},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -38,6 +38,7 @@
 {"name":"Haliburton County Public Library","mode":"operator","value":"Haliburton County Public Library","count":6},
 {"name":"Kitchener Public Library","mode":"operator","value":"Kitchener Public Library","count":6},
 {"name":"Prince Edward County Public Library","mode":"operator","value":"Prince Edward County Public Library","count":6},
+{"name":"Vaughan Public Libraries","mode":"wikidata","value":"Q7917311","count":6},
 {"name":"Alfred Plantagenet Public Library","mode":"operator","value":"Alfred Plantagenet Public Library","count":5},
 {"name":"Cambridge Public Library","mode":"operator","value":"Cambridge Public Library","count":5},
 {"name":"County of Brant Public Library","mode":"operator","value":"County of Brant Public Library","count":5},
@@ -46,7 +47,6 @@
 {"name":"Palliser Regional Library","mode":"operator","value":"Palliser Regional Library","count":5},
 {"name":"Queen's University","mode":"operator","value":"Queen's University","count":5},
 {"name":"Regina Public Libraries","mode":"operator","value":"Regina Public Libraries","count":5},
-{"name":"Vaughan Public Libraries","mode":"wikidata","value":"Q7917311","count":5},
 {"name":"York University","mode":"operator","value":"York University","count":5},
 {"name":"Burnaby Public Library","mode":"wikidata","value":"Q4999596","count":4},
 {"name":"King Township Public Library","mode":"operator","value":"King Township Public Library","count":4},
