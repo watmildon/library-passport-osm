@@ -715,8 +715,89 @@ async function main() {
   // Systems, indexed. Keyed by operator name; wikidata-only libraries get a
   // system keyed (and named) by their Q-id. The system's wikidata is the most
   // frequent non-null Q-id seen alongside that operator name.
+  //
+  // HOMONYMS: distinct real systems share a name more often than you would
+  // expect — "Monroe County Library System" is both Michigan's (Q69480012) and
+  // Rochester NY's (Q108636649); so are Washington County, Lee County, Scott
+  // County, Aurora, Glendale and a dozen more. Keying on the name alone merged
+  // them into one system, and everything downstream then went wrong in the same
+  // way: the dominant-QID vote silently dropped the smaller system's Q-id, and
+  // the crosswalk's state scope (the MODAL state of the merged libraries) put
+  // the whole system in the majority's state, so the minority's PLS system
+  // could never be claimed and surfaced as "System not in OSM" despite being
+  // mapped and correctly tagged.
+  //
+  // So when — and only when — one operator name carries more than one
+  // operator:wikidata across its libraries, the name is split into one system
+  // per Q-id. `operator:wikidata` is exactly the disambiguator OSM already
+  // provides, and splitting on it beats any geographic heuristic: genuinely
+  // far-flung single systems (Hawaii State Public Library System spans 564 km
+  // of ocean under one Q-id) must NOT be split.
+  //
+  // Libraries under a split name that carry no Q-id of their own stay on the
+  // bare name key: guessing which twin they belong to would invent membership,
+  // and their real finding is the missing operator:wikidata tag.
+  // Two Q-ids under one name is necessary but NOT sufficient: it also happens
+  // when a single real system has a few branches carrying the wrong Q-id (one
+  // Houston Public Library branch on Q69491594 among 34 on Q1647690; seven LAPL
+  // branches on a second id). Splitting those would strand the stragglers in a
+  // 1-library system with no census entry — a silently dropped finding, not a
+  // fixed one — and would drop the parent's matched count.
+  //
+  // Homonyms are separated by geography and mis-tags are not, and the measured
+  // gap is unambiguous: across the real data the closest true homonym pair sits
+  // 157 km apart (Lee County FL vs GA) while every mis-tag cluster is within
+  // 23 km, most in the same city. So a name splits only when its Q-id groups
+  // are genuinely far apart.
+  const SPLIT_MIN_KM = 100;
+  const kmBetween = (a, b) => {
+    const k = 111.32;
+    const x = (b.lon - a.lon) * k * Math.cos((a.lat + b.lat) / 2 * Math.PI / 180);
+    return Math.hypot(x, (b.lat - a.lat) * k);
+  };
+
+  const qidsByOperator = new Map();     // operator name -> Map(Q-id -> [coords])
+  for (const r of rawLibs) {
+    if (!r.operator || !r.wikidata) continue;
+    let byQid = qidsByOperator.get(r.operator);
+    if (!byQid) qidsByOperator.set(r.operator, byQid = new Map());
+    if (!byQid.has(r.wikidata)) byQid.set(r.wikidata, []);
+    if (r.lat != null) byQid.get(r.wikidata).push({ lat: r.lat, lon: r.lon });
+  }
+  const splitNames = new Set();
+  for (const [op, byQid] of qidsByOperator) {
+    if (byQid.size < 2) continue;
+    // Split when ANY pair of Q-id groups is more than SPLIT_MIN_KM apart at
+    // their closest points — nearest-point, so a system with one distant
+    // outlier branch does not drag an otherwise-local twin over the line.
+    const groups = [...byQid.values()].filter(g => g.length);
+    let far = false;
+    outer:
+    for (let i = 0; i < groups.length && !far; i++) {
+      for (let j = i + 1; j < groups.length; j++) {
+        let min = Infinity;
+        for (const a of groups[i]) for (const b of groups[j]) {
+          const d = kmBetween(a, b);
+          if (d < min) min = d;
+        }
+        if (min > SPLIT_MIN_KM) { far = true; break outer; }
+      }
+    }
+    if (far) splitNames.add(op);
+  }
+  if (splitNames.size) {
+    console.log(`  ${splitNames.size} operator name(s) host distinct systems sharing a name — split per Q-id`);
+  }
+
   const sysMap = new Map(); // key -> { n, wdVotes: Map, c, libs: [], states: Map }
-  const sysKey = r => r.operator ?? (r.wikidata ? `wd:${r.wikidata}` : null);
+  // A split name's Q-id-bearing libraries key as "name#Qxxx"; everything else
+  // keeps the key it has always had, so the daily diff stays stable (system
+  // keys are the identity everything downstream references — see the note on
+  // sysKeys below).
+  const sysKey = r =>
+    (r.operator && r.wikidata && splitNames.has(r.operator))
+      ? `${r.operator}#${r.wikidata}`
+      : (r.operator ?? (r.wikidata ? `wd:${r.wikidata}` : null));
   for (const r of rawLibs) {
     const key = sysKey(r);
     if (!key) continue;
