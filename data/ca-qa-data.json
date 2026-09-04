@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-03","country":"CA","sourceDate":"2026-09-03","sourceModified":"2026-09-03T13:59:20Z","totalLibraries":2288,"totalSystems":361},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-04","country":"CA","sourceDate":"2026-09-04","sourceModified":"2026-09-04T13:54:51Z","totalLibraries":2288,"totalSystems":361},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2497,7 +2497,7 @@
 ["Bruce County Public Library","w",830805200,"Bruce County Public Library - Tobermory Branch",8,506,-81.6634,45.2545],
 [null,"w",830805885,"Callander Public Library",8,96,-79.366,46.2235],
 ["City of North Bay","w",830812218,"North Bay Public Library",8,8,-79.46,46.3088],
-["Wellington County Library","w",833395461,"Wellington County Library - Palmerston Branch",8,121,-80.8503,43.8332],
+["Wellington County Library","w",833395461,"Wellington County Library - Palmerston Branch",8,125,-80.8503,43.8332],
 [null,"w",841518164,"Learning Commons",1,0,-122.8065,49.2954],
 ["City of Wetaskiwin","w",844796438,"Wetaskiwin Public Library",0,8,-113.3748,52.9708],
 ["Perth East Public Library","w",848489373,"Perth East Public Library",8,105,-80.9203,43.5645],
