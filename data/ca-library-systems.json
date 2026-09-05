@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-04","sourceDate":"2026-09-04","boundary":"Canada (OSM relation 1428125)","totalSystems":360},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-05","sourceDate":"2026-09-05","boundary":"Canada (OSM relation 1428125)","totalSystems":361},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -203,6 +203,7 @@
 {"name":"Dalkeith Plus","mode":"operator","value":"Dalkeith Plus","count":1},
 {"name":"Deep River Public Library","mode":"operator","value":"Deep River Public Library","count":1},
 {"name":"Deseronto Public Library","mode":"operator","value":"Deseronto Public Library","count":1},
+{"name":"District of Taylor","mode":"operator","value":"District of Taylor","count":1},
 {"name":"Douro-Dummer Public Library","mode":"operator","value":"Douro-Dummer Public Library","count":1},
 {"name":"Eastern Counties Regional Library","mode":"operator","value":"Eastern Counties Regional Library","count":1},
 {"name":"Emily Carr University of Art and Design","mode":"wikidata","value":"Q1337587","count":1},
