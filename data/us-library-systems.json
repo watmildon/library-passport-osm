@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-05","sourceDate":"2026-09-05","boundary":"United States (OSM relation 148838)","totalSystems":2549},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-06","sourceDate":"2026-09-06","boundary":"United States (OSM relation 148838)","totalSystems":2551},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -682,6 +682,7 @@
 {"name":"Bentley School","mode":"operator","value":"Bentley School","count":1},
 {"name":"Berkeley County Library System","mode":"operator","value":"Berkeley County Library System","count":1},
 {"name":"Berkeley High School","mode":"operator","value":"Berkeley High School","count":1},
+{"name":"Berks County Public Libraries","mode":"wikidata","value":"Q30271590","count":1},
 {"name":"Bethel College","mode":"operator","value":"Bethel College","count":1},
 {"name":"Bethel University","mode":"operator","value":"Bethel University","count":1},
 {"name":"Bethlehem Area Public Library","mode":"operator","value":"Bethlehem Area Public Library","count":1},
@@ -846,6 +847,7 @@
 {"name":"chita Mountains Regional Library","mode":"wikidata","value":"Q69469894","count":1},
 {"name":"Chowan University","mode":"operator","value":"Chowan University","count":1},
 {"name":"Christian Brothers University","mode":"operator","value":"Christian Brothers University","count":1},
+{"name":"Chula Vista Public Library","mode":"wikidata","value":"Q66369319","count":1},
 {"name":"Cith of Ogallala","mode":"operator","value":"Cith of Ogallala","count":1},
 {"name":"Citrus County Library System","mode":"operator","value":"Citrus County Library System","count":1},
 {"name":"City and Borough of Sitka","mode":"operator","value":"City and Borough of Sitka","count":1},
