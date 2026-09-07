@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-06","country":"CA","sourceDate":"2026-09-06","sourceModified":"2026-09-06T13:15:36Z","totalLibraries":2290,"totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-07","country":"CA","sourceDate":"2026-09-07","sourceModified":"2026-09-07T15:25:51Z","totalLibraries":2291,"totalSystems":362},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2450,6 +2450,7 @@
 [null,"w",755305723,"Bibliothèque Georges-Dor",10,0,-73.4632,45.5212],
 ["Quinte West Public Library","w",755500476,"Quinte West Public Library - Frankford Branch",8,8,-77.5958,44.2022],
 [null,"w",755538459,"Richibucto Public LIbrary",3,480,-64.8629,46.6814],
+[null,"w",757100034,"Vegreville Centennial Library",0,0,-112.0547,53.4926],
 ["Municipalité de Bury","w",757329178,"Centre multifonctionnel Victoria",10,492,-71.5004,45.473],
 [null,"w",758397701,"Greater Sudbury Public Library - Azilda Branch",8,0,-81.1202,46.5518],
 [null,"w",758437209,"Greater Sudbury Public Library",8,484,-80.9468,46.5226],
