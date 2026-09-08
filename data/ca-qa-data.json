@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-07","country":"CA","sourceDate":"2026-09-07","sourceModified":"2026-09-07T15:25:51Z","totalLibraries":2291,"totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-08","country":"CA","sourceDate":"2026-09-08","sourceModified":"2026-09-08T14:00:51Z","totalLibraries":2292,"totalSystems":362},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1056,7 +1056,7 @@
 [null,"n",6136154216,"Bibliothèque de Massueville",10,0,-72.9314,45.9108],
 [null,"n",6136154271,"Bibliothèque de Saint-Ours",10,480,-73.1516,45.8887],
 [null,"n",6138231156,"Bibliothèque Claude-Bouchard",10,480,-72.4331,46.2145],
-[null,"n",6148316089,"Librairie de Plessisville",10,224,-71.7704,46.2198],
+[null,"n",6148316089,"Bibliothèque Linette-Jutras-Laperle",10,481,-71.7704,46.2198],
 [null,"n",6164974562,"Bibliothèque Pierre-Georges-Roy",10,0,-71.1805,46.8118],
 [null,"n",6166299439,null,10,0,-70.5565,46.9809],
 [null,"n",6172886396,"Bibliothèque Laurent-Caron",10,0,-70.971,46.6301],
@@ -1758,6 +1758,7 @@
 ["Loisirs Roxton Falls","n",14138318214,"Bibliothèque municipale de Roxton Falls",10,493,-72.5225,45.5723],
 [null,"n",14150049722,"Petit De Grat Library",6,103,-60.9613,45.5147],
 [null,"n",14152707404,"Little Free Library of Sheguiandah",8,0,-81.9212,45.8943],
+[null,"n",14161603536,"Bibliothèque du Cégep de Jonquière",10,0,-71.248,48.4053],
 ["University of British Columbia Library","r",1420041,"Woodward Library",1,507,-123.2476,49.2646],
 [null,"r",3031106,null,1,0,-123.4745,48.4341],
 [null,"r",9072451,"Queen Elizabeth II Library",4,0,-52.7345,47.5717],
