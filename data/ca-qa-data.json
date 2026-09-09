@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-08","country":"CA","sourceDate":"2026-09-08","sourceModified":"2026-09-08T14:00:51Z","totalLibraries":2292,"totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-09","country":"CA","sourceDate":"2026-09-09","sourceModified":"2026-09-09T14:06:21Z","totalLibraries":2292,"totalSystems":362},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1543,6 +1543,7 @@
 ["Edmonton Public Library","n",11878228347,"Edmonton Public Library - Abbotsfield - Penny McKee",0,24,-113.3906,53.5709],
 ["Wapiti Regional Library","n",11892116946,"Leoville Library",11,12,-107.5529,53.6319],
 [null,"n",11908996446,"Bibliothèque Saint-Germaine de Boulé",10,0,-79.1181,48.5994],
+[null,"n",11913350667,"Bibliothèque Municipale Mont-Brun",10,0,-78.7184,48.3713],
 ["Simon Fraser University","n",11965494982,"Samuel and Frances Belzberg Library",1,511,-123.1119,49.2842],
 [null,"n",11990979059,null,10,0,-73.1595,45.7862],
 [null,"n",12012846781,"Edzo Public Library",5,0,-116.0346,62.78],
@@ -2096,7 +2097,7 @@
 ["Bowen Island Public Library","w",254061717,"Bowen Island Public Library",1,495,-123.334,49.3799],
 ["Region Of Waterloo Library","w",254742464,"Region Of Waterloo Library - Baden Branch",8,237,-80.6643,43.4043],
 ["Mississippi Mills Public Library","w",256341848,"Mississippi Mills Public Library - Pakenham Branch",8,110,-76.2892,45.332],
-["East Gwillimbury Public Library","w",256638950,"East Gwillimbury Public Library - Mount Albert Branch",8,8,-79.3102,44.1404],
+["East Gwillimbury Public Library","w",256638950,"East Gwillimbury Public Library - Mount Albert Branch",8,108,-79.3102,44.1404],
 ["London Public Library","w",256663176,"London Public Library - Crouch",8,248,-81.2151,42.9807],
 ["St. Thomas Public Library","w",256921798,"St. Thomas Public Library",8,232,-81.1926,42.78],
 ["Toronto Public Library","w",260682038,"Toronto Public Library - Brentwood",8,250,-79.5143,43.6474],
@@ -2582,7 +2583,6 @@
 [null,"w",1284089591,"Bibliothèque Cloutier",10,0,-79.151,48.0099],
 [null,"w",1284091889,"Bibliothèque Municipal Bellecombe",10,0,-78.9409,48.0995],
 [null,"w",1284104773,"Bibliothèque Municipal de Rollet",10,0,-79.2426,47.9143],
-[null,"w",1284118411,"Bibliothèque Municipale Mont-Brun",10,0,-78.7185,48.3713],
 [null,"w",1284254096,"Bibliothèque Municipale Colombourg",10,0,-79.1434,48.7494],
 [null,"w",1284258239,"Bibliothèque Municipal de Val-Paradis",10,0,-79.2907,49.1543],
 [null,"w",1284262438,"Bibliothèque de Roquemaure",10,0,-79.4037,48.6054],
