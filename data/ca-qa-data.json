@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-10","country":"CA","sourceDate":"2026-09-10","sourceModified":"2026-09-10T13:58:27Z","totalLibraries":2292,"totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-11","country":"CA","sourceDate":"2026-09-11","sourceModified":"2026-09-11T13:58:36Z","totalLibraries":2292,"totalSystems":362},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1120,7 +1120,7 @@
 ["Vancouver Island Public Library","n",6493345691,"VIRL: Gold River Branch",1,511,-126.0523,49.7776],
 ["Vancouver Island Public Library","n",6493345755,"VIRL: Sayward Branch",1,511,-125.9593,50.3779],
 ["Vancouver Island Public Library","n",6493345894,"VIRL: Quadra Island Branch",1,511,-125.209,50.0403],
-[null,"n",6499028986,"Grande Cache Municipal Library",0,452,-119.1268,53.8883],
+[null,"n",6499028986,"Grande Cache Municipal Library",0,452,-119.1268,53.8882],
 ["Edmonton Public Library","n",6502607713,"Edmonton Public Library",0,509,-113.5388,53.4076],
 ["St. Catharines Public Library","n",6507419288,"St. Catharines Public Library - Dr. Huq Family Branch",8,495,-79.226,43.1807],
 [null,"n",6511918347,"Wakefield Library",10,0,-75.9316,45.6326],
@@ -1663,7 +1663,7 @@
 ["Municipalité de Saint-Didace","n",12827179097,"Bibliothèque Louis-Edmond-Hamelin",10,104,-73.2809,46.3274],
 ["Vancouver Public Library","n",12842830213,"VPL: West Point Grey Branch",1,511,-123.2111,49.2637],
 ["Town of Stony Plain","n",12843531267,"Stony Plain Public Library",0,490,-114.0071,53.527],
-[null,"n",12863189592,"Claireville Branch Library",8,0,-79.6567,43.7662],
+[null,"n",12863189592,"Brampton Library - Claireville Branch",8,359,-79.6567,43.7663],
 [null,"n",12871507077,"Library and Learning Centre",1,2,-122.9125,49.204],
 ["Surrey Libraries","n",12905471101,"SL: Clayton Branch",1,511,-122.7041,49.1328],
 [null,"n",12945125920,"Telkwa Reading Room",1,36,-127.0521,54.6984],
@@ -2693,6 +2693,7 @@
 {"d":"westerncounties.ca","total":2,"untagged":2,"op":null,"wd":null,"st":[6]},
 {"d":"yukon.ca","total":2,"untagged":2,"op":null,"wd":null,"st":[12]},
 {"d":"hpl.ca","total":9,"untagged":1,"op":"Hamilton Public Library","wd":"Q5645111","st":[8]},
+{"d":"bramptonlibrary.ca","total":3,"untagged":1,"op":"Brampton Library","wd":null,"st":[8]},
 {"d":"lillooet.bc.libraries.coop","total":3,"untagged":1,"op":"Lillooet Area Library Association","wd":null,"st":[1]},
 {"d":"mabiblioamoi.ca","total":3,"untagged":1,"op":"Réseau Biblio","wd":null,"st":[10]},
 {"d":"library.ucalgary.ca","total":2,"untagged":1,"op":"University of Calgary Department of Geoscience","wd":null,"st":[0]},
