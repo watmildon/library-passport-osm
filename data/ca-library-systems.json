@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-11","sourceDate":"2026-09-11","boundary":"Canada (OSM relation 1428125)","totalSystems":361},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-12","sourceDate":"2026-09-12","boundary":"Canada (OSM relation 1428125)","totalSystems":361},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -50,6 +50,7 @@
 {"name":"York University","mode":"operator","value":"York University","count":5},
 {"name":"Burnaby Public Library","mode":"wikidata","value":"Q4999596","count":4},
 {"name":"King Township Public Library","mode":"operator","value":"King Township Public Library","count":4},
+{"name":"McMaster University Libraries","mode":"operator","value":"McMaster University Libraries","count":4},
 {"name":"Oshawa Public Libraries","mode":"operator","value":"Oshawa Public Libraries","count":4},
 {"name":"Richmond Hill Public Library","mode":"operator","value":"Richmond Hill Public Library","count":4},
 {"name":"Richmond Public Library","mode":"wikidata","value":"Q4405734","count":4},
@@ -73,7 +74,6 @@
 {"name":"Havelock-Belmont-Methuen Public Library","mode":"operator","value":"Havelock-Belmont-Methuen Public Library","count":3},
 {"name":"Innisfil Public Library","mode":"operator","value":"Innisfil Public Library","count":3},
 {"name":"Leeds and the Thousand Islands Public Library","mode":"operator","value":"Leeds and the Thousand Islands Public Library","count":3},
-{"name":"McMaster University","mode":"operator","value":"McMaster University","count":3},
 {"name":"Milton Public Library","mode":"operator","value":"Milton Public Library","count":3},
 {"name":"New Brunswick Public Library Service","mode":"operator","value":"New Brunswick Public Library Service","count":3},
 {"name":"New Tecumseth Public Library","mode":"operator","value":"New Tecumseth Public Library","count":3},
