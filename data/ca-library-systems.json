@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-12","sourceDate":"2026-09-12","boundary":"Canada (OSM relation 1428125)","totalSystems":361},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-13","sourceDate":"2026-09-13","boundary":"Canada (OSM relation 1428125)","totalSystems":361},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -67,6 +67,7 @@
 {"name":"Chinook Regional Library","mode":"operator","value":"Chinook Regional Library","count":3},
 {"name":"Clarington Public Library","mode":"operator","value":"Clarington Public Library","count":3},
 {"name":"Cobourg Public Library","mode":"operator","value":"Cobourg Public Library","count":3},
+{"name":"East Gwillimbury Public Library","mode":"operator","value":"East Gwillimbury Public Library","count":3},
 {"name":"Elizabethtown Kitley Public Library","mode":"operator","value":"Elizabethtown Kitley Public Library","count":3},
 {"name":"Fort Erie Public Library","mode":"operator","value":"Fort Erie Public Library","count":3},
 {"name":"Georgina Public Library","mode":"operator","value":"Georgina Public Library","count":3},
@@ -108,7 +109,6 @@
 {"name":"Clarence-Rockland Public Library","mode":"operator","value":"Clarence-Rockland Public Library","count":2},
 {"name":"Coquitlam Public Library","mode":"wikidata","value":"Q5169350","count":2},
 {"name":"Cramahe Township Public Library","mode":"operator","value":"Cramahe Township Public Library","count":2},
-{"name":"East Gwillimbury Public Library","mode":"operator","value":"East Gwillimbury Public Library","count":2},
 {"name":"Edwardsburgh Cardinal Public Library","mode":"operator","value":"Edwardsburgh Cardinal Public Library","count":2},
 {"name":"Essa Public Library","mode":"operator","value":"Essa Public Library","count":2},
 {"name":"Greater Sudbury Public Library","mode":"operator","value":"Greater Sudbury Public Library","count":2},

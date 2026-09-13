@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-12","sourceDate":"2026-09-12","boundary":"United States (OSM relation 148838)","totalSystems":2578},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-13","sourceDate":"2026-09-13","boundary":"United States (OSM relation 148838)","totalSystems":2579},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1390,6 +1390,7 @@
 {"name":"Greenwood County LIbrary System","mode":"operator","value":"Greenwood County LIbrary System","count":1},
 {"name":"Greenwood, SC County Government","mode":"operator","value":"Greenwood, SC County Government","count":1},
 {"name":"Griffin Hospital","mode":"operator","value":"Griffin Hospital","count":1},
+{"name":"Grinnell College","mode":"operator","value":"Grinnell College","count":1},
 {"name":"Grossmont Healthcare District","mode":"operator","value":"Grossmont Healthcare District","count":1},
 {"name":"Guemes Island Community Center Association","mode":"operator","value":"Guemes Island Community Center Association","count":1},
 {"name":"Guilford College","mode":"operator","value":"Guilford College","count":1},
