@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-14","sourceDate":"2026-09-14","boundary":"United States (OSM relation 148838)","totalSystems":2578},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-15","sourceDate":"2026-09-15","boundary":"United States (OSM relation 148838)","totalSystems":2579},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -60,12 +60,12 @@
 {"name":"Palm Beach County Library System","mode":"wikidata","value":"Q7127985","count":17},
 {"name":"Phoenix Public Library","mode":"wikidata","value":"Q7186963","count":17},
 {"name":"Boston Public Library","mode":"wikidata","value":"Q894583","count":16},
-{"name":"Multnomah County Library","mode":"wikidata","value":"Q6935177","count":16},
 {"name":"Orange County Library System","mode":"wikidata","value":"Q7099576","count":16},
 {"name":"Tulare County Library","mode":"wikidata","value":"Q66369392","count":16},
 {"name":"Yakima Valley Libraries","mode":"wikidata","value":"Q69494202","count":16},
 {"name":"Cobb County Public Library System","mode":"wikidata","value":"Q14686609","count":15},
 {"name":"Fort Vancouver Regional Libraries","mode":"wikidata","value":"Q5472215","count":15},
+{"name":"Multnomah County Library","mode":"wikidata","value":"Q6935177","count":15},
 {"name":"Fresno County Public Library","mode":"wikidata","value":"Q2587462","count":14},
 {"name":"Gwinnett County Public Library System","mode":"wikidata","value":"Q5623669","count":14},
 {"name":"Saint Louis County Library","mode":"wikidata","value":"Q7589610","count":14},
@@ -503,6 +503,7 @@
 {"name":"Park County Library System","mode":"wikidata","value":"Q69495691","count":2},
 {"name":"Park County Public Library","mode":"wikidata","value":"Q69470351","count":2},
 {"name":"Pend Oreille County Library District","mode":"wikidata","value":"Q69494118","count":2},
+{"name":"Peoria Public Library System","mode":"wikidata","value":"Q69469992","count":2},
 {"name":"Piedmont Regional Library System","mode":"operator","value":"Piedmont Regional Library System","count":2},
 {"name":"Pike-Amite-Walthall Library System","mode":"wikidata","value":"Q69481612","count":2},
 {"name":"Plano Public Library","mode":"wikidata","value":"Q30258319","count":2},
