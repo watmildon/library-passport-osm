@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-17","sourceDate":"2026-09-17","boundary":"United States (OSM relation 148838)","totalSystems":2582},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-18","sourceDate":"2026-09-18","boundary":"United States (OSM relation 148838)","totalSystems":2585},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1051,6 +1051,7 @@
 {"name":"City of San Rafael","mode":"operator","value":"City of San Rafael","count":1},
 {"name":"City of Santa Barbara","mode":"operator","value":"City of Santa Barbara","count":1},
 {"name":"City of Santa Maria","mode":"operator","value":"City of Santa Maria","count":1},
+{"name":"City of Saratoga Springs","mode":"operator","value":"City of Saratoga Springs","count":1},
 {"name":"City of Sartell","mode":"operator","value":"City of Sartell","count":1},
 {"name":"City of Schertz","mode":"operator","value":"City of Schertz","count":1},
 {"name":"City of Searcy","mode":"wikidata","value":"Q79709","count":1},
@@ -1197,6 +1198,7 @@
 {"name":"Delmar","mode":"wikidata","value":"Q755854","count":1},
 {"name":"Delta County Libraries","mode":"operator","value":"Delta County Libraries","count":1},
 {"name":"Delta State University","mode":"operator","value":"Delta State University","count":1},
+{"name":"Denver Public Libraries","mode":"operator","value":"Denver Public Libraries","count":1},
 {"name":"Denver Zine Library","mode":"operator","value":"Denver Zine Library","count":1},
 {"name":"Denville Twp","mode":"operator","value":"Denville Twp","count":1},
 {"name":"DePaul University","mode":"wikidata","value":"Q1179603","count":1},
@@ -2150,6 +2152,7 @@
 {"name":"Sussex County","mode":"wikidata","value":"Q156213","count":1},
 {"name":"Sussex County Library","mode":"wikidata","value":"Q69484682","count":1},
 {"name":"Sussex County Library System","mode":"operator","value":"Sussex County Library System","count":1},
+{"name":"Sustainable Capitol Hill","mode":"operator","value":"Sustainable Capitol Hill","count":1},
 {"name":"Switzerland County Public Library","mode":"wikidata","value":"Q69475653","count":1},
 {"name":"Takoma Park City Government","mode":"operator","value":"Takoma Park City Government","count":1},
 {"name":"Talbot County","mode":"wikidata","value":"Q511084","count":1},
