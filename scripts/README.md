@@ -13,7 +13,7 @@ remains as a manual fallback should the instance go away.
 
 1. the `OVERPASS_URL` env var — in CI, populated from the
    **`OVERPASS_PRIMARY_URL` repository secret**
-2. a `.overpass-url` file in the repo root — **gitignored** so the URL never
+2. a `.overpassurl` file in the repo root — **gitignored** so the URL never
    lands in git
 
 The URL is a secret. No script prints it *or its host* — GitHub Actions only
@@ -27,8 +27,8 @@ endpoint **tiers** rather than failing for the duration of the outage:
 
 | tier | endpoint | capability |
 | --- | --- | --- |
-| `primary` | `OVERPASS_URL` env (CI: the `OVERPASS_PRIMARY_URL` secret) / gitignored `.overpass-url` | no limits — the full pipeline |
-| `secondary` | `OVERPASS_SECONDARY_URL` env (CI: secret) / gitignored `.overpass-secondary-url` | hosted free tier with a tight quota — degraded |
+| `primary` | `OVERPASS_URL` env (CI: the `OVERPASS_PRIMARY_URL` secret) / gitignored `.overpassurl` | no limits — the full pipeline |
+| `secondary` | `OVERPASS_SECONDARY_URL` env (CI: secret) / gitignored `.overpassurl-secondary` | hosted free tier with a tight quota — degraded |
 | `public` | overpass-api.de, kumi.systems | last resort — degraded |
 
 The secondary URL may embed an API key, so it is handled exactly like the
@@ -495,7 +495,7 @@ For testing/previewing [`augment.html`](../augment.html) without a full DuckDB
 build, this regenerates the `augment[]` section of `data/qa-data.json` for **one
 or more states**, deriving each state's systems from the committed `libs`/`systems`
 (no DuckDB) and reading current tags from a dev Overpass instance (resolved like
-`refresh-systems.mjs`: `OVERPASS_URL` env, else a gitignored `.overpass-url` file).
+`refresh-systems.mjs`: `OVERPASS_URL` env, else a gitignored `.overpassurl` file).
 It reuses the exact production suggestion logic, so the emitted shape matches the
 weekly build.
 

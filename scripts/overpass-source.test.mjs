@@ -3,7 +3,7 @@
 // no network. Run: npm run test:overpass
 //
 // Every test sets BOTH secret env vars explicitly — the functions fall back to
-// gitignored .overpass-url / .overpass-secondary-url files in the repo root,
+// gitignored .overpassurl / .overpassurl-secondary files in the repo root,
 // which may or may not exist on the machine running the tests.
 
 import { test, beforeEach, afterEach } from 'node:test';
@@ -49,7 +49,7 @@ test('an unconfigured secondary drops out of the chain', (t) => {
   // The env var is cleared here, but the gitignored file fallback would still
   // configure a secondary on a machine that has one — skip there.
   const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-  if (existsSync(join(root, '.overpass-secondary-url'))) return t.skip('.overpass-secondary-url exists locally');
+  if (existsSync(join(root, '.overpassurl-secondary'))) return t.skip('.overpassurl-secondary exists locally');
   process.env.OVERPASS_SECONDARY_URL = '';
   assert.deepEqual(overpassCandidates('auto').map(x => x.tier), ['primary', 'public', 'public']);
 });

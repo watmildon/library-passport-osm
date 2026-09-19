@@ -92,7 +92,7 @@ async function main() {
   // identified by name only.
   if (!overpassCandidates(START_TIER).length) {
     fail(`No ${START_TIER} Overpass endpoint configured.`,
-      'In CI the primary comes from the OVERPASS_PRIMARY_URL repository secret (exposed to the job as OVERPASS_URL) and the secondary from OVERPASS_SECONDARY_URL; locally, put the URL in a gitignored .overpass-url / .overpass-secondary-url file in the repo root.');
+      'In CI the primary comes from the OVERPASS_PRIMARY_URL repository secret (exposed to the job as OVERPASS_URL) and the secondary from OVERPASS_SECONDARY_URL; locally, put the URL in a gitignored .overpassurl / .overpassurl-secondary file in the repo root.');
   }
 
   // Walk the failover chain: first tier that answers with a usable data

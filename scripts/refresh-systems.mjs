@@ -11,7 +11,7 @@
 // its provenance differ.
 //
 // The Overpass endpoint resolution (OVERPASS_URL env var, else a gitignored
-// .overpass-url file) lives in overpass-source.mjs; in CI the env var is
+// .overpassurl file) lives in overpass-source.mjs; in CI the env var is
 // populated from the OVERPASS_PRIMARY_URL repository secret.
 //
 // Freshness gate: the committed file records the snapshot date it was built

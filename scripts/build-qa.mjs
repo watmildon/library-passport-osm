@@ -2,7 +2,7 @@
 // build-qa.mjs — regenerate data/qa-data.json for the Data QA page.
 //
 // PRIMARY source: an Overpass instance (OVERPASS_URL env var or a gitignored
-// .overpass-url file — see overpass-source.mjs). Two queries fetch every US
+// .overpassurl file — see overpass-source.mjs). Two queries fetch every US
 // library with full tags plus a per-state assignment; collisions are computed
 // here in JS. Overpass carries addr:* (absent from Layercake's POI layer), so
 // the address flags below only exist on this path.

@@ -5,7 +5,7 @@
 // git or in CI logs, so:
 //   - the endpoint is resolved from the OVERPASS_URL env var (in CI, populated
 //     from the OVERPASS_PRIMARY_URL repository secret) or a gitignored
-//     .overpass-url file in the repo root;
+//     .overpassurl file in the repo root;
 //   - nothing in this module ever prints the URL or its host. GitHub Actions
 //     only masks the exact secret string, so even logging the hostname would
 //     leak it.
@@ -40,10 +40,10 @@ const DEFAULT_USER_AGENT = process.env.USER_AGENT ||
 // ---- Failover tiers --------------------------------------------------------
 //
 // Three tiers of endpoint, in falling order of capability:
-//   primary    the private instance (OVERPASS_URL / .overpass-url) – minutely
+//   primary    the private instance (OVERPASS_URL / .overpassurl) – minutely
 //              replication, no rate limits; the full pipeline runs here.
 //   secondary  a hosted fallback (OVERPASS_SECONDARY_URL /
-//              .overpass-secondary-url) – a tightly quota'd free tier, so the
+//              .overpassurl-secondary) – a tightly quota'd free tier, so the
 //              pipeline runs DEGRADED on it. The URL may embed an API key:
 //              treat it exactly like the primary and never print it.
 //   public     the public Overpass servers – the last resort, also degraded.
@@ -64,8 +64,8 @@ function fileUrl(name) {
   return readFileSync(f, 'utf8').trim() || null;
 }
 
-const primaryUrl = () => process.env.OVERPASS_URL?.trim() || fileUrl('.overpass-url');
-const secondaryUrl = () => process.env.OVERPASS_SECONDARY_URL?.trim() || fileUrl('.overpass-secondary-url');
+const primaryUrl = () => process.env.OVERPASS_URL?.trim() || fileUrl('.overpassurl');
+const secondaryUrl = () => process.env.OVERPASS_SECONDARY_URL?.trim() || fileUrl('.overpassurl-secondary');
 
 const TIERS = ['primary', 'secondary', 'public'];
 
@@ -104,7 +104,7 @@ export function overpassCandidates(startTier = 'auto') {
 }
 
 // The configured Overpass endpoint for the ACTIVE tier. For the primary tier:
-// OVERPASS_URL env var, else .overpass-url in the repo root, else null – with
+// OVERPASS_URL env var, else .overpassurl in the repo root, else null – with
 // { required: true }, exits with guidance instead of returning null. For the
 // public tier, OVERPASS_PUBLIC_URL (the specific server the gate probed
 // successfully) beats the default list head.

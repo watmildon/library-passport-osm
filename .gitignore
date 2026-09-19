@@ -13,8 +13,8 @@ Thumbs.db
 
 # Private dev Overpass endpoints (never commit these; the secondary
 # fallback URL may embed an API key)
-.overpass-url
-.overpass-secondary-url
+.overpassurl
+.overpassurl-secondary
 
 # opencage API key (never commit this)
 .opencage-key

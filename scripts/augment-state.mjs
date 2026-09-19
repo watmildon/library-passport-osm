@@ -6,7 +6,7 @@
 // Unlike build-qa.mjs (which reads OSM from Layercake via DuckDB), this derives
 // each state's systems straight from the committed qa-data.json `libs`/`systems`
 // (no DuckDB needed) and fetches current tags from a dev Overpass instance —
-// resolved like refresh-systems.mjs: OVERPASS_URL env, else a .overpass-url file.
+// resolved like refresh-systems.mjs: OVERPASS_URL env, else a .overpassurl file.
 //
 // It reuses the exact production suggestion logic (pls-match + pls-augment), so
 // the emitted shape matches what the full build produces.
