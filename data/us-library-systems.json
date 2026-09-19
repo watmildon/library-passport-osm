@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-18","sourceDate":"2026-09-18","boundary":"United States (OSM relation 148838)","totalSystems":2585},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-19","sourceDate":"2026-09-19","boundary":"United States (OSM relation 148838)","totalSystems":2585},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -94,6 +94,7 @@
 {"name":"Pikes Peak Library District","mode":"wikidata","value":"Q69470355","count":11},
 {"name":"Pioneerland Library System","mode":"wikidata","value":"Q69480753","count":11},
 {"name":"Richland County Public Library","mode":"wikidata","value":"Q7330620","count":11},
+{"name":"Baltimore County Public Library","mode":"wikidata","value":"Q4852845","count":10},
 {"name":"Brevard County Library System","mode":"wikidata","value":"Q15615911","count":10},
 {"name":"Charleston County Public Library System","mode":"wikidata","value":"Q69490344","count":10},
 {"name":"City of San Antonio","mode":"wikidata","value":"Q975","count":10},
@@ -110,7 +111,6 @@
 {"name":"Spokane Library System","mode":"wikidata","value":"Q30258375","count":10},
 {"name":"Three Rivers Regional Library System","mode":"wikidata","value":"Q30634137","count":10},
 {"name":"Whatcom County Library System","mode":"wikidata","value":"Q69494158","count":10},
-{"name":"Baltimore County Public Library","mode":"wikidata","value":"Q4852845","count":9},
 {"name":"Jackson District Library","mode":"operator","value":"Jackson District Library","count":9},
 {"name":"Jefferson County Public Library","mode":"wikidata","value":"Q69470275","count":9},
 {"name":"Kanawha County Public Library","mode":"wikidata","value":"Q69495450","count":9},
