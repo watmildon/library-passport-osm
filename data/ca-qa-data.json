@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-20","country":"CA","sourceDate":"2026-09-20","sourceModified":"2026-09-20T14:20:21Z","totalLibraries":2295,"totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-21","country":"CA","sourceDate":"2026-09-21","sourceModified":"2026-09-21T16:40:50Z","totalLibraries":2295,"totalSystems":362},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -13,7 +13,7 @@
 {"n":"Ankara Library","w":null,"c":1},
 {"n":"Annapolis Valley Regional Library","w":null,"c":1},
 {"n":"Arnprior Public Library","w":null,"c":1},
-{"n":"Arrondissement d'Outremont","w":null,"c":1,"sw":"Q340","ss":["domain"]},
+{"n":"Arrondissement d'Outremont","w":null,"c":1,"sw":"Q340","ss":["domain"],"sn":"Montreal"},
 {"n":"Arrondissement du Plateau-Mont-Royal","w":null,"c":1,"sw":"Q2901573","sn":"Montreal Public Libraries Network","ss":["branch"]},
 {"n":"Asphodel–Norwood Public Library","w":null,"c":2},
 {"n":"Assiginack Township","w":null,"c":1},
@@ -29,7 +29,7 @@
 {"n":"Bibliothèque Jeanne-Hébert","w":null,"c":1},
 {"n":"Bibliothèque de Québec","w":"Q2901560","c":27},
 {"n":"Bibliothèque et Archives nationales du Québec","w":null,"c":2,"sw":"Q39628","sn":"Bibliothèque et Archives nationales du Québec","ss":["branch"]},
-{"n":"Bibliothèques de Montréal","w":null,"c":1,"sw":"Q340","ss":["domain"]},
+{"n":"Bibliothèques de Montréal","w":null,"c":1,"sw":"Q340","ss":["domain"],"sn":"Montreal"},
 {"n":"Bkejwanong First Nation Public Library","w":null,"c":1},
 {"n":"Bonnechere Union Public Library","w":null,"c":1},
 {"n":"Bowen Island Public Library","w":null,"c":1},
