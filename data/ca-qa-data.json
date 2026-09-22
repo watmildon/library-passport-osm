@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-21","country":"CA","sourceDate":"2026-09-21","sourceModified":"2026-09-21T16:40:50Z","totalLibraries":2295,"totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-22","country":"CA","sourceDate":"2026-09-22","sourceModified":"2026-09-22T14:26:20Z","totalLibraries":2295,"totalSystems":362},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1762,7 +1762,7 @@
 ["East Gwillimbury Public Library","n",14175286416,"East Gwillimbury Public Library - Queensville Branch",8,491,-79.4514,44.1278],
 ["East Gwillimbury Public Library","n",14175320350,"East Gwillimbury Public Library - Mount Albert Branch",8,495,-79.3101,44.1405],
 [null,"n",14184928801,"Bibliothèque municipale",10,324,-72.4373,45.5015],
-[null,"n",14196998203,"Sussex Public Library",3,0,-65.5053,45.7212],
+[null,"n",14196998203,"Sussex Public Library",3,0,-65.5052,45.7211],
 ["University of British Columbia Library","r",1420041,"Woodward Library",1,507,-123.2476,49.2646],
 [null,"r",3031106,null,1,0,-123.4745,48.4341],
 [null,"r",9072451,"Queen Elizabeth II Library",4,0,-52.7345,47.5717],

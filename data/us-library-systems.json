@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-21","sourceDate":"2026-09-21","boundary":"United States (OSM relation 148838)","totalSystems":2588},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-22","sourceDate":"2026-09-22","boundary":"United States (OSM relation 148838)","totalSystems":2589},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1369,6 +1369,7 @@
 {"name":"Golden Oak Elementary","mode":"operator","value":"Golden Oak Elementary","count":1},
 {"name":"Golden Rain Foundation","mode":"operator","value":"Golden Rain Foundation","count":1},
 {"name":"Gonzaga University","mode":"operator","value":"Gonzaga University","count":1},
+{"name":"Good Circumstance","mode":"operator","value":"Good Circumstance","count":1},
 {"name":"Goodspeed Opera House","mode":"operator","value":"Goodspeed Opera House","count":1},
 {"name":"Gordon College","mode":"operator","value":"Gordon College","count":1},
 {"name":"Gordon-Conwell Theological Seminary","mode":"operator","value":"Gordon-Conwell Theological Seminary","count":1},
@@ -1415,7 +1416,7 @@
 {"name":"Hancock County Public Libraries","mode":"operator","value":"Hancock County Public Libraries","count":1},
 {"name":"Handley Regional Library System","mode":"operator","value":"Handley Regional Library System","count":1},
 {"name":"Happy Canyon Community","mode":"operator","value":"Happy Canyon Community","count":1},
-{"name":"Harding University","mode":"operator","value":"Harding University","count":1},
+{"name":"Harding University","mode":"wikidata","value":"Q5656138","count":1},
 {"name":"Harford Community College","mode":"operator","value":"Harford Community College","count":1},
 {"name":"Harris County Public Libraries","mode":"operator","value":"Harris County Public Libraries","count":1},
 {"name":"Harrison Public Library","mode":"wikidata","value":"Q69487065","count":1},
