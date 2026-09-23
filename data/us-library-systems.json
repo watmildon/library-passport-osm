@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-22","sourceDate":"2026-09-22","boundary":"United States (OSM relation 148838)","totalSystems":2589},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-23","sourceDate":"2026-09-23","boundary":"United States (OSM relation 148838)","totalSystems":2589},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -396,6 +396,7 @@
 {"name":"Carmel Clay Public Library","mode":"operator","value":"Carmel Clay Public Library","count":2},
 {"name":"Cass County Public Library","mode":"operator","value":"Cass County Public Library","count":2},
 {"name":"Central Rappahannock Regional Library","mode":"wikidata","value":"Q28230499","count":2},
+{"name":"Charleston County Public Libraries","mode":"operator","value":"Charleston County Public Libraries","count":2},
 {"name":"Cheektowaga Public Library","mode":"wikidata","value":"Q69485091","count":2},
 {"name":"Chesterfield County Public Library","mode":"operator","value":"Chesterfield County Public Library","count":2},
 {"name":"Chillicothe and Ross County Public Library","mode":"operator","value":"Chillicothe and Ross County Public Library","count":2},
@@ -831,7 +832,6 @@
 {"name":"Chambers County Library System","mode":"wikidata","value":"Q69491335","count":1},
 {"name":"Chandler-Gilbert Community College","mode":"wikidata","value":"Q5071217","count":1},
 {"name":"Charleston County Library","mode":"operator","value":"Charleston County Library","count":1},
-{"name":"Charleston County Public Libraries","mode":"operator","value":"Charleston County Public Libraries","count":1},
 {"name":"Charleston County Public Library","mode":"operator","value":"Charleston County Public Library","count":1},
 {"name":"Charleston Library Society","mode":"operator","value":"Charleston Library Society","count":1},
 {"name":"Charleston School of Law","mode":"operator","value":"Charleston School of Law","count":1},
