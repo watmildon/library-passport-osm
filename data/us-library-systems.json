@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-23","sourceDate":"2026-09-23","boundary":"United States (OSM relation 148838)","totalSystems":2589},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-24","sourceDate":"2026-09-24","boundary":"United States (OSM relation 148838)","totalSystems":2588},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1400,7 +1400,6 @@
 {"name":"Guemes Island Community Center Association","mode":"operator","value":"Guemes Island Community Center Association","count":1},
 {"name":"Guilford College","mode":"operator","value":"Guilford College","count":1},
 {"name":"Guilford Smith Memorial Library, Inc.","mode":"operator","value":"Guilford Smith Memorial Library, Inc.","count":1},
-{"name":"Hadley Public Library","mode":"operator","value":"Hadley Public Library","count":1},
 {"name":"Hagerstown Community College","mode":"operator","value":"Hagerstown Community College","count":1},
 {"name":"Halifax County","mode":"wikidata","value":"Q505886","count":1},
 {"name":"Halifax County Library System","mode":"operator","value":"Halifax County Library System","count":1},
