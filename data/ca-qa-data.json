@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-24","country":"CA","sourceDate":"2026-09-24","sourceModified":"2026-09-24T15:03:01Z","totalLibraries":2295,"totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-25","country":"CA","sourceDate":"2026-09-25","sourceModified":"2026-09-25T14:59:16Z","totalLibraries":2295,"totalSystems":362},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2105,7 +2105,7 @@
 ["Toronto Public Library","w",260682038,"Toronto Public Library - Brentwood",8,250,-79.5143,43.6474],
 [null,"w",261296513,"Alice Turner Public Library",11,100,-106.5816,52.1469],
 ["Edmonton Public Library","w",261772377,"Lois Hole Library",0,24,-113.6269,53.5048],
-["Hamilton Public Library","w",262876894,"Hamilton Public Library - Dundas Branch",8,248,-79.955,43.2655],
+["Hamilton Public Library","w",262876894,"Hamilton Public Library - Dundas Branch",8,252,-79.955,43.2655],
 ["Ville de Sherbrooke","w",264020380,"Bibliothèque Bertrand-Delisle",10,11,-71.9895,45.3693],
 ["Bibliothèque de Québec","w",264197965,"Maison de la littérature",10,254,-71.211,46.8129],
 [null,"w",264391415,"Bibliothèque municipale",10,0,-75.6307,46.2846],

@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-24","sourceDate":"2026-09-24","boundary":"United States (OSM relation 148838)","totalSystems":2588},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-25","sourceDate":"2026-09-25","boundary":"United States (OSM relation 148838)","totalSystems":2589},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -50,7 +50,7 @@
 {"name":"Nioga Library System","mode":"wikidata","value":"Q127599956","count":21},
 {"name":"Prince George's County Memorial Library System","mode":"wikidata","value":"Q17085883","count":21},
 {"name":"Birmingham Public Library","mode":"wikidata","value":"Q69469461","count":20},
-{"name":"Enoch Pratt Free Library","mode":"wikidata","value":"Q69478541","count":19},
+{"name":"Enoch Pratt Free Library","mode":"wikidata","value":"Q69478541","count":20},
 {"name":"Lake Agassiz Regional Library","mode":"wikidata","value":"Q69480699","count":19},
 {"name":"Monroe County Library System","mode":"wikidata","value":"Q108636649","count":19},
 {"name":"Oakland Public Library","mode":"wikidata","value":"Q1090829","count":19},
@@ -1030,6 +1030,7 @@
 {"name":"City of Panhandle","mode":"operator","value":"City of Panhandle","count":1},
 {"name":"City of Paola","mode":"operator","value":"City of Paola","count":1},
 {"name":"City of Park River","mode":"operator","value":"City of Park River","count":1},
+{"name":"City of Payson","mode":"operator","value":"City of Payson","count":1},
 {"name":"City of Peachtree City","mode":"operator","value":"City of Peachtree City","count":1},
 {"name":"City of Pearl","mode":"operator","value":"City of Pearl","count":1},
 {"name":"City of Pearland","mode":"operator","value":"City of Pearland","count":1},
