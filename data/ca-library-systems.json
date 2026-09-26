@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-25","sourceDate":"2026-09-25","boundary":"Canada (OSM relation 1428125)","totalSystems":361},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-09-26","sourceDate":"2026-09-26","boundary":"Canada (OSM relation 1428125)","totalSystems":362},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -259,6 +259,7 @@
 {"name":"Parkland Regional Library system","mode":"operator","value":"Parkland Regional Library system","count":1},
 {"name":"Parkland Regional Library System","mode":"operator","value":"Parkland Regional Library System","count":1},
 {"name":"PEI Public Libraries","mode":"operator","value":"PEI Public Libraries","count":1},
+{"name":"PEI Public Library Service","mode":"operator","value":"PEI Public Library Service","count":1},
 {"name":"Pembroke Public Library","mode":"operator","value":"Pembroke Public Library","count":1},
 {"name":"Penetanguishene Public Library","mode":"operator","value":"Penetanguishene Public Library","count":1},
 {"name":"Perth & District Union Public Library","mode":"operator","value":"Perth & District Union Public Library","count":1},

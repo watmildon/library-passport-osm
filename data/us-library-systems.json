@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-25","sourceDate":"2026-09-25","boundary":"United States (OSM relation 148838)","totalSystems":2589},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-26","sourceDate":"2026-09-26","boundary":"United States (OSM relation 148838)","totalSystems":2589},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -105,6 +105,7 @@
 {"name":"Lake County Public Library","mode":"wikidata","value":"Q69475060","count":10},
 {"name":"Lexington County Public Library","mode":"wikidata","value":"Q69490393","count":10},
 {"name":"Louisville Free Public Library","mode":"operator","value":"Louisville Free Public Library","count":10},
+{"name":"Madison Public Library","mode":"operator","value":"Madison Public Library","count":10},
 {"name":"Memphis Public Libraries","mode":"wikidata","value":"Q6815865","count":10},
 {"name":"Mid-Continent Public Library","mode":"operator","value":"Mid-Continent Public Library","count":10},
 {"name":"Spokane County Library District","mode":"wikidata","value":"Q69494188","count":10},
@@ -115,7 +116,6 @@
 {"name":"Jefferson County Public Library","mode":"wikidata","value":"Q69470275","count":9},
 {"name":"Kanawha County Public Library","mode":"wikidata","value":"Q69495450","count":9},
 {"name":"Loudoun County Public Library","mode":"wikidata","value":"Q17018960","count":9},
-{"name":"Madison Public Library","mode":"operator","value":"Madison Public Library","count":9},
 {"name":"Middle Georgia Regional Library System","mode":"wikidata","value":"Q6841433","count":9},
 {"name":"Salt Lake City Public Library System","mode":"wikidata","value":"Q7405874","count":9},
 {"name":"Scenic Regional Library","mode":"operator","value":"Scenic Regional Library","count":9},
