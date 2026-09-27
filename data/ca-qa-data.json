@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-26","country":"CA","sourceDate":"2026-09-26","sourceModified":"2026-09-26T14:07:50Z","totalLibraries":2296,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-27","country":"CA","sourceDate":"2026-09-27","sourceModified":"2026-09-27T15:04:21Z","totalLibraries":2296,"totalSystems":363},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -479,7 +479,6 @@
 ["Mississauga Library","n",1172146540,"Mississauga Library - Mississauga Valley",8,24,-79.6242,43.597],
 ["Ville de Lorraine","n",1181921154,"Bibliothèque de Lorraine",10,232,-73.7757,45.6596],
 ["BIBLIO","n",1186685252,"Bibliothèque Kiamika",10,490,-75.3812,46.4182],
-[null,"n",1196087028,"Nashwaaksis Library",3,0,-66.6424,45.9849],
 [null,"n",1199684762,"R. Howard Webster Library",10,6,-73.5779,45.4968],
 [null,"n",1207634918,"Lennoxville Library",10,2,-71.8568,45.3664],
 ["Toronto Public Library","n",1219703142,"Toronto Public Library - Forest Hill",8,250,-79.4206,43.7024],
@@ -2663,7 +2662,8 @@
 [null,"w",1547496782,"Jim & Mary Kearl Library of Cardston",0,359,-113.3027,49.1991],
 [null,"w",1551794628,"Lac du Bonnet Regional Library",2,32,-96.0565,50.2583],
 [null,"w",1552708098,"Wildwood Library",0,228,-115.2376,53.6102],
-[null,"w",1560156658,null,0,0,-111.44,49.4793]
+[null,"w",1560156658,null,0,0,-111.44,49.4793],
+[null,"w",1562608636,"Nashwaaksis Library",3,0,-66.6425,45.9849]
 ],
 "collisions": [
 {"a":"Region Of Waterloo Library","b":"Region of Waterloo Library","ca":9,"cb":1,"aw":false,"bw":false,"lev":0},

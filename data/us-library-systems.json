@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-26","sourceDate":"2026-09-26","boundary":"United States (OSM relation 148838)","totalSystems":2589},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-27","sourceDate":"2026-09-27","boundary":"United States (OSM relation 148838)","totalSystems":2589},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -86,6 +86,7 @@
 {"name":"Rochester Public Library","mode":"wikidata","value":"Q69486450","count":12},
 {"name":"University of Washington Libraries","mode":"wikidata","value":"Q7896575","count":12},
 {"name":"Athens Regional Library System","mode":"wikidata","value":"Q29094268","count":11},
+{"name":"Baltimore County Public Library","mode":"wikidata","value":"Q4852845","count":11},
 {"name":"Calcasieu Parish Public Library","mode":"wikidata","value":"Q5018702","count":11},
 {"name":"Cuyahoga County Public Library","mode":"wikidata","value":"Q5197076","count":11},
 {"name":"Humboldt County Library","mode":"wikidata","value":"Q66369332","count":11},
@@ -94,7 +95,6 @@
 {"name":"Pikes Peak Library District","mode":"wikidata","value":"Q69470355","count":11},
 {"name":"Pioneerland Library System","mode":"wikidata","value":"Q69480753","count":11},
 {"name":"Richland County Public Library","mode":"wikidata","value":"Q7330620","count":11},
-{"name":"Baltimore County Public Library","mode":"wikidata","value":"Q4852845","count":10},
 {"name":"Brevard County Library System","mode":"wikidata","value":"Q15615911","count":10},
 {"name":"Charleston County Public Library System","mode":"wikidata","value":"Q69490344","count":10},
 {"name":"City of San Antonio","mode":"wikidata","value":"Q975","count":10},
