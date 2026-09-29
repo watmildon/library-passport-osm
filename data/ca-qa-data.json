@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-28","country":"CA","sourceDate":"2026-09-28","sourceModified":"2026-09-28T18:02:20Z","totalLibraries":2296,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-09-29","country":"CA","sourceDate":"2026-09-29","sourceModified":"2026-09-29T16:13:38Z","totalLibraries":2296,"totalSystems":363},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2155,7 +2155,7 @@
 [null,"w",324941511,"Edmundston Public Library",3,99,-68.3175,47.3633],
 [null,"w",325069554,"Arnold Guebert Library",0,0,-113.4455,53.5608],
 ["Pontiac","w",326313356,"Bibliothèque Quyon",10,8,-76.2298,45.5182],
-["Edmonton Public Library","w",326410280,"Edmonton Public Library - Highlands",0,252,-113.4449,53.5707],
+["Edmonton Public Library","w",326410280,"Edmonton Public Library - Highlands",0,252,-113.445,53.5707],
 [null,"w",328507813,"William Falk Library",2,0,-97.0454,49.5022],
 ["Wapiti Regional Library","w",328716057,"Reid-Thompson Public Library",11,106,-105.1233,52.2007],
 ["Clarington Public Library","w",328899517,"Clarington Public Library - Newcastle Branch",8,108,-78.586,43.9186],
@@ -2222,7 +2222,7 @@
 ["Cornwall Public Library","w",425316475,"Cornwall Public Library",8,364,-74.7272,45.0191],
 ["Regina Public Libraries","w",427518774,"Glen Elm Branch",11,12,-104.5602,50.4548],
 ["Calgary Public Library","w",427630435,"Calgary Public Library - Signal Hill",0,254,-114.1754,51.0188],
-["Regina Public Libraries","w",427680442,"Connaught Branch",11,104,-104.6307,50.4453],
+["Regina Public Libraries","w",427680442,"Connaught Branch",11,104,-104.6308,50.4453],
 ["Ville de Gatineau","w",430081372,"Bibliothèque Lucien-Lalonde",10,488,-75.7356,45.4426],
 ["Southeast Regional Library","w",432763815,"Gainsborough Public Library Branch",11,239,-101.448,49.1768],
 ["Fraser Valley Regional Library","w",436430040,"Agassiz Library",1,511,-121.7627,49.2379],
