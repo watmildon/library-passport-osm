@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-09-30","sourceDate":"2026-09-30","boundary":"United States (OSM relation 148838)","totalSystems":2589},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-01","sourceDate":"2026-10-01","boundary":"United States (OSM relation 148838)","totalSystems":2590},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -7,8 +7,8 @@
 {"name":"Los Angeles Public Library","mode":"wikidata","value":"Q4817385","count":72},
 {"name":"North Country Library System","mode":"wikidata","value":"Q128798933","count":66},
 {"name":"Queens Public Library","mode":"wikidata","value":"Q1337750","count":66},
+{"name":"Free Library of Philadelphia","mode":"wikidata","value":"Q3087288","count":55},
 {"name":"Brooklyn Public Library","mode":"wikidata","value":"Q1198796","count":54},
-{"name":"Free Library of Philadelphia","mode":"wikidata","value":"Q3087288","count":54},
 {"name":"Miami-Dade Public Library System","mode":"wikidata","value":"Q6827243","count":51},
 {"name":"Hawaii State Public Library System","mode":"wikidata","value":"Q5684409","count":50},
 {"name":"King County Library System","mode":"wikidata","value":"Q6411390","count":50},
@@ -1192,6 +1192,7 @@
 {"name":"Dean C. Charles","mode":"operator","value":"Dean C. Charles","count":1},
 {"name":"Decorah Public Library","mode":"wikidata","value":"Q69472331","count":1},
 {"name":"Defiance Public Library System","mode":"operator","value":"Defiance Public Library System","count":1},
+{"name":"DeKalb School of the Arts","mode":"operator","value":"DeKalb School of the Arts","count":1},
 {"name":"Del Norte High School","mode":"operator","value":"Del Norte High School","count":1},
 {"name":"Delaware County District Libraries","mode":"operator","value":"Delaware County District Libraries","count":1},
 {"name":"Delaware County District Library","mode":"operator","value":"Delaware County District Library","count":1},
