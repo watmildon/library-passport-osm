@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-02","sourceDate":"2026-10-02","boundary":"United States (OSM relation 148838)","totalSystems":2590},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-03","sourceDate":"2026-10-03","boundary":"United States (OSM relation 148838)","totalSystems":2590},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -126,7 +126,6 @@
 {"name":"Lake County Library System","mode":"wikidata","value":"Q35188980","count":8},
 {"name":"Marathon County Public Library","mode":"operator","value":"Marathon County Public Library","count":8},
 {"name":"Marin County Free Library","mode":"wikidata","value":"Q6763710","count":8},
-{"name":"Merced County Library","mode":"wikidata","value":"Q66369349","count":8},
 {"name":"Purdue University","mode":"wikidata","value":"Q58182521","count":8},
 {"name":"Santa Clara County Library District","mode":"wikidata","value":"Q181372","count":8},
 {"name":"Somerset County Library System of New Jersey","mode":"wikidata","value":"Q69484661","count":8},
@@ -140,6 +139,7 @@
 {"name":"Davis County Library System","mode":"wikidata","value":"Q69492961","count":7},
 {"name":"Grand Rapids Public Library","mode":"operator","value":"Grand Rapids Public Library","count":7},
 {"name":"Kitsap Regional Library","mode":"wikidata","value":"Q6418319","count":7},
+{"name":"Merced County Library","mode":"wikidata","value":"Q66369349","count":7},
 {"name":"National Archives and Records Administration","mode":"wikidata","value":"Q518155","count":7},
 {"name":"Pueblo City-County Library","mode":"wikidata","value":"Q69470360","count":7},
 {"name":"Ramsey County Library","mode":"wikidata","value":"Q7290209","count":7},
