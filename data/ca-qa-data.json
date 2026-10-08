@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-06","country":"CA","sourceDate":"2026-10-06","sourceModified":"2026-10-06T16:20:24Z","totalLibraries":2296,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-08","country":"CA","sourceDate":"2026-10-08","sourceModified":"2026-10-08T16:52:57Z","totalLibraries":2296,"totalSystems":363},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -321,7 +321,7 @@
 {"n":"Ville de Châteauguay","w":null,"c":1},
 {"n":"Ville de Dollard-des-Ormeaux","w":null,"c":1},
 {"n":"Ville de Drummondville","w":null,"c":1},
-{"n":"Ville de Gatineau","w":null,"c":7},
+{"n":"Ville de Gatineau","w":null,"c":7,"sw":"Q39628","sn":"Bibliothèque et Archives nationales du Québec","ss":["branch"]},
 {"n":"Ville de Granby","w":null,"c":1},
 {"n":"Ville de Laval","w":null,"c":1},
 {"n":"Ville de Longueuil","w":null,"c":1},
@@ -1411,7 +1411,7 @@
 [null,"n",9169608971,"Dawson Creek Municipal Library",1,359,-120.235,55.7537],
 [null,"n",9169779745,"Fort Nelson Public Library",1,359,-122.7064,58.8036],
 [null,"n",9170457429,"Burns Lake Public Library",1,359,-125.7655,54.2332],
-[null,"n",9170716470,"Tumbler Ridge Public Library",1,487,-121.0011,55.1254],
+[null,"n",9170716470,"Tumbler Ridge Public Library",1,487,-121.0009,55.1253],
 [null,"n",9171972062,"Bibliothèque municipale de Port-Menier",10,0,-64.3502,49.8174],
 [null,"n",9172190983,"Montreal West Public Library",10,224,-73.6453,45.453],
 ["Municipality of Wawa","n",9191951604,"Wawa Public Library",8,495,-84.7713,47.9966],
@@ -2858,7 +2858,7 @@
 {"name":"Terrace Public Library","fscskey":"BC-terrace-public-library","state":"BC","outlets":1,"near":1,"pts":[{"n":"Terrace Public Library","lat":54.51813,"lon":-128.58731,"osm":"w87218450","osmName":"Terrace Public Library","osmLat":54.51846,"osmLon":-128.58725}],"bb":[-128.637,54.468,-128.537,54.568]},
 {"name":"Thessalon","fscskey":"ON-L0346","state":"ON","outlets":1,"near":0,"pts":[{"n":"Thessalon","lat":46.25692,"lon":-83.55639}],"bb":[-83.606,46.207,-83.506,46.307]},
 {"name":"Trail & District Public Library","fscskey":"BC-trail-district-public-library","state":"BC","outlets":1,"near":1,"pts":[{"n":"Trail & District Public Library","lat":49.09482,"lon":-117.70598,"osm":"n6644336672","osmName":"Trail & District Public Library","osmLat":49.0948,"osmLon":-117.70599}],"bb":[-117.756,49.045,-117.656,49.145]},
-{"name":"Tumbler Ridge Public Library","fscskey":"BC-tumbler-ridge-public-library","state":"BC","outlets":1,"near":1,"pts":[{"n":"Tumbler Ridge Public Library","lat":55.12531,"lon":-121.00222,"osm":"n9170716470","osmName":"Tumbler Ridge Public Library","osmLat":55.12537,"osmLon":-121.00114}],"bb":[-121.052,55.075,-120.952,55.175]},
+{"name":"Tumbler Ridge Public Library","fscskey":"BC-tumbler-ridge-public-library","state":"BC","outlets":1,"near":1,"pts":[{"n":"Tumbler Ridge Public Library","lat":55.12531,"lon":-121.00222,"osm":"n9170716470","osmName":"Tumbler Ridge Public Library","osmLat":55.12532,"osmLon":-121.0009}],"bb":[-121.052,55.075,-120.952,55.175]},
 {"name":"Valemount Public Library","fscskey":"BC-valemount-public-library","state":"BC","outlets":1,"near":1,"pts":[{"n":"Valemount Public Library","lat":52.83587,"lon":-119.26213,"osm":"w264915991","osmName":"Valemount Public Library","osmLat":52.83584,"osmLon":-119.26213}],"bb":[-119.312,52.786,-119.212,52.886]},
 {"name":"Vanderhoof Public Library","fscskey":"BC-vanderhoof-public-library","state":"BC","outlets":1,"near":1,"pts":[{"n":"Vanderhoof Public Library","lat":54.01562,"lon":-124.00557,"osm":"w532092156","osmName":"Vanderhoof Public Library","osmLat":54.01558,"osmLon":-124.00556}],"bb":[-124.056,53.966,-123.956,54.066]},
 {"name":"Wawa","fscskey":"ON-L0178","state":"ON","outlets":1,"near":1,"pts":[{"n":"Wawa","lat":47.99641,"lon":-84.77125,"osm":"n9191951604","osmName":"Wawa Public Library","osmLat":47.9966,"osmLon":-84.77132}],"ops":[{"n":"Municipality of Wawa"}],"bb":[-84.821,47.946,-84.721,48.046]},
