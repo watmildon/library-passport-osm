@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-08","country":"CA","sourceDate":"2026-10-08","sourceModified":"2026-10-08T16:52:57Z","totalLibraries":2296,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-09","country":"CA","sourceDate":"2026-10-09","sourceModified":"2026-10-09T16:36:19Z","totalLibraries":2297,"totalSystems":363},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1764,6 +1764,7 @@
 [null,"n",14184928801,"Bibliothèque municipale",10,324,-72.4373,45.5015],
 [null,"n",14196998203,"Sussex Public Library",3,0,-65.5052,45.7211],
 ["PEI Public Library Service","n",14216563093,"Morell Public Library",9,237,-62.7076,46.4196],
+[null,"n",14266389402,"Bibliothèque d'Arvida",10,103,-71.1824,48.4262],
 ["University of British Columbia Library","r",1420041,"Woodward Library",1,507,-123.2476,49.2646],
 [null,"r",3031106,null,1,0,-123.4745,48.4341],
 [null,"r",9072451,"Queen Elizabeth II Library",4,0,-52.7345,47.5717],
@@ -2659,7 +2660,7 @@
 ["Assiginack Township","w",1524789582,"Assiginack Public Library",8,491,-81.8069,45.7451],
 [null,"w",1528876731,"Elnora Public Library",0,229,-113.1998,51.9919],
 [null,"w",1529263291,null,0,128,-114.9047,53.8889],
-[null,"w",1547496782,"Jim & Mary Kearl Library of Cardston",0,359,-113.3027,49.1991],
+[null,"w",1547496782,"Jim & Mary Kearl Library of Cardston",0,487,-113.3027,49.1991],
 [null,"w",1551794628,"Lac du Bonnet Regional Library",2,32,-96.0565,50.2583],
 [null,"w",1552708098,"Wildwood Library",0,228,-115.2376,53.6102],
 [null,"w",1560156658,null,0,0,-111.44,49.4793],
