@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-09","sourceDate":"2026-10-09","boundary":"United States (OSM relation 148838)","totalSystems":2594},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-10","sourceDate":"2026-10-10","boundary":"United States (OSM relation 148838)","totalSystems":2594},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
