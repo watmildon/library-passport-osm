@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-10","sourceDate":"2026-10-10","boundary":"United States (OSM relation 148838)","totalSystems":2594},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-11","sourceDate":"2026-10-11","boundary":"United States (OSM relation 148838)","totalSystems":2596},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -368,6 +368,7 @@
 {"name":"Alpine County","mode":"operator","value":"Alpine County","count":2},
 {"name":"Anoka County","mode":"operator","value":"Anoka County","count":2},
 {"name":"Appomattox Regional Library System","mode":"operator","value":"Appomattox Regional Library System","count":2},
+{"name":"Arizona State University","mode":"operator","value":"Arizona State University","count":2},
 {"name":"Arkansas River Valley Regional Library","mode":"wikidata","value":"Q69469818","count":2},
 {"name":"Arlington Public Library","mode":"wikidata","value":"Q28230858","count":2},
 {"name":"Arlington Public Library","mode":"wikidata","value":"Q69491508","count":2},
@@ -2100,6 +2101,7 @@
 {"name":"Southern University at Shreveport","mode":"operator","value":"Southern University at Shreveport","count":1},
 {"name":"Southern Virginia University","mode":"operator","value":"Southern Virginia University","count":1},
 {"name":"Southern WV Community and Technical College","mode":"operator","value":"Southern WV Community and Technical College","count":1},
+{"name":"Southwest Baptist University","mode":"operator","value":"Southwest Baptist University","count":1},
 {"name":"Southwestern Community College","mode":"operator","value":"Southwestern Community College","count":1},
 {"name":"Sovah Health - Danville","mode":"wikidata","value":"Q5221383","count":1},
 {"name":"Spokane Colleges","mode":"operator","value":"Spokane Colleges","count":1},

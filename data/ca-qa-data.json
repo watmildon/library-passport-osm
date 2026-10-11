@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-10","country":"CA","sourceDate":"2026-10-10","sourceModified":"2026-10-10T15:49:21Z","totalLibraries":2297,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-11","country":"CA","sourceDate":"2026-10-11","sourceModified":"2026-10-11T16:05:36Z","totalLibraries":2297,"totalSystems":363},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -382,7 +382,7 @@
 [null,"n",251707658,"Cliff Wright Library",11,484,-106.5859,52.1046],
 [null,"n",251843086,"Crowsnest Pass Municipal Library",0,0,-114.4418,49.6096],
 ["Ottawa Public Library","n",252149567,"Ottawa Public Library - Nepean Centrepointe Branch",8,124,-75.7628,45.3444],
-["Calgary Public Library","n",252828433,"Calgary Public Library - Judith Ubach branch (Thorncliffe)",0,506,-114.0642,51.112],
+["Calgary Public Library","n",252828433,"Calgary Public Library - Judith Umbach branch (Thorncliffe)",0,506,-114.0642,51.112],
 [null,"n",252955996,"Carlyle King",11,4,-106.7222,52.1344],
 [null,"n",255558623,"CRDL: Williams Lake Library",1,359,-122.1423,52.1306],
 ["London Public Library","n",266053046,"London Public Library - Lambeth",8,120,-81.3054,42.9106],
@@ -499,7 +499,7 @@
 ["Toronto Public Library","n",1302306758,"Toronto Public Library - Mount Pleasant",8,250,-79.3882,43.7039],
 [null,"n",1318181859,"Bibliothèque Blanche Lamontagne",10,0,-66.4909,49.1235],
 ["North Vancouver District Public Library","n",1323048336,"NVDPL: Lynn Valley",1,511,-123.0386,49.3364],
-[null,"n",1324096549,"Sir James Dunn Law Library",6,483,-63.5878,44.6383],
+[null,"n",1324096549,"Sir James Dunn Law Library",6,487,-63.5878,44.6383],
 ["Arnprior Public Library","n",1332568936,"Arnprior Public Library",8,108,-76.3522,45.435],
 [null,"n",1340596126,"Public",4,0,-59.1646,47.5892],
 ["Winnipeg Public Library","n",1349617550,"Saint Boniface Library",2,511,-97.125,49.8917],
@@ -709,7 +709,7 @@
 [null,"n",3140464836,"Bibliothèque de Saint-Michel",10,482,-73.602,45.5622],
 [null,"n",3140474576,"Bibliothèque de Charleroi",10,482,-73.6315,45.5965],
 [null,"n",3140481409,"Bibliothèque Jean-Corbeil",10,486,-73.5588,45.603],
-[null,"n",3140494850,"Bibliothèque de Cartierville",10,482,-73.713,45.5272],
+[null,"n",3140494850,"Bibliothèque de Cartierville",10,482,-73.716,45.5302],
 [null,"n",3140501163,"Bibliothèque De Salaberry",10,482,-73.7038,45.5346],
 [null,"n",3140551828,"Bibliothèque de Saint-Henri",10,487,-73.5891,45.4726],
 [null,"n",3140555107,"Bibliothèque de Saint-Pierre",10,482,-73.6515,45.4458],
