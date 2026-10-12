@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-11","sourceDate":"2026-10-11","boundary":"United States (OSM relation 148838)","totalSystems":2596},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-12","sourceDate":"2026-10-12","boundary":"United States (OSM relation 148838)","totalSystems":2597},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -983,6 +983,7 @@
 {"name":"City of La Vergne","mode":"operator","value":"City of La Vergne","count":1},
 {"name":"City of Larkspur","mode":"operator","value":"City of Larkspur","count":1},
 {"name":"City of Las Vegas","mode":"operator","value":"City of Las Vegas","count":1},
+{"name":"City of Las Vegas (assumed)","mode":"operator","value":"City of Las Vegas (assumed)","count":1},
 {"name":"City of League City","mode":"operator","value":"City of League City","count":1},
 {"name":"City of Leander","mode":"operator","value":"City of Leander","count":1},
 {"name":"City of Lennox","mode":"operator","value":"City of Lennox","count":1},
