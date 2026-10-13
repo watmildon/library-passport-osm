@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-12","country":"CA","sourceDate":"2026-10-12","sourceModified":"2026-10-12T19:27:21Z","totalLibraries":2297,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-13","country":"CA","sourceDate":"2026-10-13","sourceModified":"2026-10-13T17:20:04Z","totalLibraries":2298,"totalSystems":363},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -977,7 +977,7 @@
 ["Casselman Public Library","n",5201303754,"Casselman Public Library",8,108,-75.0865,45.3157],
 ["The Nation Public Library","n",5201303755,"The Nation Public Library - Limoges Branch",8,108,-75.2634,45.3504],
 ["The Nation Public Library","n",5201303756,"St-Albert Branch",8,108,-75.1167,45.2572],
-[null,"n",5206979247,"TSR Library",0,0,-113.2672,51.7082],
+[null,"n",5206979247,"T. S. Rendall Library",0,103,-113.2672,51.7082],
 [null,"n",5208753694,"Bibliothèque Municipale",10,4,-73.3059,45.6433],
 ["Elgin County Library","n",5210810080,"Elgin County Library - Port Stanley",8,8,-81.2131,42.6655],
 ["Vancouver Island Public Library","n",5213505184,"VIRL: Union Bay Branch",1,511,-124.8863,49.5835],
@@ -1765,6 +1765,7 @@
 [null,"n",14196998203,"Sussex Public Library",3,0,-65.5052,45.7211],
 ["PEI Public Library Service","n",14216563093,"Morell Public Library",9,237,-62.7076,46.4196],
 [null,"n",14266389402,"Bibliothèque d'Arvida",10,103,-71.1824,48.4262],
+[null,"n",14278172442,"Bibliothèque J.-W.-Gendron",10,480,-73.4637,45.4914],
 ["University of British Columbia Library","r",1420041,"Woodward Library",1,507,-123.2476,49.2646],
 [null,"r",3031106,null,1,0,-123.4745,48.4341],
 [null,"r",9072451,"Queen Elizabeth II Library",4,0,-52.7345,47.5717],
