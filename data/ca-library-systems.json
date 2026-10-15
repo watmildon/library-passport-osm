@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-13","sourceDate":"2026-10-13","boundary":"Canada (OSM relation 1428125)","totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-15","sourceDate":"2026-10-15","boundary":"Canada (OSM relation 1428125)","totalSystems":363},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -278,6 +278,7 @@
 {"name":"Renfrew Public Library","mode":"operator","value":"Renfrew Public Library","count":1},
 {"name":"Réseau Biblio","mode":"operator","value":"Réseau Biblio","count":1},
 {"name":"Réseau BIBLIO Abitibi-Témiscamingue-Nord-du-Québec","mode":"operator","value":"Réseau BIBLIO Abitibi-Témiscamingue-Nord-du-Québec","count":1},
+{"name":"Reseau BIBLIO de L'Outaouais","mode":"operator","value":"Reseau BIBLIO de L'Outaouais","count":1},
 {"name":"Réseau BIBLIO de l'Outaouais","mode":"wikidata","value":"Q104698371","count":1},
 {"name":"Réseau Biblio des Laurentides","mode":"operator","value":"Réseau Biblio des Laurentides","count":1},
 {"name":"Roberts Creek Community Assocation","mode":"operator","value":"Roberts Creek Community Assocation","count":1},

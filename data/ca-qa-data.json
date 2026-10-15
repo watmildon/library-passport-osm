@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-13","country":"CA","sourceDate":"2026-10-13","sourceModified":"2026-10-13T17:20:04Z","totalLibraries":2298,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-15","country":"CA","sourceDate":"2026-10-15","sourceModified":"2026-10-15T14:31:27Z","totalLibraries":2299,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -229,6 +229,7 @@
 {"n":"Region of Waterloo","w":null,"c":1},
 {"n":"Region of Waterloo Library","w":null,"c":1},
 {"n":"Renfrew Public Library","w":null,"c":1},
+{"n":"Reseau BIBLIO de L'Outaouais","w":null,"c":1},
 {"n":"Richmond Hill Public Library","w":null,"c":4},
 {"n":"Richmond Public Library","w":"Q4405734","c":4},
 {"n":"Rideau Lakes Public Library","w":null,"c":4},
@@ -2209,6 +2210,7 @@
 [null,"w",392125098,null,8,96,-80.1177,43.0697],
 [null,"w",392125101,"Rumpus Hall",8,0,-80.0946,43.0003],
 ["Surrey Libraries","w",392860262,"SL: Port Kells Branch",1,511,-122.6997,49.1631],
+["Reseau BIBLIO de L'Outaouais","w",395564246,"Bibliotheque Municipale de Kazabazua",10,239,-76.0155,45.9481],
 ["North Vancouver District Public Library","w",397419896,"NVDPL: Parkgate Library",1,383,-122.9699,49.318],
 [null,"w",398632102,"Sackville Public Library",3,481,-64.3699,45.8963],
 ["Toronto Public Library","w",398846829,"Toronto Public Library - Oakwood Village",8,250,-79.4381,43.6866],
@@ -2671,7 +2673,8 @@
 {"a":"Region Of Waterloo Library","b":"Region of Waterloo Library","ca":9,"cb":1,"aw":false,"bw":false,"lev":0},
 {"a":"Réseau BIBLIO des Laurentides","b":"Réseau Biblio des Laurentides","ca":3,"cb":1,"aw":false,"bw":false,"lev":0},
 {"a":"Thompson-Nicola Regional Library","b":"Thompson Nicola Regional Library","ca":2,"cb":1,"aw":false,"bw":false,"lev":1},
-{"a":"Parkland Regional Library System","b":"Parkland Regional Library system","ca":1,"cb":1,"aw":false,"bw":false,"lev":0}
+{"a":"Parkland Regional Library System","b":"Parkland Regional Library system","ca":1,"cb":1,"aw":false,"bw":false,"lev":0},
+{"a":"Reseau BIBLIO de L'Outaouais","b":"Réseau BIBLIO de l'Outaouais","ca":1,"cb":1,"aw":false,"bw":true,"lev":1}
 ],
 "ambiguous": [
 {"n":"BIBLIO","total":2,"clusters":[{"st":[10],"c":1,"wd":null,"bb":[-75.88,45.92,-74.88,46.92]},{"st":[10],"c":1,"wd":null,"bb":[-69.18,47.49,-68.18,48.49]}]},

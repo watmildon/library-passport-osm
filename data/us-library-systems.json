@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-13","sourceDate":"2026-10-13","boundary":"United States (OSM relation 148838)","totalSystems":2597},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-15","sourceDate":"2026-10-15","boundary":"United States (OSM relation 148838)","totalSystems":2596},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -65,9 +65,9 @@
 {"name":"Yakima Valley Libraries","mode":"wikidata","value":"Q69494202","count":16},
 {"name":"Cobb County Public Library System","mode":"wikidata","value":"Q14686609","count":15},
 {"name":"Fort Vancouver Regional Libraries","mode":"wikidata","value":"Q5472215","count":15},
+{"name":"Gwinnett County Public Library System","mode":"wikidata","value":"Q5623669","count":15},
 {"name":"Multnomah County Library","mode":"wikidata","value":"Q6935177","count":15},
 {"name":"Fresno County Public Library","mode":"wikidata","value":"Q2587462","count":14},
-{"name":"Gwinnett County Public Library System","mode":"wikidata","value":"Q5623669","count":14},
 {"name":"Maricopa County Library District","mode":"wikidata","value":"Q6762589","count":14},
 {"name":"Saint Louis County Library","mode":"wikidata","value":"Q7589610","count":14},
 {"name":"Sonoma County Library","mode":"wikidata","value":"Q21625840","count":14},
@@ -2362,7 +2362,6 @@
 {"name":"UNC","mode":"operator","value":"UNC","count":1},
 {"name":"UNCG","mode":"operator","value":"UNCG","count":1},
 {"name":"UNH College of Engineering & Physical Sciences","mode":"operator","value":"UNH College of Engineering & Physical Sciences","count":1},
-{"name":"Union City","mode":"operator","value":"Union City","count":1},
 {"name":"Union County Library System","mode":"operator","value":"Union County Library System","count":1},
 {"name":"Union County Public Library","mode":"operator","value":"Union County Public Library","count":1},
 {"name":"Union Township Public Library","mode":"wikidata","value":"Q69487815","count":1},
