@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-15","sourceDate":"2026-10-15","boundary":"United States (OSM relation 148838)","totalSystems":2596},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-16","sourceDate":"2026-10-16","boundary":"United States (OSM relation 148838)","totalSystems":2597},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1064,6 +1064,7 @@
 {"name":"City of Socorro","mode":"operator","value":"City of Socorro","count":1},
 {"name":"City of South San Francisco","mode":"operator","value":"City of South San Francisco","count":1},
 {"name":"City of Spearfish","mode":"operator","value":"City of Spearfish","count":1},
+{"name":"City of Spencer, Iowa","mode":"operator","value":"City of Spencer, Iowa","count":1},
 {"name":"City of Spokane","mode":"operator","value":"City of Spokane","count":1},
 {"name":"City of Spring Hill Tennessee","mode":"operator","value":"City of Spring Hill Tennessee","count":1},
 {"name":"City of Springfield","mode":"operator","value":"City of Springfield","count":1},
