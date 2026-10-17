@@ -221,4 +221,19 @@ jobs:
             MSG+=(-m "$SUMMARY")
           fi
           git commit "${MSG[@]}"
-          git push
+
+          # GitHub occasionally answers a push with a transient 500 ("remote
+          # rejected … Internal Server Error" broke the 2026-10-07 and -14 runs
+          # after a full rebuild), so retry with backoff, rebasing in case main
+          # moved meanwhile. Only this job writes the data files, so the rebase
+          # can't conflict on them.
+          for i in 1 2 3 4; do
+            git push && break
+            if [ "$i" -eq 4 ]; then
+              echo "::error::git push failed 4 times; giving up."
+              exit 1
+            fi
+            echo "::warning::git push failed (attempt $i); retrying in $((i * 15))s."
+            sleep $((i * 15))
+            git pull --rebase --quiet origin main
+          done

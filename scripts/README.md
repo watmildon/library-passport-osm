@@ -482,12 +482,15 @@ as a conflict). No `website` — PLS doesn't collect it.
   `Avenue South`) via [`street-expand.mjs`](./street-expand.mjs) — a JS port of the
   `street_name_utils.py` expander (TIGER-ROAR / OSM-address-parser / josm-validator-rules
   lineage), conservative about ambiguous abbreviations.
-- **Live tags** — because Layercake omits `addr:*`, the augment builder does **one
-  bounded Overpass request per crosswalked system** (not per library) to read
-  current tags, with a polite delay and a hard cap (`AUGMENT_MAX_SYSTEMS`, default
-  400; `AUGMENT_SLEEP_MS`, default 1100). Any Overpass failure **skips that one
-  system** rather than failing the build — augmentation is additive to the QA data,
-  never a gate on it. (Pure suggestion logic is unit-tested: `npm run test:augment`.)
+- **Live tags** — on the Overpass path the augment builder reads each crosswalked
+  system's current tags from the same bulk library fetch the QA build already
+  makes, so it costs **no extra queries** and covers every crosswalked system.
+  Because Layercake omits `addr:*`, the Layercake path instead does **one bounded
+  Overpass request per crosswalked system** (not per library), with a polite delay
+  and a hard cap (`AUGMENT_MAX_SYSTEMS`, default 400; `AUGMENT_SLEEP_MS`, default
+  1100). Any Overpass failure **skips that one system** rather than failing the
+  build — augmentation is additive to the QA data, never a gate on it. (Pure
+  suggestion logic is unit-tested: `npm run test:augment`.)
 
 ### `augment-state.mjs` — per-region test data (dev Overpass)
 

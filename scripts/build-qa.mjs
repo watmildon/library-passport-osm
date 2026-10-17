@@ -16,8 +16,8 @@
 //
 // DEGRADED mode (OVERPASS_TIER != primary, pinned by freshness-gate.mjs when
 // the primary instance is down): the active endpoint is a rate-limited
-// fallback, so only the basics are rebuilt. The per-system augment fetches
-// (hundreds of queries) and the unnamed-pair outline fetch are skipped and
+// fallback, so only the basics are rebuilt. The augment stage and the
+// unnamed-pair outline fetch are skipped and
 // their sections carried forward from the committed file, and the small
 // fail-soft queries go to the public servers first to preserve the fallback
 // tier's quota. meta.degraded records that the file was built this way.
@@ -130,10 +130,21 @@ async function queryOverpass(endpoint) {
   console.log(`  ${elements.length} ${COUNTRY.code} libraries; assigning states…`);
   const stateOf = await fetchStateAssignments(endpoint, COUNTRY.code);
   const libs = [];
+  // Every library's full tags, keyed 'wikidata:<operator:wikidata>' and
+  // 'operator:<operator>' (exact values, as an Overpass ["k"="v"] filter
+  // matches), so the augment stage reads each system's libraries from this one
+  // bulk fetch instead of re-querying Overpass per system.
+  const liveTags = new Map();
   for (const el of elements) {
     const lat = el.lat ?? el.center?.lat, lon = el.lon ?? el.center?.lon;
     if (lat == null || lon == null) continue;
     const t = el.tags || {};
+    const live = { id: el.type[0] + el.id, name: t.name || '', lat, lon, tags: t };
+    for (const key of [t['operator:wikidata'] && 'wikidata:' + t['operator:wikidata'], t.operator && 'operator:' + t.operator]) {
+      if (!key) continue;
+      if (!liveTags.has(key)) liveTags.set(key, []);
+      liveTags.get(key).push(live);
+    }
     libs.push({
       type: el.type,
       id: el.id,
@@ -158,7 +169,7 @@ async function queryOverpass(endpoint) {
       lon, lat
     });
   }
-  return { libs, collisions: computeCollisions(libs) };
+  return { libs, collisions: computeCollisions(libs), liveTags };
 }
 
 // Levenshtein distance with a cap: bails out (returning cap + 1) as soon as no
@@ -681,9 +692,9 @@ async function main() {
     console.log(`DEGRADED build via ${describeTier()} — the augment and unnamed-pair stages are carried forward, not rebuilt.`);
   }
 
-  let rawLibs, rawColl;
+  let rawLibs, rawColl, liveTags = null;
   if (endpoint) {
-    ({ libs: rawLibs, collisions: rawColl } = await queryOverpass(endpoint));
+    ({ libs: rawLibs, collisions: rawColl, liveTags } = await queryOverpass(endpoint));
   } else {
     console.log('Querying Layercake (via DuckDB) for per-library QA data…');
     ({ libs: rawLibs, collisions: rawColl } = queryLayercake());
@@ -960,15 +971,16 @@ async function main() {
   // ---- IMLS PLS matching: find branches missing / untagged vs the federal census.
   const pls = matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases, closures);
 
-  // ---- IMLS PLS augmentation: per-crosswalked-system live tag fetch + suggestions.
-  // Degraded: carried forward — this stage is one Overpass query per
-  // crosswalked system (hundreds), the single biggest consumer of the run.
+  // ---- IMLS PLS augmentation: per-crosswalked-system live tags + suggestions.
+  // Degraded: carried forward, as every degraded-run note and commit message
+  // documents. (It was skipped for cost when it took one Overpass query per
+  // system; on the Overpass path it now reads the bulk fetch instead.)
   let augment;
   if (DEGRADED) {
     augment = carried.augment ?? [];
-    console.log(`  degraded: augment live-tag fetch skipped — ${augment.length} systems carried forward`);
+    console.log(`  degraded: augment stage skipped — ${augment.length} systems carried forward`);
   } else {
-    augment = await buildAugment(pls, systems);
+    augment = await buildAugment(pls, systems, liveTags);
   }
 
   // ---- operator:wikidata suggestions for the systems still missing one. Runs
@@ -1668,7 +1680,7 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
     const closedCount = suppressClosedFindings(cls, nearClosure);
     closedTotal += closedCount;
 
-    // Record the crosswalk so buildAugment can fetch this system's live OSM tags
+    // Record the crosswalk so buildAugment can look up this system's live OSM tags
     // and compute augmentation suggestions without re-deriving the match.
     crosswalks.push({ sysIdx: disp.sysIdx, sysKey: disp.sysKey, fscskey: win.cw.fscskey, state: win.plsSystem.state });
 
@@ -1780,15 +1792,17 @@ function matchPls(rawLibs, sysMap, sysKeys, systems, stateNames, wdAliases = new
 
 // ---- IMLS PLS augmentation ------------------------------------------------
 //
-// For each crosswalked system, fetch its libraries' CURRENT OSM tags (Layercake
-// omits addr:*, so we go to Overpass) and turn matched PLS outlets into additive
-// tag suggestions — plus create-node suggestions for truly-missing branches. The
-// augmentation page delivers these into JOSM review layers.
+// For each crosswalked system, read its libraries' CURRENT OSM tags and turn
+// matched PLS outlets into additive tag suggestions — plus create-node
+// suggestions for truly-missing branches. The augmentation page delivers these
+// into JOSM review layers.
 //
-// Cost is bounded: only crosswalked systems are queried (hundreds, not 17k), one
-// Overpass request each, with a polite delay and a hard cap. Any Overpass failure
-// skips that one system rather than failing the build — augmentation is additive
-// to the QA data, never a gate on it.
+// On the Overpass path the tags come from queryOverpass's bulk fetch (the
+// liveTags index) — no extra queries, so every crosswalked system is covered.
+// The Layercake path omits addr:*, so it falls back to one Overpass request per
+// crosswalked system, bounded by a polite delay and a hard cap. Any Overpass
+// failure skips that one system rather than failing the build — augmentation
+// is additive to the QA data, never a gate on it.
 const AUGMENT_MAX_SYSTEMS = Number(process.env.AUGMENT_MAX_SYSTEMS || 400);
 // The polite delay protects the public mirrors; a configured private instance
 // needs far less. Both defaults are env-overridable.
@@ -1824,15 +1838,20 @@ async function fetchSystemTags(mode, value) {
   return null;
 }
 
-async function buildAugment(pls, systems) {
+// liveTags: queryOverpass's bulk index, or null on the Layercake path.
+async function buildAugment(pls, systems, liveTags) {
   if (!pls?.crosswalks?.length) return [];
   const { crosswalks, plsIndex } = pls;
   const augment = [];
   let queried = 0, skipped = 0;
+  // The cap only bounds the per-system fallback's Overpass load.
+  const maxSystems = liveTags ? Infinity : AUGMENT_MAX_SYSTEMS;
 
-  console.log(`Augment: fetching live tags for up to ${Math.min(crosswalks.length, AUGMENT_MAX_SYSTEMS)} crosswalked systems…`);
+  console.log(liveTags
+    ? `Augment: reading live tags for ${crosswalks.length} crosswalked systems from the bulk fetch…`
+    : `Augment: fetching live tags for up to ${Math.min(crosswalks.length, maxSystems)} crosswalked systems…`);
   for (const cw of crosswalks) {
-    if (queried >= AUGMENT_MAX_SYSTEMS) { skipped++; continue; }
+    if (queried >= maxSystems) { skipped++; continue; }
     const sys = systems[cw.sysIdx];
     const qid = sys.w || null;                 // confirmed operator:wikidata, if any
     const qidConfirmed = !!sys.w;
@@ -1841,9 +1860,14 @@ async function buildAugment(pls, systems) {
     const value = sys.w || sys.n;
 
     queried++;
-    const osmLibs = await fetchSystemTags(mode, value);
-    await sleep(AUGMENT_SLEEP_MS);
-    if (!osmLibs) { skipped++; continue; }     // Overpass failed for this system
+    let osmLibs;
+    if (liveTags) {
+      osmLibs = liveTags.get(`${mode}:${value}`) ?? [];
+    } else {
+      osmLibs = await fetchSystemTags(mode, value);
+      await sleep(AUGMENT_SLEEP_MS);
+      if (!osmLibs) { skipped++; continue; }   // Overpass failed for this system
+    }
 
     const plsSystem = plsIndex.byKey.get(cw.fscskey);
     const cls = classify(plsSystem.outlets, osmLibs, sys.n, null);
