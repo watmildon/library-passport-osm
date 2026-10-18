@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-17","country":"CA","sourceDate":"2026-10-17","sourceModified":"2026-10-17T13:06:46Z","totalLibraries":2299,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-18","country":"CA","sourceDate":"2026-10-18","sourceModified":"2026-10-18T13:25:51Z","totalLibraries":2299,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1145,7 +1145,7 @@
 ["Norfolk County Public Library","n",6659361495,"Norfolk County Public Library - Port Dover Branch",8,8,-80.2119,42.7896],
 [null,"n",6677060400,"Bibliothèque Onil-Garneau",10,1,-71.573,46.1073],
 [null,"n",6679646104,null,11,0,-104.2558,52.0715],
-[null,"n",6682139585,"Bibliothèque municipale de Rivière-Rouge",10,4,-74.8686,46.4084],
+[null,"n",6682139585,"Bibliothèque Cécile-Chabot",10,4,-74.8686,46.4084],
 ["Lambton County Library","n",6689503757,"Lambton County Library - Mallroad",8,505,-82.3558,42.981],
 ["Bibliothèque Allard Regional Library","n",6699199722,"Victoria Beach Branch Library",2,494,-96.5431,50.7017],
 ["Kawartha Lakes Public Library","n",6699344611,"Kawartha Lakes Public Library - Bobcaygeon Branch",8,382,-78.5382,44.5365],

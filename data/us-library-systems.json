@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-17","sourceDate":"2026-10-17","boundary":"United States (OSM relation 148838)","totalSystems":2597},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-18","sourceDate":"2026-10-18","boundary":"United States (OSM relation 148838)","totalSystems":2598},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -32,7 +32,7 @@
 {"name":"Cincinnati and Hamilton County Public Library","mode":"wikidata","value":"Q5492644","count":27},
 {"name":"Seattle Public Library","mode":"wikidata","value":"Q7442157","count":27},
 {"name":"Cleveland Public Library","mode":"wikidata","value":"Q5132215","count":26},
-{"name":"San Bernardino County Library","mode":"wikidata","value":"Q30268360","count":25},
+{"name":"San Bernardino County Library","mode":"wikidata","value":"Q30268360","count":26},
 {"name":"San José Public Library","mode":"wikidata","value":"Q1084981","count":25},
 {"name":"Fairfax County Public Library","mode":"wikidata","value":"Q5430165","count":24},
 {"name":"Harris County Public Library","mode":"wikidata","value":"Q5836595","count":24},
@@ -2255,6 +2255,7 @@
 {"name":"Town of Estancia","mode":"operator","value":"Town of Estancia","count":1},
 {"name":"Town of Farmington","mode":"operator","value":"Town of Farmington","count":1},
 {"name":"Town of Florence","mode":"operator","value":"Town of Florence","count":1},
+{"name":"Town of Flower Mound","mode":"wikidata","value":"Q976183","count":1},
 {"name":"Town of Francestown","mode":"operator","value":"Town of Francestown","count":1},
 {"name":"Town of Franklin","mode":"operator","value":"Town of Franklin","count":1},
 {"name":"Town of Gage","mode":"operator","value":"Town of Gage","count":1},
