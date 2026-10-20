@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-19","country":"CA","sourceDate":"2026-10-19","sourceModified":"2026-10-19T16:35:06Z","totalLibraries":2299,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-20","country":"CA","sourceDate":"2026-10-20","sourceModified":"2026-10-20T14:25:20Z","totalLibraries":2300,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1767,6 +1767,7 @@
 ["PEI Public Library Service","n",14216563093,"Morell Public Library",9,237,-62.7076,46.4196],
 [null,"n",14266389402,"Bibliothèque d'Arvida",10,103,-71.1824,48.4262],
 [null,"n",14278172442,"Bibliothèque J.-W.-Gendron",10,480,-73.4637,45.4914],
+[null,"n",14302380147,"Mayerthorpe Public Library",0,0,-115.1445,53.9502],
 ["University of British Columbia Library","r",1420041,"Woodward Library",1,507,-123.2476,49.2646],
 [null,"r",3031106,null,1,0,-123.4745,48.4341],
 [null,"r",9072451,"Queen Elizabeth II Library",4,0,-52.7345,47.5717],
