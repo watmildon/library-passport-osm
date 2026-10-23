@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-22","country":"CA","sourceDate":"2026-10-22","sourceModified":"2026-10-22T14:38:36Z","totalLibraries":2301,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-23","country":"CA","sourceDate":"2026-10-23","sourceModified":"2026-10-23T14:21:51Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2085,7 +2085,7 @@
 ["Bibliothèque de Québec","w",243854351,"Bibliothèque du Chemin-Royal",10,511,-71.2118,46.8498],
 [null,"w",243983229,"Bibliothèque aux Sources",10,480,-70.8603,47.1181],
 ["Bibliothèque de Québec","w",244071754,"Bibliothèque Marie-Claire-Blais",10,511,-71.2226,46.8373],
-["Bibliothèque de Québec","w",244846723,"Bibliothèque Saint-Charles",10,511,-71.2242,46.8237],
+["Bibliothèque de Québec","w",244846723,"Bibliothèque Saint-Charles",10,511,-71.2243,46.8237],
 ["Bibliothèque de Québec","w",244857673,"Bibliothèque Saint-Albert",10,511,-71.2435,46.8356],
 ["Bibliothèque de Québec","w",245422581,"Bibliothèque Félix-Leclerc",10,510,-71.4193,46.8573],
 ["Toronto Public Library","w",245518897,"Toronto Public Library - Evelyn Gregory",8,250,-79.4723,43.6863],

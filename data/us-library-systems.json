@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-22","sourceDate":"2026-10-22","boundary":"United States (OSM relation 148838)","totalSystems":2598},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-23","sourceDate":"2026-10-23","boundary":"United States (OSM relation 148838)","totalSystems":2597},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -2583,7 +2583,6 @@
 {"name":"Winsor School","mode":"operator","value":"Winsor School","count":1},
 {"name":"Winter Park","mode":"operator","value":"Winter Park","count":1},
 {"name":"Wisconsin Lutheran College","mode":"operator","value":"Wisconsin Lutheran College","count":1},
-{"name":"WNMU","mode":"operator","value":"WNMU","count":1},
 {"name":"Wood County","mode":"operator","value":"Wood County","count":1},
 {"name":"Wood River Public Library Foundation","mode":"operator","value":"Wood River Public Library Foundation","count":1},
 {"name":"Worcester Art Museum","mode":"operator","value":"Worcester Art Museum","count":1},
