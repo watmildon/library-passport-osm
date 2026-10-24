@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-23","sourceDate":"2026-10-23","boundary":"Canada (OSM relation 1428125)","totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-24","sourceDate":"2026-10-24","boundary":"Canada (OSM relation 1428125)","totalSystems":362},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -343,7 +343,6 @@
 {"name":"Ville de Longueuil","mode":"operator","value":"Ville de Longueuil","count":1},
 {"name":"Ville de Lorraine","mode":"operator","value":"Ville de Lorraine","count":1},
 {"name":"Ville de Magog","mode":"operator","value":"Ville de Magog","count":1},
-{"name":"Ville de Matane","mode":"operator","value":"Ville de Matane","count":1},
 {"name":"Ville de Mont-Royal","mode":"operator","value":"Ville de Mont-Royal","count":1},
 {"name":"Ville de Montréal","mode":"wikidata","value":"Q340","count":1},
 {"name":"Ville de Repentigny","mode":"operator","value":"Ville de Repentigny","count":1},

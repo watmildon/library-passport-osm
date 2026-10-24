@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-23","country":"CA","sourceDate":"2026-10-23","sourceModified":"2026-10-23T14:21:51Z","totalLibraries":2301,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-24","country":"CA","sourceDate":"2026-10-24","sourceModified":"2026-10-24T13:27:01Z","totalLibraries":2301,"totalSystems":363},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -329,7 +329,6 @@
 {"n":"Ville de Lorraine","w":null,"c":1},
 {"n":"Ville de Lévis","w":null,"c":1},
 {"n":"Ville de Magog","w":null,"c":1},
-{"n":"Ville de Matane","w":null,"c":1},
 {"n":"Ville de Mirabel","w":null,"c":2},
 {"n":"Ville de Mont-Royal","w":null,"c":1},
 {"n":"Ville de Montréal","w":"Q340","c":7},
@@ -1768,6 +1767,7 @@
 [null,"n",14266389402,"Bibliothèque d'Arvida",10,103,-71.1824,48.4262],
 [null,"n",14278172442,"Bibliothèque J.-W.-Gendron",10,480,-73.4637,45.4914],
 [null,"n",14302380147,"Mayerthorpe Public Library",0,0,-115.1445,53.9502],
+[null,"n",14313818210,"Bibliothèque municipale Fonds de solidarité FTQ",10,0,-67.5298,48.8485],
 ["University of British Columbia Library","r",1420041,"Woodward Library",1,507,-123.2476,49.2646],
 [null,"r",3031106,null,1,0,-123.4745,48.4341],
 [null,"r",9072451,"Queen Elizabeth II Library",4,0,-52.7345,47.5717],
@@ -2046,7 +2046,6 @@
 ["Bibliothèque de Québec","w",209246362,"Bibliothèque Roger-Lemelin",10,254,-71.3616,46.7465],
 ["Milton Public Library","w",209973983,"Milton Public Library - Beaty Branch",8,232,-79.8305,43.5192],
 ["Toronto Public Library","w",213917634,"Toronto Public Library - Runnymede",8,251,-79.4739,43.652],
-["Ville de Matane","w",214779096,"Complexe culturel Joseph-Rouleau",10,232,-67.5296,48.8486],
 [null,"w",215095788,null,8,0,-77.5322,44.107],
 ["Surrey Libraries","w",215735039,"SL: Ocean Park Branch",1,511,-122.8661,49.0325],
 ["university","w",216975657,"Harris Learning Library",8,8,-79.4901,46.3436],
