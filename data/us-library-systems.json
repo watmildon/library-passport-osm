@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-25","sourceDate":"2026-10-25","boundary":"United States (OSM relation 148838)","totalSystems":2597},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-26","sourceDate":"2026-10-26","boundary":"United States (OSM relation 148838)","totalSystems":2598},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -677,6 +677,7 @@
 {"name":"Bay County Library System","mode":"operator","value":"Bay County Library System","count":1},
 {"name":"Bay Path University","mode":"operator","value":"Bay Path University","count":1},
 {"name":"Beaufort, Hyde, and Martin Regional Library System","mode":"operator","value":"Beaufort, Hyde, and Martin Regional Library System","count":1},
+{"name":"Beaumont Public Library System","mode":"wikidata","value":"Q69491913","count":1},
 {"name":"Beauregard Parish Library","mode":"wikidata","value":"Q69477154","count":1},
 {"name":"Bedford Public Library System","mode":"operator","value":"Bedford Public Library System","count":1},
 {"name":"Bell County Public Library","mode":"operator","value":"Bell County Public Library","count":1},
