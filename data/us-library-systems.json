@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-26","sourceDate":"2026-10-26","boundary":"United States (OSM relation 148838)","totalSystems":2598},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-27","sourceDate":"2026-10-27","boundary":"United States (OSM relation 148838)","totalSystems":2600},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1435,6 +1435,7 @@
 {"name":"Hebron Academy","mode":"operator","value":"Hebron Academy","count":1},
 {"name":"Henderson State University","mode":"operator","value":"Henderson State University","count":1},
 {"name":"Hendersonville Public Library","mode":"operator","value":"Hendersonville Public Library","count":1},
+{"name":"Henry M. Gunn High School","mode":"operator","value":"Henry M. Gunn High School","count":1},
 {"name":"Heritage Public Library","mode":"operator","value":"Heritage Public Library","count":1},
 {"name":"High Point University","mode":"operator","value":"High Point University","count":1},
 {"name":"Highland County District Library","mode":"operator","value":"Highland County District Library","count":1},
@@ -2488,6 +2489,7 @@
 {"name":"VBAS","mode":"operator","value":"VBAS","count":1},
 {"name":"Vermont Law School","mode":"operator","value":"Vermont Law School","count":1},
 {"name":"Village of Albany","mode":"operator","value":"Village of Albany","count":1},
+{"name":"Village of Balsam Lake","mode":"operator","value":"Village of Balsam Lake","count":1},
 {"name":"Village of Cambridge","mode":"operator","value":"Village of Cambridge","count":1},
 {"name":"Village of Clinton","mode":"operator","value":"Village of Clinton","count":1},
 {"name":"Village of Deer Park","mode":"operator","value":"Village of Deer Park","count":1},
