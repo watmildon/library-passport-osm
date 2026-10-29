@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-28","sourceDate":"2026-10-28","boundary":"Canada (OSM relation 1428125)","totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-29","sourceDate":"2026-10-29","boundary":"Canada (OSM relation 1428125)","totalSystems":362},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -10,8 +10,8 @@
 {"name":"Fraser Valley Regional Library","mode":"wikidata","value":"Q5493694","count":22},
 {"name":"Vancouver Public Library","mode":"wikidata","value":"Q1376408","count":21},
 {"name":"Calgary Public Library","mode":"wikidata","value":"Q5019701","count":20},
-{"name":"Hamilton Public Library","mode":"wikidata","value":"Q5645111","count":20},
 {"name":"Winnipeg Public Library","mode":"wikidata","value":"Q8025777","count":20},
+{"name":"Hamilton Public Library","mode":"wikidata","value":"Q5645111","count":19},
 {"name":"Bruce County Public Library","mode":"wikidata","value":"Q53677843","count":18},
 {"name":"Mississauga Library","mode":"wikidata","value":"Q6878971","count":18},
 {"name":"Edmonton Public Library","mode":"wikidata","value":"Q5339083","count":16},
@@ -49,6 +49,7 @@
 {"name":"Regina Public Libraries","mode":"operator","value":"Regina Public Libraries","count":5},
 {"name":"York University","mode":"operator","value":"York University","count":5},
 {"name":"Burnaby Public Library","mode":"wikidata","value":"Q4999596","count":4},
+{"name":"Chinook Regional Library","mode":"operator","value":"Chinook Regional Library","count":4},
 {"name":"King Township Public Library","mode":"operator","value":"King Township Public Library","count":4},
 {"name":"McMaster University Libraries","mode":"operator","value":"McMaster University Libraries","count":4},
 {"name":"Oshawa Public Libraries","mode":"operator","value":"Oshawa Public Libraries","count":4},
@@ -64,7 +65,6 @@
 {"name":"Alnwick/Haldimand Public Library","mode":"operator","value":"Alnwick/Haldimand Public Library","count":3},
 {"name":"Barrie Public Library","mode":"operator","value":"Barrie Public Library","count":3},
 {"name":"Brock Libraries","mode":"operator","value":"Brock Libraries","count":3},
-{"name":"Chinook Regional Library","mode":"operator","value":"Chinook Regional Library","count":3},
 {"name":"Clarington Public Library","mode":"operator","value":"Clarington Public Library","count":3},
 {"name":"Cobourg Public Library","mode":"operator","value":"Cobourg Public Library","count":3},
 {"name":"East Gwillimbury Public Library","mode":"operator","value":"East Gwillimbury Public Library","count":3},
