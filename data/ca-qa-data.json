@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-29","country":"CA","sourceDate":"2026-10-29","sourceModified":"2026-10-29T16:17:56Z","totalLibraries":2300,"totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-30","country":"CA","sourceDate":"2026-10-30","sourceModified":"2026-10-30T16:03:51Z","totalLibraries":2300,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -181,6 +181,7 @@
 {"n":"North Kawartha Public Library","w":null,"c":2},
 {"n":"North Perth Public Library","w":null,"c":3},
 {"n":"North Vancouver District Public Library","w":"Q85694694","c":3},
+{"n":"Nunavut Public Library","w":null,"c":1},
 {"n":"OBNL","w":null,"c":1},
 {"n":"OCAD University","w":null,"c":1},
 {"n":"Oakville Public Library","w":"Q7074256","c":7,"nw":["Q2901505"]},
@@ -756,7 +757,7 @@
 ["Ajax Public Library","n",3632329726,"Ajax Public Library - McLean Branch",8,8,-79.0363,43.866],
 [null,"n",3649864501,"eplGO - West Henday Promenade",0,0,-113.6658,53.5239],
 ["Calgary Public Library","n",3658237703,"Calgary Public Library - Saddletowne",0,506,-113.9482,51.1199],
-[null,"n",3683150692,"Arviat Library",7,0,-94.0561,61.1085],
+[null,"n",3683150692,"Donald Suluk Library",7,455,-94.0561,61.1085],
 ["Vancouver Island Public Library","n",3702177213,"VIRL: Hornby Island Branch",1,511,-124.6653,49.5382],
 ["Mississauga Library","n",3720192600,"Missisauga Library - Malton",8,507,-79.6387,43.7233],
 [null,"n",3729648229,"Carberry-North Cypress Library",2,480,-99.3593,49.8679],
@@ -2133,7 +2134,7 @@
 ["Victoria Beach Club","w",296500676,"Victoria Beach Library",2,14,-96.559,50.7001],
 ["Thunder Bay Public Library","w",296962833,"Mary J.L. Black",8,8,-89.2794,48.3715],
 [null,"w",297391678,"Slocan Community Library",1,483,-117.4691,49.7657],
-[null,"w",298122053,"Nunavut Public Library",7,480,-68.5145,63.7438],
+["Nunavut Public Library","w",298122053,"Iqaluit Centennial Library",7,495,-68.5145,63.7438],
 ["Calgary Public Library","w",299597727,"Calgary Public Library - Giuffre Family",0,382,-114.0951,51.0255],
 [null,"w",300069873,"Iroquois Falls Public Library",8,0,-80.6828,48.7604],
 [null,"w",300725626,"Edmonton Public Library Sprucewood Branch",0,2,-113.4868,53.5672],
@@ -2707,6 +2708,7 @@
 {"d":"bramptonlibrary.ca","total":3,"untagged":1,"op":"Brampton Library","wd":null,"st":[8]},
 {"d":"lillooet.bc.libraries.coop","total":3,"untagged":1,"op":"Lillooet Area Library Association","wd":null,"st":[1]},
 {"d":"library.ucalgary.ca","total":2,"untagged":1,"op":"University of Calgary Department of Geoscience","wd":null,"st":[0]},
+{"d":"publiclibraries.nu.ca","total":2,"untagged":1,"op":"Nunavut Public Library","wd":null,"st":[7]},
 {"d":"valleylibrary.ca","total":2,"untagged":1,"op":"Annapolis Valley Regional Library","wd":null,"st":[6]},
 {"d":"wheatland.sk.ca","total":2,"untagged":1,"op":"Wheatland Regional Library","wd":null,"st":[11]}
 ],

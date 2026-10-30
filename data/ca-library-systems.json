@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-29","sourceDate":"2026-10-29","boundary":"Canada (OSM relation 1428125)","totalSystems":362},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-10-30","sourceDate":"2026-10-30","boundary":"Canada (OSM relation 1428125)","totalSystems":363},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":100},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -249,6 +249,7 @@
 {"name":"Municipality of Wawa","mode":"operator","value":"Municipality of Wawa","count":1},
 {"name":"Newmarket Public Library","mode":"operator","value":"Newmarket Public Library","count":1},
 {"name":"Niagara-On-The-Lake Public Library","mode":"operator","value":"Niagara-On-The-Lake Public Library","count":1},
+{"name":"Nunavut Public Library","mode":"operator","value":"Nunavut Public Library","count":1},
 {"name":"Oakville Public Library","mode":"wikidata","value":"Q7074256","count":1},
 {"name":"OBNL","mode":"operator","value":"OBNL","count":1},
 {"name":"OCAD University","mode":"operator","value":"OCAD University","count":1},

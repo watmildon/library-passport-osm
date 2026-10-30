@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-29","sourceDate":"2026-10-29","boundary":"United States (OSM relation 148838)","totalSystems":2606},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-30","sourceDate":"2026-10-30","boundary":"United States (OSM relation 148838)","totalSystems":2606},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -564,6 +564,7 @@
 {"name":"University of Vermont","mode":"operator","value":"University of Vermont","count":2},
 {"name":"University of Wisconsin–Milwaukee","mode":"wikidata","value":"Q1755318","count":2},
 {"name":"Van Buren District Library","mode":"wikidata","value":"Q69480345","count":2},
+{"name":"Villanova University","mode":"operator","value":"Villanova University","count":2},
 {"name":"Virginia Commonwealth University","mode":"operator","value":"Virginia Commonwealth University","count":2},
 {"name":"Virginia Military Institute","mode":"operator","value":"Virginia Military Institute","count":2},
 {"name":"Wallowa County Library","mode":"operator","value":"Wallowa County Library","count":2},
@@ -2505,7 +2506,6 @@
 {"name":"Village of Roberts","mode":"operator","value":"Village of Roberts","count":1},
 {"name":"Village of Whitefish Bay","mode":"operator","value":"Village of Whitefish Bay","count":1},
 {"name":"Village of Williams Bay","mode":"operator","value":"Village of Williams Bay","count":1},
-{"name":"Villanova University","mode":"operator","value":"Villanova University","count":1},
 {"name":"Virginia Baptist Historical Society","mode":"operator","value":"Virginia Baptist Historical Society","count":1},
 {"name":"Virginia Museum of Fine Arts","mode":"operator","value":"Virginia Museum of Fine Arts","count":1},
 {"name":"Virginia Tech University Libraries","mode":"wikidata","value":"Q52635547","count":1},
