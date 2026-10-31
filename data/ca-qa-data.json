@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-30","country":"CA","sourceDate":"2026-10-30","sourceModified":"2026-10-30T16:03:51Z","totalLibraries":2300,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-10-31","country":"CA","sourceDate":"2026-10-31","sourceModified":"2026-10-31T15:27:36Z","totalLibraries":2300,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2728,7 +2728,6 @@
 {"osm":"w964356900","st":3,"lon":-67.9238,"lat":47.1642,"match":{"osm":"n3867824846","n":"Bibliothèque Dr. Lorne J. Violette","lon":-67.9239,"lat":47.1642,"dist":6,"in":1}}
 ],
 "wdOperators": [
-{"pq":"Q1056951","pn":"Department of Canadian Heritage","pk":"org","po":null,"libs":[{"osm":"w84609915","n":"Library and Archives Canada","q":"Q913250","s":8,"pr":"P749","lat":45.4198,"lon":-75.7081}],"st":[8]},
 {"pq":"Q109579960","pn":"Prince Edward Island Public Library Service","pk":"libnet","po":null,"libs":[{"osm":"w665919346","n":"Stratford Public Library","q":"Q109579344","s":9,"pr":"P361","lat":46.2303,"lon":-63.0994}],"st":[9]},
 {"pq":"Q17513328","pn":"Okanagan Regional Library District","pk":"libnet","po":null,"libs":[{"osm":"w165792148","n":"ORL: Vernon Branch","q":"Q85704128","s":1,"pr":"P361","lat":50.2634,"lon":-119.2682}],"st":[1]},
 {"pq":"Q20311253","pn":"Annapolis Valley Regional Library","pk":"libnet","po":null,"libs":[{"osm":"n5844844398","n":"Berwick and District Library","q":"Q85767423","s":6,"pr":"P361","lat":45.0467,"lon":-64.7358}],"st":[6]},
