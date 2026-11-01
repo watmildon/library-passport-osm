@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-10-31","sourceDate":"2026-10-31","boundary":"United States (OSM relation 148838)","totalSystems":2606},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-01","sourceDate":"2026-11-01","boundary":"United States (OSM relation 148838)","totalSystems":2606},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -170,6 +170,7 @@
 {"name":"Anderson County Library","mode":"wikidata","value":"Q69490333","count":5},
 {"name":"Ann Arbor District Library","mode":"wikidata","value":"Q4766217","count":5},
 {"name":"Boise Public Library","mode":"wikidata","value":"Q60661656","count":5},
+{"name":"Boulder Public Library","mode":"wikidata","value":"Q69470168","count":5},
 {"name":"Catawba County","mode":"operator","value":"Catawba County","count":5},
 {"name":"Clark University","mode":"operator","value":"Clark University","count":5},
 {"name":"Dallas Public Library","mode":"wikidata","value":"Q5211387","count":5},
@@ -274,7 +275,6 @@
 {"name":"Arapahoe Libraries","mode":"operator","value":"Arapahoe Libraries","count":3},
 {"name":"Baker County Library District","mode":"operator","value":"Baker County Library District","count":3},
 {"name":"Boone-Madison Public Library","mode":"wikidata","value":"Q69495645","count":3},
-{"name":"Boulder Public Library","mode":"wikidata","value":"Q69470168","count":3},
 {"name":"Bowling Green State University","mode":"wikidata","value":"Q895457","count":3},
 {"name":"Bryan + College Station Public Library System","mode":"operator","value":"Bryan + College Station Public Library System","count":3},
 {"name":"Canton Free Library","mode":"wikidata","value":"Q69486272","count":3},
