@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-01","sourceDate":"2026-11-01","boundary":"United States (OSM relation 148838)","totalSystems":2606},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-02","sourceDate":"2026-11-02","boundary":"United States (OSM relation 148838)","totalSystems":2607},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1482,6 +1482,7 @@
 {"name":"Inyo County Free Library","mode":"operator","value":"Inyo County Free Library","count":1},
 {"name":"Iosco-Arenac District Library","mode":"operator","value":"Iosco-Arenac District Library","count":1},
 {"name":"Iowa Western Community College","mode":"operator","value":"Iowa Western Community College","count":1},
+{"name":"Isothermal Community College","mode":"operator","value":"Isothermal Community College","count":1},
 {"name":"Itliong Vera-Cruz Middle School","mode":"operator","value":"Itliong Vera-Cruz Middle School","count":1},
 {"name":"J.N. Fries","mode":"operator","value":"J.N. Fries","count":1},
 {"name":"Jacksonville State University","mode":"operator","value":"Jacksonville State University","count":1},
