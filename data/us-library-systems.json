@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-02","sourceDate":"2026-11-02","boundary":"United States (OSM relation 148838)","totalSystems":2607},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-03","sourceDate":"2026-11-03","boundary":"United States (OSM relation 148838)","totalSystems":2608},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1552,6 +1552,7 @@
 {"name":"Lakeland University","mode":"operator","value":"Lakeland University","count":1},
 {"name":"Lakota City Library","mode":"operator","value":"Lakota City Library","count":1},
 {"name":"Lamar County Library System","mode":"operator","value":"Lamar County Library System","count":1},
+{"name":"Lane Community College","mode":"operator","value":"Lane Community College","count":1},
 {"name":"LaPorte County Public Library","mode":"operator","value":"LaPorte County Public Library","count":1},
 {"name":"Laramie County Community College","mode":"operator","value":"Laramie County Community College","count":1},
 {"name":"Laredo College","mode":"operator","value":"Laredo College","count":1},
