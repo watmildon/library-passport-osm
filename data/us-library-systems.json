@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-05","sourceDate":"2026-11-05","boundary":"United States (OSM relation 148838)","totalSystems":2609},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-06","sourceDate":"2026-11-06","boundary":"United States (OSM relation 148838)","totalSystems":2610},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1295,6 +1295,7 @@
 {"name":"Fairbanks North Star Borough Library System","mode":"operator","value":"Fairbanks North Star Borough Library System","count":1},
 {"name":"Fairbanks North Star Borough Public Libraries","mode":"operator","value":"Fairbanks North Star Borough Public Libraries","count":1},
 {"name":"Fairfield County","mode":"operator","value":"Fairfield County","count":1},
+{"name":"Fairleigh Dickinson University","mode":"operator","value":"Fairleigh Dickinson University","count":1},
 {"name":"Fairmount Homes","mode":"operator","value":"Fairmount Homes","count":1},
 {"name":"FamilySearch","mode":"operator","value":"FamilySearch","count":1},
 {"name":"Faulkner-Van Buren Regional Library System","mode":"wikidata","value":"Q69469836","count":1},

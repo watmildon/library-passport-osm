@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838","generated":"2026-11-05","country":"US","sourceDate":"2026-11-05","sourceModified":"2026-11-05T17:26:23Z","totalLibraries":19354,"totalSystems":2622,"plsFiscalYear":"2023"},
+"meta": {"source":"Overpass, US boundary relation 148838","generated":"2026-11-06","country":"US","sourceDate":"2026-11-06","sourceModified":"2026-11-06T16:48:06Z","totalLibraries":19356,"totalSystems":2623,"plsFiscalYear":"2023"},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alabama","Alaska","American Samoa","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","District of Columbia","Florida","Georgia","Guam","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Northern Mariana Islands","Ohio","Oklahoma","Oregon","Pennsylvania","Puerto Rico","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","United States Virgin Islands","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"],
 "systems": [
@@ -869,6 +869,7 @@
 {"n":"Fairbanks North Star Borough Public Libraries","w":null,"c":1},
 {"n":"Fairfax County Public Library","w":"Q5430165","c":24,"wb":23},
 {"n":"Fairfield County","w":null,"c":1},
+{"n":"Fairleigh Dickinson University","w":null,"c":1},
 {"n":"Fairmount Homes","w":null,"c":1},
 {"n":"FamilySearch","w":null,"c":1},
 {"n":"Faulkner-Van Buren Regional Library System","w":"Q69469836","c":1,"wb":7},
@@ -6747,7 +6748,7 @@
 ["Atlantic Cape Community College","n",3512824355,"William Spangler Library",32,8,-74.6809,39.4608],
 [null,"n",3513791386,"Carnegie Library",6,486,-106.145,37.58],
 [null,"n",3515343934,"Kelleys Island Library",38,2,-82.7075,41.6063],
-[null,"n",3516315819,"EDCC Library",52,0,-122.328,47.8156],
+[null,"n",3516315819,"EDCC Library",52,0,-122.3279,47.8156],
 [null,"n",3526074236,null,16,0,-86.514,40.2809],
 [null,"n",3539652167,"LITEBoxIN- Adams Public Library System",16,0,-84.9254,40.8297],
 [null,"n",3539716836,"LITEBoxIN-- ISL",16,0,-86.1638,39.7696],
@@ -12328,7 +12329,7 @@
 ["Ann Arbor District Library","w",277943381,"Ann Arbor District Library Malletts Creek",24,511,-83.718,42.2437],
 [null,"w",278040487,"Taneyhills Community Library",27,353,-93.2205,36.643],
 [null,"w",278088806,"Justice Public Library",15,487,-87.8401,41.7515],
-[null,"w",278092970,"Weiner Library",32,0,-74.03,40.8962],
+["Fairleigh Dickinson University","w",278092970,"Metropolitan Campus Library",32,8,-74.03,40.8962],
 [null,"w",278121300,"Norridgewock Public Library",21,480,-69.7997,44.7114],
 [null,"w",278131258,"Norridgewock Public Library (historical)",21,482,-69.798,44.7178],
 ["Denver Public Library","w",278155773,"Ford-Warren Library",6,511,-104.9651,39.7573],
@@ -17317,7 +17318,6 @@
 [null,"w",771493692,"Cascade Public Library",14,487,-116.0414,44.5164],
 [null,"w",771497332,"Shoshone-Paiute Tribal Library",30,224,-116.0993,41.9444],
 [null,"w",771779995,"Dover Memorial Library",35,0,-81.6682,35.2474],
-[null,"w",771951770,"Manitowish Waters Library",54,0,-89.8755,46.1245],
 [null,"w",772020170,"Wells Public Library",25,480,-93.7263,43.7439],
 ["Washington County Public Library","w",772026207,"Marietta Branch Library",38,495,-81.4579,39.4242],
 [null,"w",772026237,"Carson K. Miller Library",38,2,-81.4333,39.4298],
@@ -21980,7 +21980,10 @@
 ["Boulder Public Library","w",1574097235,"Boulder Public Library - Main Branch",6,510,-105.2821,40.0144],
 [null,"w",1574304817,"Clark County Public Library, Enon Branch",38,484,-83.9344,39.8794],
 [null,"w",1575098484,"Music Library",52,0,-117.3233,47.7883],
-[null,"w",1575177589,"Deerfield Branch Library",24,486,-83.778,41.8905]
+[null,"w",1575177589,"Deerfield Branch Library",24,486,-83.778,41.8905],
+[null,"w",1575938052,"Sorrento Library",21,4,-68.1878,44.4729],
+[null,"w",1575984159,"Stanley Library",5,0,-122.1146,37.8863],
+[null,"w",1576065816,"Frank B. Koller Memorial Library",54,0,-89.8763,46.1247]
 ],
 "collisions": [
 {"a":"Brown University","b":"Rowan University","ca":4,"cb":1,"aw":false,"bw":true,"lev":2},
