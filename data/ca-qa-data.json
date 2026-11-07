@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-06","country":"CA","sourceDate":"2026-11-06","sourceModified":"2026-11-06T16:53:17Z","totalLibraries":2300,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-07","country":"CA","sourceDate":"2026-11-07","sourceModified":"2026-11-07T15:47:36Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2668,7 +2668,8 @@
 [null,"w",1552708098,"Wildwood Library",0,228,-115.2376,53.6102],
 [null,"w",1560156658,null,0,0,-111.44,49.4793],
 [null,"w",1562608636,"Nashwaaksis Library",3,0,-66.6425,45.9849],
-[null,"w",1570243106,"La Maison Socio-Culturelle",10,480,-72.4707,46.5627]
+[null,"w",1570243106,"La Maison Socio-Culturelle",10,480,-72.4707,46.5627],
+[null,"w",1576278665,null,4,0,-53.9895,47.7566]
 ],
 "collisions": [
 {"a":"Region Of Waterloo Library","b":"Region of Waterloo Library","ca":9,"cb":1,"aw":false,"bw":false,"lev":0},

@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-06","sourceDate":"2026-11-06","boundary":"United States (OSM relation 148838)","totalSystems":2610},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-07","sourceDate":"2026-11-07","boundary":"United States (OSM relation 148838)","totalSystems":2610},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -793,7 +793,6 @@
 {"name":"Cardinal Newman High School","mode":"operator","value":"Cardinal Newman High School","count":1},
 {"name":"Carl Elliott Regional Library System","mode":"operator","value":"Carl Elliott Regional Library System","count":1},
 {"name":"Carnegie Mellon University","mode":"operator","value":"Carnegie Mellon University","count":1},
-{"name":"Carnegie Regional Library","mode":"operator","value":"Carnegie Regional Library","count":1},
 {"name":"Caroline County Public Library","mode":"operator","value":"Caroline County Public Library","count":1},
 {"name":"Carroll and Madison Library System","mode":"wikidata","value":"Q69469888","count":1},
 {"name":"Carroll College","mode":"operator","value":"Carroll College","count":1},
@@ -975,6 +974,7 @@
 {"name":"City of Idaho Falls","mode":"operator","value":"City of Idaho Falls","count":1},
 {"name":"City of Independence","mode":"operator","value":"City of Independence","count":1},
 {"name":"City of Irondale, AL","mode":"operator","value":"City of Irondale, AL","count":1},
+{"name":"City of Ishpeming","mode":"operator","value":"City of Ishpeming","count":1},
 {"name":"City of Johnstown","mode":"operator","value":"City of Johnstown","count":1},
 {"name":"City of Kelso","mode":"operator","value":"City of Kelso","count":1},
 {"name":"City of Kilgore","mode":"operator","value":"City of Kilgore","count":1},
