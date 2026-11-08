@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-07","country":"CA","sourceDate":"2026-11-07","sourceModified":"2026-11-07T15:47:36Z","totalLibraries":2301,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-08","country":"CA","sourceDate":"2026-11-08","sourceModified":"2026-11-08T16:05:35Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2037,7 +2037,7 @@
 [null,"w",203140256,"Banff Public Library",0,480,-115.5732,51.1747],
 ["Bonnechere Union Public Library","w",203216610,"Bonnechere Union Public Library",8,111,-77.0973,45.5411],
 [null,"w",204179417,"Binscarth Library",2,0,-101.2836,50.6252],
-["Toronto Public Library","w",204346848,"Toronto Public Library - Spadina Road",8,506,-79.4046,43.6677],
+["Toronto Public Library","w",204346848,"Toronto Public Library - Spadina Road",8,510,-79.4046,43.6677],
 [null,"w",205150167,"Essex County Library - Cottam Branch",8,483,-82.745,42.1314],
 [null,"w",205803877,null,11,0,-103.6676,50.5319],
 ["Town of Gravenhurst","w",206170952,"Gravenhurst Public Library",8,15,-79.3743,44.9181],
