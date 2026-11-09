@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-08","country":"CA","sourceDate":"2026-11-08","sourceModified":"2026-11-08T16:05:35Z","totalLibraries":2301,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-09","country":"CA","sourceDate":"2026-11-09","sourceModified":"2026-11-09T19:57:06Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1898,7 +1898,7 @@
 [null,"w",93536110,"Riverside Library",8,352,-82.9609,42.3298],
 ["Winkler Public library","w",94367613,"Public library",2,8,-97.9398,49.1793],
 ["Ville de Gatineau","w",95529352,"Bibliothèque Bernard-Lonergan",10,488,-75.4111,45.5909],
-[null,"w",97925799,"Ukrainian Cultural and Educational Centre (Oseredok)",2,355,-97.1359,49.9013],
+[null,"w",97925799,"Ukrainian Cultural and Educational Centre (Oseredok)",2,359,-97.1359,49.9013],
 ["Toronto Public Library","w",98231532,"Toronto Public Library - Yorkville",8,254,-79.3886,43.672],
 [null,"w",98249741,"Leduc Public Library",0,0,-113.5499,53.2615],
 [null,"w",98523362,"South Interlake Regional Library",2,482,-97.3271,50.1328],
