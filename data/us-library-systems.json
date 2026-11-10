@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-09","sourceDate":"2026-11-09","boundary":"United States (OSM relation 148838)","totalSystems":2611},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-10","sourceDate":"2026-11-10","boundary":"United States (OSM relation 148838)","totalSystems":2611},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":89},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -120,6 +120,7 @@
 {"name":"Salt Lake City Public Library System","mode":"wikidata","value":"Q7405874","count":9},
 {"name":"Scenic Regional Library","mode":"operator","value":"Scenic Regional Library","count":9},
 {"name":"Spartanburg County Public Library System","mode":"wikidata","value":"Q69490427","count":9},
+{"name":"Tulsa City-County Library","mode":"operator","value":"Tulsa City-County Library","count":9},
 {"name":"Volusia County Public Library","mode":"wikidata","value":"Q69471101","count":9},
 {"name":"Clermont County Public Library","mode":"wikidata","value":"Q18149011","count":8},
 {"name":"High Plains Library District","mode":"wikidata","value":"Q69470426","count":8},
@@ -161,7 +162,6 @@
 {"name":"Scott County Library System","mode":"wikidata","value":"Q69472210","count":6},
 {"name":"Stevens County Rural Library District","mode":"wikidata","value":"Q69494208","count":6},
 {"name":"Trails Regional Library","mode":"operator","value":"Trails Regional Library","count":6},
-{"name":"Tulsa City-County Library","mode":"operator","value":"Tulsa City-County Library","count":6},
 {"name":"University of Cincinnati","mode":"wikidata","value":"Q153265","count":6},
 {"name":"Wake County","mode":"operator","value":"Wake County","count":6},
 {"name":"York County Libraries","mode":"wikidata","value":"Q30268434","count":6},
