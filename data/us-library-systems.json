@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-11","sourceDate":"2026-11-11","boundary":"United States (OSM relation 148838)","totalSystems":2611},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-12","sourceDate":"2026-11-12","boundary":"United States (OSM relation 148838)","totalSystems":2613},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":88},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -1181,6 +1181,7 @@
 {"name":"Crown Point Community Library","mode":"operator","value":"Crown Point Community Library","count":1},
 {"name":"CRRL","mode":"operator","value":"CRRL","count":1},
 {"name":"CSU","mode":"operator","value":"CSU","count":1},
+{"name":"CT State Three Rivers","mode":"operator","value":"CT State Three Rivers","count":1},
 {"name":"Cumberland Country Public Library","mode":"operator","value":"Cumberland Country Public Library","count":1},
 {"name":"Cumberland County College","mode":"operator","value":"Cumberland County College","count":1},
 {"name":"Cumberland University","mode":"operator","value":"Cumberland University","count":1},
@@ -1511,6 +1512,7 @@
 {"name":"Joliet Public Libary","mode":"operator","value":"Joliet Public Libary","count":1},
 {"name":"Jones Library","mode":"operator","value":"Jones Library","count":1},
 {"name":"Josephine Community Library District","mode":"operator","value":"Josephine Community Library District","count":1},
+{"name":"Kaibab Paiute Band of Indians","mode":"operator","value":"Kaibab Paiute Band of Indians","count":1},
 {"name":"Kalama Public Library","mode":"wikidata","value":"Q69494041","count":1},
 {"name":"Kankakee Public Library","mode":"operator","value":"Kankakee Public Library","count":1},
 {"name":"Kansas City, Kansas Unifed School District #500","mode":"operator","value":"Kansas City, Kansas Unifed School District #500","count":1},
