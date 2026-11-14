@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-13","country":"CA","sourceDate":"2026-11-13","sourceModified":"2026-11-13T17:20:01Z","totalLibraries":2302,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-14","country":"CA","sourceDate":"2026-11-14","sourceModified":"2026-11-14T15:56:35Z","totalLibraries":2302,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1070,7 +1070,7 @@
 [null,"n",6194207024,"Oak Island Research Center",6,0,-64.2999,44.5133],
 ["Fraser Valley Regional Library","n",6196633701,"FVRL: Maple Ridge Public Library",1,511,-122.5999,49.2199],
 ["Toronto Public Library","n",6201241949,"Toronto Public Library - McGregor Park",8,250,-79.2809,43.748],
-["Hamilton Public Library","n",6201961585,"Hamilton Public Library - Barton Branch",8,495,-79.8414,43.258],
+["Hamilton Public Library","n",6201961585,"Hamilton Public Library - Barton Branch",8,511,-79.8414,43.258],
 ["Wainfleet Public Library","n",6204115889,"Wainfleet Public Library",8,8,-79.3762,42.9222],
 [null,"n",6205162531,"The ArQuives",8,487,-79.384,43.6681],
 ["Fraser Valley Regional Library","n",6208061009,"FVRL: Pitt Meadows Library",1,383,-122.6901,49.2222],
@@ -2707,6 +2707,7 @@
 {"d":"westerncounties.ca","total":2,"untagged":2,"op":null,"wd":null,"st":[6]},
 {"d":"yukon.ca","total":2,"untagged":2,"op":null,"wd":null,"st":[12]},
 {"d":"hpl.ca","total":9,"untagged":1,"op":"Hamilton Public Library","wd":"Q5645111","st":[8]},
+{"d":"library.utoronto.ca","total":4,"untagged":1,"op":"University of Toronto","wd":"Q180865","st":[8]},
 {"d":"bramptonlibrary.ca","total":3,"untagged":1,"op":"Brampton Library","wd":null,"st":[8]},
 {"d":"lillooet.bc.libraries.coop","total":3,"untagged":1,"op":"Lillooet Area Library Association","wd":null,"st":[1]},
 {"d":"library.ucalgary.ca","total":2,"untagged":1,"op":"University of Calgary Department of Geoscience","wd":null,"st":[0]},

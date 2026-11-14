@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-11-13","sourceDate":"2026-11-13","boundary":"Canada (OSM relation 1428125)","totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-11-14","sourceDate":"2026-11-14","boundary":"Canada (OSM relation 1428125)","totalSystems":363},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":99},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
@@ -10,8 +10,8 @@
 {"name":"Fraser Valley Regional Library","mode":"wikidata","value":"Q5493694","count":22},
 {"name":"Vancouver Public Library","mode":"wikidata","value":"Q1376408","count":21},
 {"name":"Calgary Public Library","mode":"wikidata","value":"Q5019701","count":20},
+{"name":"Hamilton Public Library","mode":"wikidata","value":"Q5645111","count":20},
 {"name":"Winnipeg Public Library","mode":"wikidata","value":"Q8025777","count":20},
-{"name":"Hamilton Public Library","mode":"wikidata","value":"Q5645111","count":19},
 {"name":"Bruce County Public Library","mode":"wikidata","value":"Q53677843","count":18},
 {"name":"Mississauga Library","mode":"wikidata","value":"Q6878971","count":18},
 {"name":"Edmonton Public Library","mode":"wikidata","value":"Q5339083","count":16},
