@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-14","sourceDate":"2026-11-14","boundary":"United States (OSM relation 148838)","totalSystems":2614},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-15","sourceDate":"2026-11-15","boundary":"United States (OSM relation 148838)","totalSystems":2614},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":88},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -2545,7 +2545,7 @@
 {"name":"Washington State University;Battelle Memorial Institute","mode":"operator","value":"Washington State University;Battelle Memorial Institute","count":1},
 {"name":"Washington University in St. Louis","mode":"operator","value":"Washington University in St. Louis","count":1},
 {"name":"Washington–Centerville Public Library","mode":"operator","value":"Washington–Centerville Public Library","count":1},
-{"name":"Washtenaw Community College","mode":"operator","value":"Washtenaw Community College","count":1},
+{"name":"Washtenaw Community College","mode":"wikidata","value":"Q7972632","count":1},
 {"name":"Watauga County","mode":"operator","value":"Watauga County","count":1},
 {"name":"Watertown Library Association","mode":"operator","value":"Watertown Library Association","count":1},
 {"name":"Watonwan County Library","mode":"wikidata","value":"Q69480939","count":1},

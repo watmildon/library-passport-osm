@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-14","country":"CA","sourceDate":"2026-11-14","sourceModified":"2026-11-14T15:56:35Z","totalLibraries":2302,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-15","country":"CA","sourceDate":"2026-11-15","sourceModified":"2026-11-15T10:06:35Z","totalLibraries":2302,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1381,7 +1381,6 @@
 ["Université de Sherbrooke","n",8185200213,"Bibliothèque Roger-Maltais",10,488,-71.9277,45.3796],
 ["Université de Sherbrooke","n",8185200289,"Bibliothèque de droit",10,232,-71.9319,45.3781],
 [null,"n",8240118470,"Bibliothèque publique d'Asbestos",10,224,-71.9387,45.7775],
-["Annapolis Valley Regional Library","n",8254666839,"Kingston Library",6,11,-64.947,44.9886],
 ["Regina Public Libraries","n",8268476811,"Prince of Wales Branch",11,8,-104.5866,50.4433],
 [null,"n",8274976608,null,8,0,-80.3338,47.7311],
 ["Bibliothèques de Montréal","n",8353776205,"Bibliothèque Interculturelle",10,11,-73.6369,45.5032],
@@ -2244,6 +2243,7 @@
 [null,"w",444492772,"Fountainbleu Library",8,480,-82.9532,42.2953],
 ["Lambton County Library","w",444803179,"Lambton County Library - Alvinston",8,505,-81.8627,42.821],
 [null,"w",446599012,"Ross Memorial Library",3,481,-67.0514,45.0761],
+["Annapolis Valley Regional Library","w",447026652,"Kingston Library",6,11,-64.947,44.9886],
 ["Merrickville Public Library","w",448664089,"Merrickville Public Library",8,108,-75.8437,44.9161],
 ["Ottawa Public Library","w",448997613,"Ottawa Public Library - Greely Branch",8,381,-75.5576,45.2613],
 [null,"w",450148248,"Stellarton Public Library",6,487,-62.6601,45.5593],
@@ -2875,7 +2875,7 @@
 {"name":"Whitestone-Hagerman Memorial","fscskey":"ON-L0377","state":"ON","outlets":1,"near":0,"pts":[{"n":"Whitestone-Hagerman Memorial","lat":45.64592,"lon":-79.8539}],"bb":[-79.904,45.596,-79.804,45.696]}
 ],
 "augment": [
-{"sysKey":"Annapolis Valley Regional Library","fscskey":"NS-AVRL","state":"NS","qid":null,"qidConfirmed":false,"branches":[{"osm":"n8254666839","lat":44.9885555,"lon":-64.9470486,"plsName":"Kingston Library","dist":35,"tags":{"addr:housenumber":"671","addr:street":"Main Street","addr:city":"Kingston"},"conflicts":[]}]},
+{"sysKey":"Annapolis Valley Regional Library","fscskey":"NS-AVRL","state":"NS","qid":null,"qidConfirmed":false,"branches":[{"osm":"w447026652","lat":44.9885855,"lon":-64.9469571,"plsName":"Kingston Library","dist":33,"tags":{"addr:housenumber":"671","addr:street":"Main Street","addr:city":"Kingston"},"conflicts":[]}]},
 {"sysKey":"Arnprior Public Library","fscskey":"ON-L0014","state":"ON","qid":null,"qidConfirmed":false,"branches":[{"osm":"n1332568936","lat":45.4349996,"lon":-76.3522146,"plsName":"Arnprior","dist":0,"tags":{"addr:city":"Arnprior"},"conflicts":[]}]},
 {"sysKey":"Bowen Island Public Library","fscskey":"BC-bowen-island-public-library","state":"BC","qid":null,"qidConfirmed":false,"branches":[{"osm":"w254061717","lat":49.379933,"lon":-123.3340196,"plsName":"Bowen Island Public Library","dist":3,"tags":{},"conflicts":[{"key":"addr:street","osm":"Bowen Island Trunk Road","pls":"Bowen Island Trunk"}]}]},
 {"sysKey":"Brockville Public Library","fscskey":"ON-L0088","state":"ON","qid":null,"qidConfirmed":false,"branches":[{"osm":"w649722265","lat":44.589357,"lon":-75.6862299,"plsName":"Brockville","dist":3,"tags":{"addr:city":"Brockville"},"conflicts":[]}]},
