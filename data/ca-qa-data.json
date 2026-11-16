@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-15","country":"CA","sourceDate":"2026-11-15","sourceModified":"2026-11-15T10:06:35Z","totalLibraries":2302,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-16","country":"CA","sourceDate":"2026-11-16","sourceModified":"2026-11-16T19:43:37Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -27,7 +27,7 @@
 {"n":"Bibliothèque Allard Regional Library","w":null,"c":1},
 {"n":"Bibliothèque DIRA","w":null,"c":1},
 {"n":"Bibliothèque Jeanne-Hébert","w":null,"c":1},
-{"n":"Bibliothèque de Québec","w":"Q2901560","c":27},
+{"n":"Bibliothèque de Québec","w":"Q2901560","c":26},
 {"n":"Bibliothèque et Archives nationales du Québec","w":null,"c":2,"sw":"Q39628","sn":"Bibliothèque et Archives nationales du Québec","ss":["branch"]},
 {"n":"Bibliothèques de Montréal","w":null,"c":1,"sw":"Q340","ss":["domain"],"sn":"Montreal"},
 {"n":"Bkejwanong First Nation Public Library","w":null,"c":1},
@@ -580,7 +580,6 @@
 [null,"n",1989014620,"Stettler Public Library",0,7,-112.7258,52.3185],
 [null,"n",1996175521,null,6,0,-64.72,44.0275],
 [null,"n",1999479770,"Swift Current Branch - Chinook Regional Library",11,6,-107.7937,50.287],
-["Bibliothèque de Québec","n",2012359829,"Bibliothèque Gabrielle-Roy",10,254,-71.2254,46.8141],
 [null,"n",2025459493,"Lac-Beauport Library",10,0,-71.2988,46.9469],
 ["Regina Public Libraries","n",2025879106,"Sunrise Branch",11,12,-104.5356,50.4294],
 [null,"n",2041291723,"Wapella Library",11,0,-101.9728,50.2617],

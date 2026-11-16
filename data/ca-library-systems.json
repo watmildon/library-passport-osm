@@ -1,10 +1,10 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-11-15","sourceDate":"2026-11-15","boundary":"Canada (OSM relation 1428125)","totalSystems":363},
+"meta": {"source":"Overpass, CA boundary relation 1428125, enriched with Wikidata labels","generated":"2026-11-16","sourceDate":"2026-11-16","boundary":"Canada (OSM relation 1428125)","totalSystems":363},
 "systems": [
 {"name":"Toronto Public Library","mode":"wikidata","value":"Q2901516","count":99},
 {"name":"Vancouver Island Public Library","mode":"wikidata","value":"Q4391945","count":39},
 {"name":"Ottawa Public Library","mode":"wikidata","value":"Q2901505","count":34},
-{"name":"Bibliothèque de Québec","mode":"wikidata","value":"Q2901560","count":27},
+{"name":"Bibliothèque de Québec","mode":"wikidata","value":"Q2901560","count":26},
 {"name":"Lambton County Library","mode":"wikidata","value":"Q53678013","count":25},
 {"name":"University of Toronto","mode":"wikidata","value":"Q180865","count":25},
 {"name":"Fraser Valley Regional Library","mode":"wikidata","value":"Q5493694","count":22},
