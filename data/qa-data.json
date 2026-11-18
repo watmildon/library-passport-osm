@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838","generated":"2026-11-17","country":"US","sourceDate":"2026-11-17","sourceModified":"2026-11-17T18:36:17Z","totalLibraries":19376,"totalSystems":2627,"plsFiscalYear":"2023"},
+"meta": {"source":"Overpass, US boundary relation 148838","generated":"2026-11-18","country":"US","sourceDate":"2026-11-18","sourceModified":"2026-11-18T18:07:21Z","totalLibraries":19378,"totalSystems":2627,"plsFiscalYear":"2023"},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alabama","Alaska","American Samoa","Arizona","Arkansas","California","Colorado","Connecticut","Delaware","District of Columbia","Florida","Georgia","Guam","Hawaii","Idaho","Illinois","Indiana","Iowa","Kansas","Kentucky","Louisiana","Maine","Maryland","Massachusetts","Michigan","Minnesota","Mississippi","Missouri","Montana","Nebraska","Nevada","New Hampshire","New Jersey","New Mexico","New York","North Carolina","North Dakota","Northern Mariana Islands","Ohio","Oklahoma","Oregon","Pennsylvania","Puerto Rico","Rhode Island","South Carolina","South Dakota","Tennessee","Texas","United States Virgin Islands","Utah","Vermont","Virginia","Washington","West Virginia","Wisconsin","Wyoming"],
 "systems": [
@@ -1485,7 +1485,7 @@
 {"n":"National Park Service","w":"Q308439","c":1},
 {"n":"National Theater Institute","w":null,"c":1},
 {"n":"Naugatuck Valley Community College","w":null,"c":1},
-{"n":"Navajo Nation Library","w":null,"c":1},
+{"n":"Navajo Nation Library","w":null,"c":2},
 {"n":"Naval Submarine Base New London","w":null,"c":1},
 {"n":"Navarro College","w":null,"c":1},
 {"n":"Nazareth University","w":"Q6983313","c":1},
@@ -5060,7 +5060,7 @@
 [null,"n",367965620,"Whitehall Public Library",41,0,-79.9799,40.3509],
 [null,"n",367965629,"Wilkinsburg Junior-Senior High School Library",41,0,-79.8814,40.4442],
 [null,"n",367965644,"Spring Garden Elementary School Library",41,0,-79.9687,40.4642],
-[null,"n",367965653,"Spring Hill Elementary School Library",41,0,-79.9894,40.465],
+[null,"n",367965653,"Spring Hill Elementary School Library",41,0,-79.9892,40.4653],
 [null,"n",367965676,"Sterrett Classical Academy Library",41,0,-79.905,40.4467],
 [null,"n",367965688,"Stevens Elementary School Library",41,0,-80.0402,40.4426],
 [null,"n",367965692,"Tarentum Branch Library Community Library of Allegheny Valley",41,0,-79.7539,40.6018],
@@ -9309,7 +9309,7 @@
 ["The River and Plains Society","r",20246310,"Library & Archives",28,12,-110.6667,47.8243],
 ["Saint Johns County Public Library System","r",20281781,"Bartram Trail Branch Library",10,489,-81.6258,30.107],
 [null,"r",20325588,"Madison Heights Public Library",24,0,-83.1081,42.5205],
-[null,"r",20445118,"Mortola Library",34,0,-73.8074,41.1275],
+[null,"r",20445118,"Edward and Doris Mortola Library",34,0,-73.8074,41.1275],
 [null,"r",20588123,"Vernon Public Library",3,480,-109.6928,34.2547],
 [null,"r",20963232,"Carnegie Public Library of Clarksdale",26,480,-90.5748,34.2037],
 [null,"r",20968578,"Hickman Branch Public Library",19,483,-89.1855,36.5716],
@@ -22007,7 +22007,9 @@
 ["Tulsa City-County Library System","w",1577802094,"Rudisill Regional Library",39,492,-95.9863,36.1687],
 ["Kansas City, Kansas Unifed School District - #500","w",1578410895,"Kansas City, Kansas Public Library - F.L. Schlagle Library",18,495,-94.7899,39.161],
 ["Orange County Library System (https://ocls.org/locations-hours/horizon-west-branch))","w",1579146466,"Orange County Library, Horizon West branch",10,492,-81.6153,28.4846],
-[null,"w",1579659706,"Goodnight Memorial Library",19,0,-86.5779,36.7206]
+[null,"w",1579659706,"Goodnight Memorial Library",19,0,-86.5779,36.7206],
+["Navajo Nation Library","w",1580972893,"Kayenta Community Library",3,490,-110.2509,36.7117],
+[null,"w",1580997741,"Limberlost Library",16,0,-85.3771,41.4956]
 ],
 "collisions": [
 {"a":"Brown University","b":"Rowan University","ca":4,"cb":1,"aw":false,"bw":true,"lev":2},
@@ -22044,7 +22046,7 @@
 {"a":"UNC","b":"USC","ca":1,"cb":1,"aw":false,"bw":false,"lev":1}
 ],
 "ambiguous": [
-
+{"n":"Navajo Nation Library","total":2,"clusters":[{"st":[3],"c":1,"wd":null,"bb":[-110.75,36.21,-109.75,37.21]},{"st":[33],"c":1,"wd":null,"bb":[-107.85,35.45,-106.85,36.45]}]}
 ],
 "domains": [
 {"d":"mymcpl.org","total":36,"untagged":26,"op":"Mid-Continent Public Library","wd":null,"st":[27]},
@@ -22755,6 +22757,7 @@
 {"pq":"Q5043945","pn":"Carnegie Library of Pittsburgh","pk":"libnet","po":"Carnegie Library of Pittsburgh","libs":[{"osm":"w533700189","n":"Carnegie Library of Pittsburgh - Homewood","q":"Q5890683","s":41,"pr":"P749","lat":40.4553,"lon":-79.8992}],"st":[41]},
 {"pq":"Q5049157","pn":"Cass District Library","pk":"libnet","po":null,"libs":[{"osm":"n367814361","n":"Cass District Library-Cassopolis","q":"Q69958547","s":24,"pr":"P749","lat":41.9203,"lon":-86.0184},{"osm":"n367814363","n":"Edwardsburg Public Library","q":"Q69958548","s":24,"pr":"P749","lat":41.7967,"lon":-86.0853}],"st":[24]},
 {"pq":"Q5149897","pn":"Columbia University Libraries","pk":"libnet","po":null,"libs":[{"osm":"w274995721","n":"Butler Library","q":"Q5002628","s":34,"pr":"P361","lat":40.8064,"lon":-73.9632}],"st":[34]},
+{"pq":"Q518155","pn":"National Archives and Records Administration","pk":"org","po":"National Archives and Records Administration","libs":[{"osm":"w209127502","n":"Eisenhower Presidential Library","q":"Q3270206","s":18,"pr":"P749","lat":38.9115,"lon":-97.2108}],"st":[18]},
 {"pq":"Q5211387","pn":"Dallas Public Library","pk":"libnet","po":"Dallas Public Library","libs":[{"osm":"w411079645","n":"Dallas Public Library Lochwood Branch","q":"Q69968911","s":47,"pr":"P749","lat":32.8484,"lon":-96.6883},{"osm":"w469579265","n":"Renner Frankford Library Branch","q":"Q69968949","s":47,"pr":"P749","lat":32.9977,"lon":-96.7946},{"osm":"w587739362","n":"White Rock Hills Branch Library","q":"Q69968968","s":47,"pr":"P749","lat":32.814,"lon":-96.6917}],"st":[47]},
 {"pq":"Q5241825","pn":"Davis & Elkins College","pk":"org","po":null,"libs":[{"osm":"w564618872","n":"Booth Library","q":"Q96608748","s":53,"pr":"P749","lat":38.9313,"lon":-79.8459}],"st":[53]},
 {"pq":"Q5345817","pn":"Edward Waters University","pk":"school","po":null,"libs":[{"osm":"w498552690","n":"Centennial Library","q":"Q35187932","s":10,"pr":"P749","lat":30.3451,"lon":-81.6844}],"st":[10]},
@@ -25197,7 +25200,7 @@
 {"name":"JUSTIN POTTER LIBRARY","fscskey":"TN0103","state":"TN","outlets":2,"near":2,"pts":[{"n":"JUSTIN POTTER LIBRARY","lat":35.96049,"lon":-85.81172,"osm":"w1341866877","osmName":"Justin Potter Library","osmLat":35.96054,"osmLon":-85.81193},{"n":"ALEXANDRIA BRANCH LIBRARY","lat":36.07751,"lon":-86.03331,"osm":"w1341867791","osmName":"Alexandria Branch Library","osmLat":36.07739,"osmLon":-86.03379}],"bb":[-86.083,35.91,-85.762,36.128]},
 {"name":"KATE LOVE SIMPSON-MORGAN COUNTY LIBRARY","fscskey":"OH0139","state":"OH","outlets":2,"near":2,"pts":[{"n":"KATE LOVE SIMPSON-MORGAN COUNTY LIBRARY","lat":39.64854,"lon":-81.84876,"osm":"w1269036336","osmName":"Kate Love Simpson Library","osmLat":39.64827,"osmLon":-81.84881},{"n":"CHESTERHILL BRANCH LIBRARY","lat":39.48844,"lon":-81.86606,"osm":"w1504466722","osmName":"Chesterhill Branch","osmLat":39.48836,"osmLon":-81.86589}],"ops":[{"n":"Morgan County Library"}],"bb":[-81.916,39.438,-81.799,39.699]},
 {"name":"KEARNY PUBLIC LIBRARY","fscskey":"NJ0150","state":"NJ","outlets":2,"near":2,"pts":[{"n":"KEARNY PUBLIC LIBRARY","lat":40.7619,"lon":-74.15,"osm":"n12190704621","osmName":"Kearny Library","osmLat":40.76144,"osmLon":-74.14992},{"n":"KEARNY BRANCH LIBRARY","lat":40.77812,"lon":-74.1414,"osm":"w1158569811","osmName":"Kearny Branch Library","osmLat":40.77815,"osmLon":-74.14158}],"bb":[-74.2,40.712,-74.091,40.828]},
-{"name":"KENDALLVILLE PUBLIC LIBRARY","fscskey":"IN0086","state":"IN","outlets":2,"near":1,"pts":[{"n":"LIMBERLOST PUBLIC LIBRARY","lat":41.49564,"lon":-85.37674},{"n":"KENDALLVILLE PUBLIC LIBRARY","lat":41.44235,"lon":-85.25455,"osm":"w227941560","osmName":"Kendallville Public Library","osmLat":41.44242,"osmLon":-85.25283}],"bb":[-85.427,41.392,-85.205,41.546]},
+{"name":"KENDALLVILLE PUBLIC LIBRARY","fscskey":"IN0086","state":"IN","outlets":2,"near":2,"pts":[{"n":"LIMBERLOST PUBLIC LIBRARY","lat":41.49564,"lon":-85.37674,"osm":"w1580997741","osmName":"Limberlost Library","osmLat":41.49563,"osmLon":-85.37706},{"n":"KENDALLVILLE PUBLIC LIBRARY","lat":41.44235,"lon":-85.25455,"osm":"w227941560","osmName":"Kendallville Public Library","osmLat":41.44242,"osmLon":-85.25283}],"bb":[-85.427,41.392,-85.205,41.546]},
 {"name":"KILLEEN CITY LIBRARY SYSTEM","fscskey":"TX0127","state":"TX","outlets":2,"near":2,"pts":[{"n":"KILLEEN CITY LIBRARY SYSTEM","lat":31.12372,"lon":-97.72703,"osm":"n6810228323","osmName":"Killeen City Public Library","osmLat":31.12432,"osmLon":-97.72694},{"n":"COPPER MOUNTAIN BRANCH LIBRARY","lat":31.0858,"lon":-97.72085,"osm":"n6810228318","osmName":"Copper Mountain Public Library - Killeen","osmLat":31.08566,"osmLon":-97.72027}],"bb":[-97.777,31.036,-97.671,31.174]},
 {"name":"LA PAZ COUNTY SERVICES","fscskey":"AZ0177","state":"AZ","outlets":2,"near":1,"pts":[{"n":"BOUSE PUBLIC LIBRARY","lat":33.93152,"lon":-114.00941,"osm":"n11575291408","osmName":"Bouse Public Library","osmLat":33.9317,"osmLon":-114.0089},{"n":"CENTENNIAL PUBLIC LIBRARY","lat":33.78823,"lon":-113.56537}],"bb":[-114.059,33.738,-113.515,33.982]},
 {"name":"LA VETA REGIONAL LIBRARY DISTRICT","fscskey":"CO0064","state":"CO","outlets":2,"near":1,"pts":[{"n":"LA VETA PUBLIC LIBRARY DISTRICT","lat":37.50773,"lon":-105.00911,"osm":"w228720901","osmName":"La Veta Public Library","osmLat":37.50755,"osmLon":-105.00939},{"n":"CUCHARA PUBLIC LIBRARY","lat":37.37992,"lon":-105.0989}],"ops":[{"n":"La Veta Regional Library District","m":1}],"bb":[-105.149,37.33,-104.959,37.558]},
@@ -25300,7 +25303,7 @@
 {"name":"NORTHPORT PUBLIC LIBRARY","fscskey":"NY0677","state":"NY","outlets":2,"near":2,"pts":[{"n":"NORTHPORT-EAST NORTHPORT PUBLIC LIBRARY","lat":40.89602,"lon":-73.33756,"osm":"w311248066","osmName":"Northport Public Library","osmLat":40.89603,"osmLon":-73.33754},{"n":"EAST NORTHPORT PUBLIC LIBRARY","lat":40.87826,"lon":-73.3247,"osm":"w311184464","osmName":"East Northport Public Library","osmLat":40.8781,"osmLon":-73.32471}],"ops":[{"n":"Northport-East Northport Public Library"}],"bb":[-73.388,40.828,-73.275,40.946]},
 {"name":"NORWALK PUBLIC LIBRARY","fscskey":"CT0114","state":"CT","outlets":2,"near":2,"pts":[{"n":"NORWALK PUBLIC LIBRARY","lat":41.11705,"lon":-73.41523,"osm":"w302176433","osmName":"Norwalk Public Library","osmLat":41.11674,"osmLon":-73.41564},{"n":"SOUTH NORWALK BRANCH LIBRARY","lat":41.09907,"lon":-73.42113,"osm":"w884602691","osmName":"South Norwalk Branch Library","osmLat":41.09883,"osmLon":-73.42117}],"bb":[-73.471,41.049,-73.365,41.167]},
 {"name":"OCTAVIA FELLIN PUBLIC LIBRARY","fscskey":"NM0016","state":"NM","outlets":2,"near":2,"pts":[{"n":"OCTAVIA FELLIN PUBLIC CHILDREN`S LIBRARY","lat":35.52623,"lon":-108.74236,"osm":"w805035629","osmName":"Children's Library","osmLat":35.52647,"osmLon":-108.74243},{"n":"OCTAVIA FELLIN PUBLIC LIBRARY","lat":35.52545,"lon":-108.74125,"osm":"n5939833995","osmName":"Octavia Fellin Public Library","osmLat":35.52517,"osmLon":-108.74117}],"bb":[-108.792,35.475,-108.691,35.576]},
-{"name":"OFFICE OF NAVAJO NATION LIBRARY","fscskey":"AZ0100","state":"AZ","outlets":2,"near":1,"pts":[{"n":"OFFICE OF NAVAJO NATION LIBRARY","lat":35.66464,"lon":-109.0513,"osm":"n1422684742","osmName":"","osmLat":35.66403,"osmLon":-109.05121},{"n":"KAYENTA COMMUNITY LIBRARY","lat":36.71116,"lon":-110.25176}],"bb":[-110.302,35.615,-109.001,36.761]},
+{"name":"OFFICE OF NAVAJO NATION LIBRARY","fscskey":"AZ0100","state":"AZ","outlets":2,"near":2,"pts":[{"n":"OFFICE OF NAVAJO NATION LIBRARY","lat":35.66464,"lon":-109.0513,"osm":"n1422684742","osmName":"","osmLat":35.66403,"osmLon":-109.05121},{"n":"KAYENTA COMMUNITY LIBRARY","lat":36.71116,"lon":-110.25176,"osm":"w1580972893","osmName":"Kayenta Community Library","osmLat":36.71171,"osmLon":-110.25088}],"ops":[{"n":"Navajo Nation Library","m":1}],"bb":[-110.302,35.615,-109.001,36.761]},
 {"name":"OHIO COUNTY PUBLIC LIBRARY","fscskey":"KY0087","state":"KY","outlets":2,"near":2,"pts":[{"n":"OHIO COUNTY PUBLIC LIBRARY","lat":37.44969,"lon":-86.90756,"osm":"w1342496308","osmName":"Ohio County Public Library","osmLat":37.44988,"osmLon":-86.90736},{"n":"OHIO COUNTY PUBLIC LIBRARY ANNEX","lat":37.44955,"lon":-86.9075,"osm":"w1342496308","osmName":"Ohio County Public Library","osmLat":37.44988,"osmLon":-86.90736}],"bb":[-86.958,37.4,-86.857,37.5]},
 {"name":"OLATHE PUBLIC LIBRARY","fscskey":"KS0130","state":"KS","outlets":2,"near":1,"pts":[{"n":"OLATHE DOWNTOWN LIBRARY","lat":38.88379,"lon":-94.83275},{"n":"OLATHE INDIAN CREEK LIBRARY","lat":38.88376,"lon":-94.77103,"osm":"w146793422","osmName":"Olathe Indian Creek Library","osmLat":38.88525,"osmLon":-94.77102}],"ops":[{"n":"City of Olathe, KS"}],"bb":[-94.883,38.834,-94.721,38.934]},
 {"name":"ONEIDA COMMUNITY LIBRARY","fscskey":"WI0370","state":"WI","outlets":2,"near":0,"pts":[{"n":"ONEIDA COMMUNITY LIBRARY","lat":44.49775,"lon":-88.18298},{"n":"GREEN EARTH BRANCH","lat":44.46903,"lon":-88.24939}],"bb":[-88.299,44.419,-88.133,44.548]},

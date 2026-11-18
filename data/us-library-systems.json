@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-17","sourceDate":"2026-11-17","boundary":"United States (OSM relation 148838)","totalSystems":2614},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-18","sourceDate":"2026-11-18","boundary":"United States (OSM relation 148838)","totalSystems":2614},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":88},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -498,6 +498,7 @@
 {"name":"Montpelier Public Library","mode":"operator","value":"Montpelier Public Library","count":2},
 {"name":"Municipality of Penn Hills","mode":"operator","value":"Municipality of Penn Hills","count":2},
 {"name":"Muskegon Area District Library","mode":"wikidata","value":"Q69480039","count":2},
+{"name":"Navajo Nation Library","mode":"operator","value":"Navajo Nation Library","count":2},
 {"name":"New Haven Free Public Library","mode":"operator","value":"New Haven Free Public Library","count":2},
 {"name":"NMSU","mode":"operator","value":"NMSU","count":2},
 {"name":"Northeastern University","mode":"operator","value":"Northeastern University","count":2},
@@ -1748,7 +1749,6 @@
 {"name":"National Park Service","mode":"wikidata","value":"Q308439","count":1},
 {"name":"National Theater Institute","mode":"operator","value":"National Theater Institute","count":1},
 {"name":"Naugatuck Valley Community College","mode":"operator","value":"Naugatuck Valley Community College","count":1},
-{"name":"Navajo Nation Library","mode":"operator","value":"Navajo Nation Library","count":1},
 {"name":"Naval Submarine Base New London","mode":"operator","value":"Naval Submarine Base New London","count":1},
 {"name":"Navarro College","mode":"operator","value":"Navarro College","count":1},
 {"name":"Nazareth University","mode":"wikidata","value":"Q6983313","count":1},

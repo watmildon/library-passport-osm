@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-17","country":"CA","sourceDate":"2026-11-17","sourceModified":"2026-11-17T18:42:25Z","totalLibraries":2301,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-18","country":"CA","sourceDate":"2026-11-18","sourceModified":"2026-11-18T18:14:20Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -2220,7 +2220,7 @@
 [null,"w",415373439,"Salt Spring Island Public Library",1,487,-123.5014,48.8524],
 ["Ville de Blainville","w",416529864,"Bibliothèque Paul-Mercier",10,360,-73.8745,45.6808],
 [null,"w",417446235,"St. Paul Municipal Library",0,0,-111.3064,53.9899],
-["Calgary Public Library","w",417626025,"Calgary Public Library - Nose Hill",0,510,-114.1389,51.0965],
+["Calgary Public Library","w",417626025,"Nose Hill Library",0,510,-114.1389,51.0965],
 [null,"w",418462307,"Pender Island Public Library",1,359,-123.2824,48.7986],
 [null,"w",419197167,"Grand Forks & District Public Library",1,487,-118.4406,49.0324],
 ["Cornwall Public Library","w",425316475,"Cornwall Public Library",8,364,-74.7272,45.0191],
