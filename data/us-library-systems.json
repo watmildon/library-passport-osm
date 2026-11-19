@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-18","sourceDate":"2026-11-18","boundary":"United States (OSM relation 148838)","totalSystems":2614},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-19","sourceDate":"2026-11-19","boundary":"United States (OSM relation 148838)","totalSystems":2614},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":88},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -346,6 +346,7 @@
 {"name":"University of Kansas","mode":"operator","value":"University of Kansas","count":3},
 {"name":"University of Miami","mode":"wikidata","value":"Q738258","count":3},
 {"name":"University of Missouri","mode":"operator","value":"University of Missouri","count":3},
+{"name":"University of North Texas","mode":"operator","value":"University of North Texas","count":3},
 {"name":"University of Oregon","mode":"operator","value":"University of Oregon","count":3},
 {"name":"University of Pittsburgh","mode":"operator","value":"University of Pittsburgh","count":3},
 {"name":"University of Rochester","mode":"wikidata","value":"Q149990","count":3},
@@ -559,7 +560,6 @@
 {"name":"University of Illinois Board of Trustees","mode":"operator","value":"University of Illinois Board of Trustees","count":2},
 {"name":"University of Missouri-St. Louis","mode":"operator","value":"University of Missouri-St. Louis","count":2},
 {"name":"University of North Carolina at Chapel Hill","mode":"operator","value":"University of North Carolina at Chapel Hill","count":2},
-{"name":"University of North Texas","mode":"operator","value":"University of North Texas","count":2},
 {"name":"University of Pennsylvania","mode":"operator","value":"University of Pennsylvania","count":2},
 {"name":"University of Rhode Island","mode":"operator","value":"University of Rhode Island","count":2},
 {"name":"University of the Virgin Islands","mode":"wikidata","value":"Q7896780","count":2},

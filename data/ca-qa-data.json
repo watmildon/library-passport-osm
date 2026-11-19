@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-18","country":"CA","sourceDate":"2026-11-18","sourceModified":"2026-11-18T18:14:20Z","totalLibraries":2301,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-19","country":"CA","sourceDate":"2026-11-19","sourceModified":"2026-11-19T18:24:05Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1019,7 +1019,7 @@
 ["Greater Victoria Public Library","n",5637941202,"GVPL: sxʷeŋxʷəŋ təŋəxʷ James Bay Branch",1,366,-123.3723,48.4178],
 [null,"n",5661027844,"Bibliothèque de Dolbeau-Mistassini",10,0,-72.2261,48.8772],
 [null,"n",5680038822,"Bibliothèque de l'Ascension",10,359,-74.8291,46.5518],
-[null,"n",5697750392,"Ottawa Trans Library",8,294,-75.7221,45.4059],
+[null,"n",5697750392,"Ottawa Trans Library",8,358,-75.7221,45.4059],
 [null,"n",5762854445,"Lloydminster Public Library",0,487,-110.0141,53.2765],
 ["Region Of Waterloo Library","n",5769580529,"Region Of Waterloo Library - New Dundee Branch",8,105,-80.5381,43.3502],
 [null,"n",5784796724,"Clarenville Public Library",4,0,-53.9768,48.1615],
@@ -1418,7 +1418,7 @@
 ["Ville de Trois-Rivières","n",9306700076,"Bibliothèque Aline-Piché",10,488,-72.5905,46.3343],
 [null,"n",9346948831,"Bibliothèque Gaby-Farmer-Denis",10,224,-74.0552,45.3086],
 ["Ville de Shawinigan","n",9356494202,"Bibliothèque Hélène-B.-Beauséjour",10,488,-72.6954,46.6134],
-[null,"n",9374924071,"Bibliothèque Jean-Lapierre",10,3,-61.7969,47.4049],
+[null,"n",9374924071,"Bibliothèque Jean-Lapierre",10,483,-61.7968,47.4048],
 [null,"n",9416748037,"Bibliothèque municipale et CACI",10,0,-69.1938,47.953],
 [null,"n",9416765483,"St-Hubert Bibliotheque",10,224,-69.1479,47.8157],
 [null,"n",9418398370,"Le Grenier aux Livres",10,0,-69.2811,47.4887],
