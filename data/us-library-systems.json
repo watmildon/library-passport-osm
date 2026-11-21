@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-20","sourceDate":"2026-11-20","boundary":"United States (OSM relation 148838)","totalSystems":2614},
+"meta": {"source":"Overpass, US boundary relation 148838, enriched with Wikidata labels","generated":"2026-11-21","sourceDate":"2026-11-21","boundary":"United States (OSM relation 148838)","totalSystems":2614},
 "systems": [
 {"name":"LA County Library","mode":"wikidata","value":"Q5177889","count":88},
 {"name":"Chicago Public Library","mode":"wikidata","value":"Q1060421","count":82},
@@ -243,6 +243,7 @@
 {"name":"Jefferson County Library District","mode":"wikidata","value":"Q69481414","count":4},
 {"name":"Kalamazoo Public Library","mode":"operator","value":"Kalamazoo Public Library","count":4},
 {"name":"Kenosha Public Library","mode":"operator","value":"Kenosha Public Library","count":4},
+{"name":"Kenton County Public Library","mode":"wikidata","value":"Q6392076","count":4},
 {"name":"Lee County Library System","mode":"wikidata","value":"Q30637232","count":4},
 {"name":"Lubbock Public Library","mode":"wikidata","value":"Q69491762","count":4},
 {"name":"Mansfield / Richland County Public Library","mode":"operator","value":"Mansfield / Richland County Public Library","count":4},
@@ -299,7 +300,6 @@
 {"name":"Indiana University of Pennsylvania","mode":"operator","value":"Indiana University of Pennsylvania","count":3},
 {"name":"Indianapolis Public Library","mode":"wikidata","value":"Q5839345","count":3},
 {"name":"Juneau Public Libraries","mode":"operator","value":"Juneau Public Libraries","count":3},
-{"name":"Kenton County Public Library","mode":"wikidata","value":"Q6392076","count":3},
 {"name":"Kitchigami Regional Library","mode":"wikidata","value":"Q69481000","count":3},
 {"name":"La Crosse County Library","mode":"operator","value":"La Crosse County Library","count":3},
 {"name":"Lexington Public Library","mode":"operator","value":"Lexington Public Library","count":3},
