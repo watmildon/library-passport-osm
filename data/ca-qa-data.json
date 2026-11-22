@@ -1,5 +1,5 @@
 {
-"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-21","country":"CA","sourceDate":"2026-11-21","sourceModified":"2026-11-21T16:54:33Z","totalLibraries":2301,"totalSystems":364},
+"meta": {"source":"Overpass, CA boundary relation 1428125","generated":"2026-11-22","country":"CA","sourceDate":"2026-11-22","sourceModified":"2026-11-22T17:17:12Z","totalLibraries":2301,"totalSystems":364},
 "tags": ["phone","website","opening_hours","operator","operator:wikidata","addr:housenumber","addr:street","addr:city","addr:postcode"],
 "states": ["Alberta","British Columbia","Manitoba","New Brunswick","Newfoundland and Labrador","Northwest Territories","Nova Scotia","Nunavut","Ontario","Prince Edward Island","Quebec","Saskatchewan","Yukon"],
 "systems": [
@@ -1996,7 +1996,7 @@
 ["Brampton Library","w",167249292,"Brampton Library - Four Corners Branch",8,238,-79.7577,43.6876],
 ["Greater Sudbury Public Library","w",168647710,"Main Branch",8,488,-80.9975,46.4955],
 ["Calgary Public Library","w",170774009,"Calgary Public Library - Memorial Park",0,510,-114.0691,51.0411],
-["Arrondissement d'Outremont","w",171582344,"Bibliothèque Robert-Bourassa",10,235,-73.6084,45.5179],
+["Arrondissement d'Outremont","w",171582344,"Bibliothèque Robert-Bourassa",10,239,-73.6084,45.5179],
 ["Bibliothèque de Québec","w",171795395,"Bibliothèque Saint-André",10,254,-71.3359,46.8581],
 [null,"w",172132975,null,10,0,-76.0378,45.6415],
 ["Port Colborne Public Library","w",172845774,"Port Colborne Public Library",8,8,-79.2521,42.8881],
